@@ -1,0 +1,134 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Detalhes do Aluno{% endblock %}
+
+{% block content %}
+<div class="print-logo" style="text-align:left; margin-bottom:5px;">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
+</div>
+
+<h2>Detalhes do Aluno</h2>
+<table class="table table-borderless w-50">
+    <tr><th>Matrícula:</th><td>{{ aluno.family.registration_number }}</td></tr>
+    <tr><th>Nome:</th><td>{{ aluno.name }}</td></tr>
+    <tr><th>Responsável:</th><td>{{ aluno.family.responsible_name }}</td></tr>
+    <tr><th>Bairro:</th><td>{{ aluno.family.neighborhood }}</td></tr>
+    <tr><th>Telefone:</th><td>{{ aluno.family.telephone }}</td></tr>
+    <tr><th>Data de Nascimento:</th><td>{{ aluno.birth_date|date:"d/m/Y" }}</td></tr>
+    <tr><th>Problema de Saúde:</th><td>{{ aluno.health_problem|default:"-" }}</td></tr>
+    <tr><th>Ações:</th>
+    
+</tr>
+</table>
+
+<table class="table table-bordered">
+    <h4>Turma Matriculada</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Educadora</th>
+            <th>Turma</th>
+            <th>Sala</th>
+            <th>Turno</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if aluno.turma %}
+            <tr>
+                <td>{{ aluno.turma.professor }}</td>
+                <td>{{ aluno.turma.faixa_etaria }}</td>
+                <td>{{ aluno.turma.sala }}</td>
+                <td>{{ aluno.turma.turno }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="2" class="text-center">Nenhuma turma matriculada.</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+    <h4>Atividades Matriculadas</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Atividade</th>
+            <th>Turno</th>
+            
+        </tr>
+    </thead>
+    <tbody>
+        {% for activity in aluno.atividades.all %}
+            <tr>
+                <td>{{ activity.descricao }}</td>
+                <td>
+                    {% if activity.turno %}
+                        {{ activity.turno }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="2" class="text-center">Nenhuma atividade matriculada.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+    <h4>Histórico de Turmas</h4>
+<table class="table table-bordered">
+    <thead><tr>
+            <th>Data</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Motivo</th>
+        </tr></thead>
+    <tbody>
+        {% for mov in aluno.historico_turmas.all %}
+            <tr>
+                <td>{{ mov.data_movimentacao|date:"d/m/Y" }}</td>
+                <td>{% if mov.turma_origem %}{{ mov.turma_origem.professor }}{% else %}-{% endif %}</td>
+                <td>{{ mov.turma_destino.professor }}</td>
+                <td>{{ mov.motivo }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4">Nenhuma movimentação registrada.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<h4>Ocorrências</h4>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Responsável</th>
+            <th>Observações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ocorrencia in aluno.ocorrencias.all %}
+            <tr>
+                <td>{{ ocorrencia.data|date:"d/m/Y" }}</td>
+                <td>{{ ocorrencia.tipo }}</td>
+                <td>{{ ocorrencia.descricao }}</td>
+                <td>{{ ocorrencia.responsavel }}</td>
+                <td>{{ ocorrencia.observacoes }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">Nenhuma ocorrência registrada.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{% url 'adicionar_ocorrencia' aluno.pk %}" class="btn btn-success btn-sm">Registrar Ocorrência</a>
+<div class="mt-3 no-print">
+    <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-primary">Editar</a>
+    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+    <a href="{% url 'aluno_delete_confirm' aluno.pk %}" class="btn btn-danger">Excluir</a>
+    <a href="{% url 'aluno_list' %}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

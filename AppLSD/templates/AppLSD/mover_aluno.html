@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Mover aluno: {{ aluno.nome }}</h2>
+<form method="post" class="form-inline">
+    {% csrf_token %}
+    <div class="form-group mb-2">
+      <label for="id_turma_destino" class="mr-2">Nova Turma:</label>
+      {{ form.turma_destino }}
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+      <label for="id_motivo" class="mr-2">Motivo da movimentação:</label>
+      {{ form.motivo }}
+    </div>
+    <button type="submit" class="btn btn-primary mb-2">Salvar movimentação</button>
+    <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-secondary mb-2">Cancelar</a>
+</form>
+{% endblock %}
+
+<script>
+    // Adiciona validação para garantir que a turma de destino seja diferente da turma atual
+    document.querySelector('form').addEventListener('submit', function(event) {
+        const turmaAtual = "{% if aluno.turma %}{{ aluno.turma.id }}{% else %}{% endif %}";
+        const turmaDestino = document.getElementById('id_turma_destino').value;
+        if (turmaAtual === turmaDestino) {
+            event.preventDefault();
+            alert("A turma de destino deve ser diferente da turma atual.");
+        }
+    });

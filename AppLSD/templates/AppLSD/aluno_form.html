@@ -1,0 +1,63 @@
+{% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno</h1>
+    <form method="post" class="mb-4">
+        {% csrf_token %}
+        
+        <!-- Antes do crispy para customizar posição da idade -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                {{ form.birth_date.label_tag }}
+                {{ form.birth_date }}
+            </div>
+            <div class="col-md-4">
+                <label for="idade_aluno">Idade:</label>
+                <input type="text" id="idade_aluno" class="form-control" readonly>
+            </div>
+        </div>
+
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary">
+            {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
+        </button>
+        <a href="{% url 'aluno_list' %}" class="btn btn-secondary ms-2">Voltar</a>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputNasc = document.getElementById("id_birth_date");
+    const inputIdade = document.getElementById("idade_aluno");
+
+    function calcularIdade(nasc) {
+        if(!nasc) return '';
+        const partes = nasc.split('-');
+        if(partes.length !== 3) return '';
+        const nascimento = new Date(partes[0], partes[1]-1, partes[2]);
+        const hoje = new Date();
+        let idade = hoje.getFullYear() - nascimento.getFullYear();
+        const m = hoje.getMonth() - nascimento.getMonth();
+        if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+            idade--;
+        }
+        return idade;
+    }
+
+    if(inputNasc) {
+        function atualizarIdade() {
+            inputIdade.value = calcularIdade(inputNasc.value);
+        }
+        inputNasc.addEventListener("change", atualizarIdade);
+        inputNasc.addEventListener("blur", atualizarIdade);
+        atualizarIdade();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Presença{% endblock %}
+
+{% block content %}
+<div class="print-logo" style="text-align:left; margin-bottom:5px;">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
+</div>
+
+<h2>Dashboard de Presença</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ total_alunos }}</h3>
+                <p>Total de Alunos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{ presentes_hoje }}</h3>
+                <p>Presentes Hoje</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-danger">{{ faltas_hoje }}</h3>
+                <p>Faltas Hoje</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">{{ turmas_ativas }}</h3>
+                <p>Turmas Ativas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3>Frequência por Turma (Últimos 7 dias)</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Turma</th>
+            <th>Alunos Matriculados</th>
+            <th>Média de Presença</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for turma in turmas_com_frequencia %}
+        <tr>
+            <td>{{ turma.faixa_etaria }}</td>
+            <td>{{ turma.total_alunos }}</td>
+            <td>{{ turma.media_presenca|floatformat:1 }}%</td>
+            <td>
+                <a href="{% url 'turma_detail' turma.pk %}" class="btn btn-sm btn-info">Ver Detalhes</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="no-print">
+    <a href="{% url 'home' %}" class="btn btn-secondary">Voltar ao Início</a>
+    <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+</div>
+{% endblock %}

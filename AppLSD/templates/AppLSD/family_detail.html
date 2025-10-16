@@ -1,0 +1,68 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Detalhes da Família{% endblock %}
+
+{% block content %}
+
+<div class="print-logo" style="text-align:left; margin-bottom:5px;">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
+</div>
+
+<h2>Detalhes da Família</h2>
+<table class="table table-borderless w-50">
+    <tr><th>Número de Inscrição:</th><td>{{ family.registration_number }}</td></tr>
+    <tr><th>Nome Responsável:</th><td>{{ family.responsible_name }}</td></tr>
+    <tr><th>Endereço:</th><td>{{ family.address }}</td></tr>
+    <tr><th>Bairro:</th><td>{{ family.neighborhood }}</td></tr>
+    <tr><th>Telefone:</th><td>{{ family.telephone }}</td></tr>
+    <tr><th>NIS:</th><td>{{ family.nis }}</td></tr>
+    <tr><th>RG:</th><td>{{ family.rg }}</td></tr>
+    <tr><th>CPF:</th><td>{{ family.cpf }}</td></tr>
+    <tr><th>Data de Nascimento:</th><td>{{ family.birth_date }}</td></tr>
+    <tr><th>Sexo:</th><td>{{ family.sex }}</td></tr>
+    <tr><th>Ponto de Referência:</th><td>{{ family.reference_point }}</td></tr>
+    <tr><th>Estado Civil:</th><td>{{ family.marital_status }}</td></tr>
+    <tr><th>Escolaridade:</th><td>{{ family.education }}</td></tr>
+    <tr><th>Raça:</th><td>{{ family.race }}</td></tr>
+    <tr><th>Religião:</th><td>{{ family.religion }}</td></tr>
+    <tr><th>Beneficiária de Programas Sociais:</th><td>{{ family.social_benefits }}</td></tr>
+    <tr><th>Ocupação/Profissão:</th><td>{{ family.occupation }}</td></tr>
+    <tr><th>Possui Renda Comprovada:</th><td>{{ family.has_proven_income }}</td></tr>
+    <tr><th>1 Salário Mínimo:</th><td>{{ family.min_salary_1 }}</td></tr>
+    <tr><th>2 Salários Mínimos:</th><td>{{ family.min_salary_2 }}</td></tr>
+    <tr><th>Outras Pessoas Contribuem com a Renda da Família:</th><td>{{ family.others_contribute }}</td></tr>
+    <tr><th>Quem Contribui:</th><td>{{ family.who_contributes }}</td></tr>
+    <tr><th>Quantidade de Pessoas no Domicílio:</th><td>{{ family.num_residents }}</td></tr>
+    <tr><th>Idoso:</th><td>{{ family.has_elderly }}</td></tr>
+    <tr><th>Adolescente:</th><td>{{ family.has_adolescent }}</td></tr>
+    <tr><th>Criança:</th><td>{{ family.has_child }}</td></tr>
+    <tr><th>Gestante:</th><td>{{ family.has_pregnant }}</td></tr>
+    <tr><th>Documentação:</th><td>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</td>
+    
+</table>
+<h3 class="mt-4">Alunos Vinculados</h3> 
+<a href="{% url 'aluno_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
+    Cadastrar Aluno
+</a>
+<table class="table table-bordered">
+    <thead><tr><th>Nome do Aluno</th><th>Nascimento</th><th>Turma</th></tr></thead>
+    <tbody>
+        {% for aluno in family.alunos.all %}
+            <tr>
+                <td>{{ aluno.name }}</td>
+                <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
+                <td>{% if aluno.turma %}{{ aluno.turma.sala }}{% else %}-{% endif %}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3" class="text-center">Nenhum aluno vinculado a esta família.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="mt-3 no-print">
+    <a href="{% url 'family_edit' family.pk %}" class="btn btn-primary">Editar</a>
+    <a href="{% url 'family_delete_confirm' family.pk %}" class="btn btn-danger">Excluir</a>
+    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+    <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

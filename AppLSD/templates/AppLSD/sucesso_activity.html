@@ -1,0 +1,15 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block title %}Relatório - {{ atividade.nome }}{% endblock %}
+{% block content %}
+    <title>Sucesso</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="container mt-4">
+    <h1 class="text-success">Chamada salva com sucesso!</h1>
+    <p>A frequência da Atividade <strong>{{ atividade.nome }}</strong> foi registrada para o dia {{ data|date:"d/m/Y" }}.</p>
+
+    <a href="{% url 'relatorio_presenca_activity' atividade.id %}" class="btn btn-primary">Ver Relatório de Presença</a>
+    <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-secondary">Voltar para Atividade</a>
+
+{% endblock %}

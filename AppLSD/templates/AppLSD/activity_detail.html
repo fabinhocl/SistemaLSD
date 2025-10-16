@@ -1,0 +1,49 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}
+Detalhes da Atividade - {{ atividade.nome }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Atividade: {{ atividade.descricao }}</h1>
+    <p><strong>Professor:</strong> {{ atividade.professor }}</p>
+    <p><strong>Tipo:</strong> {{ atividade.tipo }}</p>
+    <p><strong>Dias da Semana:</strong> {{ atividade.dia_semana }}</p>
+    <p><strong>Turno:</strong> {{ atividade.turno }}</p>
+
+    <h2 class="mt-4">Alunos da Atividade</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data de nascimento</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for aluno in atividade.alunos.all %}
+            <tr>
+                <td>{{ aluno.name }}</td>
+                <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
+                <td>
+                    <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">Nenhum aluno vinculado a esta Atividade.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'iniciar_chamada_activity' atividade.id %}" class="btn btn-success">Iniciar Frequência</a>
+   {% if atividade.id %}
+   <a href="{% url 'activity_add_alunos' activity_id=atividade.id %}" class="btn btn-secondary ms-2">Adicionar alunos</a>
+   <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+{% endif %}
+    <a href="{% url 'activity_list' %}" class="btn btn-secondary ms-2">Voltar à lista de atividades</a>
+</div>
+{% endblock %}

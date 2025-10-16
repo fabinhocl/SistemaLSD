@@ -1,0 +1,21 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block content %}
+<div style="max-width: 340px; margin: 40px auto; padding: 32px; border-radius: 12px; box-shadow: 0 2px 8px #ccc; background: #fff;">
+    <div style="text-align: center; margin-bottom: 16px;">
+        <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="60">
+        <h2 style="color: #0f5e9c;">Entrar no Sistema - Lar São Domingos</h2>
+        <p style="color: #666;">Informe usuário e senha</p>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
+    </form>
+</div>
+{% if form.errors %}
+    <div class="alert alert-danger" style="max-width: 340px; margin:10px auto;">
+        Usuário ou senha incorretos!
+    </div>
+{% endif %}
+{% endblock %}

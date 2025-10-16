@@ -1,0 +1,35 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block title %}Relatório - {{ turma.nome }}{% endblock %}
+{% block content %}
+
+<h3>Chamada da Turma: {{ turma.professor }} — Data: {{ data }}</h3>
+<form method="get" class="mb-3">
+    <label for="data" class="form-label">Escolher Data:</label>
+    <input type="date" id="data" name="data" value="{{ request.GET.data }}">
+    <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Aluno</th>
+            <th>Situação</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for chamada in chamadas %}
+    <tr>
+        <td>{{ chamada.aluno.name }}</td>
+        <td>{% if chamada.presente %}Presente{% else %}Falta{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+<div class="no-print">
+        <a href="{% url 'iniciar_chamada_turma' turma.id %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
+        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
+        <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+    </div>
+</form>
+{% endblock %}

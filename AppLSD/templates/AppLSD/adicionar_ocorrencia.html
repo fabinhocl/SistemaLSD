@@ -1,0 +1,28 @@
+{% extends "AppLSD/base.html" %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="container mt-4 mb-4">
+    <h2 class="mb-4">Registrar Ocorrência para {{ aluno.nome }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group mb-3">
+            <label for="id_tipo">Tipo de ocorrência:</label>
+            {{ form.tipo|add_class:"form-control" }}
+        </div>
+        <div class="form-group mb-3">
+            <label for="id_descricao">Descrição:</label>
+            {{ form.descricao|add_class:"form-control" }}
+        </div>
+        <div class="form-group mb-3">
+            <label for="id_responsavel">Responsável:</label>
+            {{ form.responsavel|add_class:"form-control" }}
+        </div>
+        <div class="form-group mb-3">
+            <label for="id_observacoes">Observações:</label>
+            {{ form.observacoes|add_class:"form-control" }}
+        </div>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

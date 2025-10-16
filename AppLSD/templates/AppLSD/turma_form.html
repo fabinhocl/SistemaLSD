@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div class="container mt-4">
+    <h2 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Turma</h2>
+
+    <h4>Faixas Etárias Disponíveis</h4>
+    <table class="table table-bordered mb-4">
+        <thead>
+            <tr>
+                <th>Faixa Etária</th>
+                <th>Opção</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>06 a 07 anos</td><td>06-07 anos</td></tr>
+            <tr><td>08 a 09 anos</td><td>08-09 anos</td></tr>
+            <tr><td>10 a 12 anos</td><td>10-12 anos</td></tr>
+            <tr><td>13 a 17 anos</td><td>13-17 anos</td></tr>
+        </tbody>
+    </table>
+
+    <form method="post" class="mb-4">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary">
+            {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
+        </button>
+        <a href="{% url 'turma_list' %}" class="btn btn-secondary ms-2">Voltar para Lista</a>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">Home</a>
+    </form>
+</div>
+
+{% endblock %}

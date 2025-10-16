@@ -1,0 +1,41 @@
+{% extends 'AppLSD/base.html' %}
+
+{% block title %}Relatório Mensal de Frequência{% endblock %}
+
+{% block content %}
+<h2>Relatório Mensal de Frequência</h2>
+
+<p><strong>Aluno:</strong> {{ aluno.name }}</p>
+<p><strong>Mês:</strong> {{ mes|default:"Todos os meses" }}</p>
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Data</th>
+            <th>Situação</th>
+            <th>Observação</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for registro in registros %}
+        <tr>
+            <td>{{ registro.data|date:"d/m/Y" }}</td>
+            <td>
+                {% if registro.presente %}
+                Presente
+                {% else %}
+                Falta
+                {% endif %}
+            </td>
+            <td>{{ registro.observacao }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">Nenhum registro encontrado para este período.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
+{% endblock %}

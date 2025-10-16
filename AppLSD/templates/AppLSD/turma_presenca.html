@@ -1,0 +1,50 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block title %}Presença - {{ turma.faixa_etaria }}{% endblock %}
+{% block content %}
+<div class="print-logo" style="text-align:left; margin-bottom:5px;">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
+</div>
+
+<h1>Turma: {{ turma.professor }} - {{ turma.sala }}</h1>
+<p><strong>Turno:</strong> {{ turma.turno }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <label for="data">Data:</label>
+    <input type="date" name="data" id="data" value="{{ data }}">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Aluno</th>
+                <th>Presente</th>
+                <th>Motivo da Falta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for aluno in turma.alunos.all %}
+            <tr>
+                <td>{{ aluno.name }}</td>
+                <td class="text-center">
+                    <input type="checkbox" name="presente_{{ aluno.pk }}" value="1" checked class="form-check-input">
+                </td>
+                <td>
+                    <input type="text" name="motivo_{{ aluno.pk }}" class="form-control" placeholder="Motivo da falta (opcional)">
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">Nenhum aluno inscrito nesta turma.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="mb-3">
+        <label for="observacoes">Observações Gerais</label>
+        <textarea name="observacoes" class="form-control"></textarea>
+    </div>
+    <div class="no-print">
+        <button type="submit" class="btn btn-success">Salvar Chamada</button>
+        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'AppLSD/base.html' %}
+{% block content %}
+<h2>Relatório do Aluno (Consolidado)</h2>
+<form method="get" action="{% url 'relatorio_mensal_aluno' %}" class="row g-3 justify-content-center">
+  <div class="col-md-5">
+    <select name="aluno_id" class="form-select" required>
+      <option value="">Selecione o aluno</option>
+      {% for aluno in alunos %}
+      <option value="{{ aluno.id }}">{{ aluno.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <input type="month" name="mes" class="form-control" required>
+  </div>
+  <div class="col-md-3">
+    
+  </div>
+  <div class="col-12 text-center">
+    <button type="submit" class="btn btn-primary">Buscar</button>
+    <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
+  </div>
+</form>
+{% endblock %}

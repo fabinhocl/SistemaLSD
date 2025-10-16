@@ -1,0 +1,8 @@
+{% extends 'AppLSD/base.html' %}
+{% block content %}
+{% block title %}Relatório Gráfico - {{ aluno.name }} - {{ mes_ano }}{% endblock %}
+<img src="data:image/png;base64,{{ graph }}" alt="Gráfico de frequência">
+<p>Presenças: {{ presencas }}</p>
+<p>Faltas: {{ faltas }}</p>
+<a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar</a>
+{% endblock %}

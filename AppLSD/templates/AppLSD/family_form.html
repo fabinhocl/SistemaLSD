@@ -1,0 +1,35 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block title %}Cadastrar Famílias{% endblock %}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+{% block content %}
+    <h1 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Família</h1>
+    <form method="post" class="mb-4" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% load crispy_forms_tags %}
+        {{ form.errors }}
+    {{ formset.non_form_errors }}
+    {% for fsform in formset.forms %}
+        {{ fsform.errors }}
+    {% endfor %}
+        {{ form|crispy }}
+
+    <!-- Adicione o management_form obrigatório do formset! -->
+    {{ formset.management_form }}
+
+ 
+
+        
+        <button type="submit" class="btn btn-primary">{% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}</button>
+        <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar à Lista</a>
+
+        <!-- Botão para cadastrar aluno -->
+        {% if form.instance.pk %}
+            <a href="{% url 'aluno_create' %}?family_id={{ form.instance.pk }}" class="btn btn-success btn-sm mt-2">
+                Cadastrar Aluno
+            </a>
+        {% endif %}
+    </form>
+{% endblock %}
