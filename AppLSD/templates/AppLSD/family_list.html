@@ -12,8 +12,8 @@
     <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
 </div>
 
-<form method="GET" class="mb-3">
-    <input type="text" name="search" placeholder="Buscar por nome" value="{{ request.GET.search }}" class="form-control mb-2" />
+<form method="get" class="form-inline mb-3">
+    <input type="text" name="search" placeholder="Buscar por nome, inscrição, CPF" value="{{ search }}" class="form-control" />
     <button type="submit" class="btn btn-primary me-2">Buscar</button>
     <a href="{% url 'family_list' %}" class="btn btn-secondary">Limpar</a>
 </form>

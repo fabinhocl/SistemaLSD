@@ -1,0 +1,26 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Confirmação de Exclusão{% endblock %}
+
+{% block content %}
+<h2>Excluir Adulto</h2>
+<p>Digite sua senha para confirmar a exclusão do adulto: <strong>{{ adulto.name }}</strong></p>
+<form method="post">
+    {% csrf_token %}
+    <input type="password" name="senha" class="form-control w-50 mb-2" required placeholder="Senha">
+    <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+    <a href="{% url 'family_detail' pk=adult.family.pk %}" class="btn btn-secondary">Cancelar</a>
+    {% if error %}
+        <div class="alert alert-danger mt-2">{{ error }}</div>
+    {% endif %}
+</form>
+{% endblock %}
+
+
+
+
+
+
+
+<

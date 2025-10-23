@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import date
+
 #from localflavor.br.forms import BRCPFField
 import re
 
@@ -12,28 +14,103 @@ class Family(models.Model):
     """
     Representa uma família no sistema, com dados cadastrais e sociais.
     """
+    # Dados básicos
     registration_number = models.CharField(max_length=100, default='')
     responsible_name = models.CharField(max_length=255, default='')
     nis = models.CharField(max_length=20, blank=True, null=True)
     rg = models.CharField(max_length=20, blank=True, null=True)
     cpf = models.CharField(max_length=14, unique=True, blank=True, null=True)
     birth_date = models.DateField(blank=True, null=True)
-    sex = models.CharField(max_length=10, blank=True, null=True)
-    address = models.CharField(max_length=300, blank=True, null=True)
+    ESCOLHA_SEXO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Masculino', 'Masculino'),
+    ('Feminino', 'Feminino')
+    ]
+    sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
+    cep = models.CharField("CEP", max_length=9, blank=False, null=True)
+    address = models.CharField(max_length=300, blank=False, null=True)
     neighborhood = models.CharField(max_length=100, default="Não informado")
     reference_point = models.CharField(max_length=200, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
-    marital_status = models.CharField(max_length=30, blank=True, null=True)
-    education = models.CharField(max_length=50, blank=True, null=True)
-    race = models.CharField(max_length=30, blank=True, null=True)
-    religion = models.CharField(max_length=50, blank=True, null=True)
-    social_benefits = models.CharField(max_length=100, blank=True, null=True)
+    # Estado civil
+    ESTADO_CIVIL_CHOICES = [('solteira', 'Solteira'), ('casada', 'Casada'), ('separada', 'Separada'), ('viuva', 'Viúva'), ('divorciada', 'Divorciada'), ('uniao_estavel', 'União Estável'), ('convive', 'Convive com Alguém'), ('outro', 'Outro')]
+    marital_status = models.CharField(max_length=30, choices=ESTADO_CIVIL_CHOICES, verbose_name="Estado Civil", default= "Escolha o estado civil", blank=True, null=True)
+    # Escolaridade
+    ESCOLARIDADE_CHOICES = [
+        ('analfabeto', 'Analfabeto'),
+        ('fund_comp', 'Ens. Fund. Comp.'),
+        ('fund_incomp', 'Ens. Fund. Incomp.'),
+        ('med_comp', 'Ens. Med. Comp.'),
+        ('med_incomp', 'Ens. Med. Incomp.'),
+        ('sup_comp', 'Ens. Sup. Comp.'),
+        ('sup_incomp', 'Ens. Sup. Incomp.'),
+    ]
+    education = models.CharField(max_length=50, choices=ESCOLARIDADE_CHOICES, verbose_name="Escolaridade", default="Escolha a escolaridade", blank=True, null=True)
+    # Raça/Cor
+    RACA_CHOICES = [
+        ('branco', 'Branco'),
+        ('preto', 'Preto'),
+        ('pardo', 'Pardo'),
+        ('amarelo', 'Amarelo'),
+        ('indigena', 'Indígena'),
+    ]
+    race = models.CharField(max_length=30, choices=RACA_CHOICES, verbose_name="Raça", default="Escolha a raça", blank=True, null=True)
+    # Religião
+    RELIGIAO_CHOICES = [
+        ('catolico', 'Católico'),
+        ('evangelico', 'Evangélico'),
+        ('espirita', 'Espírita'),
+        ('matriz_africana', 'Matriz Africana'),
+        ('nao_possui', 'Não possui religião'),
+    ]
+    religion = models.CharField(max_length=50, choices=RELIGIAO_CHOICES, verbose_name="Religião", default="Escolha a religião", blank=True, null=True)
+    # Programas sociais (checkbox múltiplo)
+    PROGRAMAS_SOCIAIS_CHOICES = [
+        ('bolsa_brasil', 'Programa Bolsa Brasil - PBF'),
+        ('bpc', 'Benefício de Prestação Continuada - BPC'),
+        ('cria_alagoana', 'Criança Alagoana - CRIA'),
+    ]
+    social_benefits = models.CharField(max_length=255, choices=PROGRAMAS_SOCIAIS_CHOICES, verbose_name="Programas Sociais", blank=True, null=True)
+    # Ocupação/profissão
     occupation = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Trabalhando no momento
+    is_working = models.BooleanField(default=False)
+    working_function = [('Sim', 'Sim'), ('Não', 'Não')]
+
+    function = models.CharField(max_length=100, default=False, blank=True, null=False)
+
+    # Renda comprovada
     has_proven_income = models.BooleanField(default=False)
-    min_salary_1 = models.BooleanField(default=False)
-    min_salary_2 = models.BooleanField(default=False)
+    # Tipos de renda (checkbox múltiplo)
+    INCOME_TYPE_CHOICES = [
+        ('carteira_assinada', 'Carteira Assinada'),
+        ('contrato', 'Contrato'),
+        ('pensao', 'Pensão'),
+        ('auxilio_doenca', 'Auxílio Doença'),
+        ('aposentado', 'Aposentado'),
+    ]
+    income_types = models.JSONField(default=list, blank=True, null=False)
+    # Faixa salarial
+    SALARIO_CHOICES = [
+        ('1_sm', '1 Salário Mínimo'),
+        ('2_sm', '2 Salários Mínimos'),
+    ]
+    salary_range = models.CharField(max_length=10, choices=SALARIO_CHOICES, blank=True, null=True)
+    #min_salary_1 = models.BooleanField(default=False)
+    #min_salary_2 = models.BooleanField(default=False)
+
+    # Outras pessoas contribuem
     others_contribute = models.BooleanField(default=False)
     who_contributes = models.CharField(max_length=100, blank=True, null=True)
+
+     # Informações sobre o domicílio
+    DOMICILE_CHOICES = [
+        ('proprio', 'Próprio'), ('alugado', 'Alugado'), ('cedido', 'Cedido')
+    ]
+    domicile_type = models.CharField(max_length=10, choices=DOMICILE_CHOICES, blank=True, null=True)
+    
+    # Extras
     num_residents = models.IntegerField(default=0)
     has_elderly = models.BooleanField(default=False)
     has_adolescent = models.BooleanField(default=False)
@@ -57,7 +134,60 @@ class Family(models.Model):
         return f"{self.responsible_name} - {self.cpf}"
     
     """
-    Representa uma turma de alunos.
+    Representa o adulto cadastrado em família.
+    """
+class Adult(models.Model):
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
+    name = models.CharField(max_length=100)
+    parentesco = models.CharField(max_length=50, default='', blank=True)
+    birth_date = models.DateField(blank=True, null=True)
+    school_level = models.CharField(max_length=50)
+    ocupacao = models.CharField(max_length=100)
+    renda = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=50)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    @property
+    def idade(self):
+        if not self.birth_date:
+            return ""
+        today = date.today()
+        return today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
+
+    """
+    Representa um aluno, pertencente a uma família, turma e atividades.
+    """
+class Aluno(models.Model):
+    family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
+    name = models.CharField(max_length=200, default='')
+    parentesco = models.CharField(max_length=50, default='', blank=True)
+    birth_date = models.DateField(blank=True, null=True)
+    school = models.CharField(max_length=200, default='', blank=True)
+    serie = models.CharField(max_length=10, default='', blank=True)
+    turno = models.CharField(max_length=20, default='', blank=True)
+    health_problem = models.CharField(max_length=200, default='', blank=True)
+    status_lsd = models.CharField(max_length=50, default='', blank=True)
+    turma = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
+    #turma = models.ManyToManyRelationship(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
+    activities = models.ManyToManyField('Activity', blank=True)
+
+    def __str__(self):
+            return self.name
+    
+    @property
+    def idade(self):
+        if not self.birth_date:
+            return ""
+        today = date.today()
+        return today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
+    
+    
+    """
+    Representa uma turma de assistidos.
     """
 class Turma(models.Model):
     professor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
@@ -90,25 +220,7 @@ class Activity(models.Model):
 
 
 
-class Aluno(models.Model):
-    """
-    Representa um aluno, pertencente a uma família, turma e atividades.
-    """
-    family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
-    name = models.CharField(max_length=200, default='')
-    parentesco = models.CharField(max_length=50, default='', blank=True)
-    birth_date = models.DateField(blank=True, null=True)
-    school = models.CharField(max_length=200, default='', blank=True)
-    serie = models.CharField(max_length=10, default='', blank=True)
-    turno = models.CharField(max_length=20, default='', blank=True)
-    health_problem = models.CharField(max_length=200, default='', blank=True)
-    status_lsd = models.CharField(max_length=50, default='', blank=True)
-    turma = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
-    #turma = models.ManyToManyRelationship(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
-    activities = models.ManyToManyField(Activity, blank=True)
 
-    def __str__(self):
-            return self.name
 
 """
 class PerfilProfessor(models.Model):

@@ -1,8 +1,8 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from dal import autocomplete
-from .models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno
-from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm
+from .models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult
+from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm
 from django import forms
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse  
 from django.db.models import Count, Q, Avg
+from django.forms.models import inlineformset_factory
 from datetime import date
 # Concatena e ordena por data
 from itertools import chain
@@ -21,6 +22,8 @@ import plotly.offline as opy
 import io
 import base64
 import matplotlib.pyplot as plt
+import unicodedata
+
 
 def root_redirect(request):
     if request.user.is_authenticated:
@@ -32,7 +35,11 @@ def root_redirect(request):
 def home(request):
     return render(request, 'AppLSD/home.html')
    
-
+def remove_accents(text):
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', text)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 @login_required
 def professor_turmas(request):
@@ -99,11 +106,19 @@ def family_delete_confirm(request, pk):
 
 def family_list(request):
     search_query = request.GET.get('search', '').strip()
-    
+    families_all = Family.objects.all().order_by('responsible_name')
+
     if search_query:
-        families_list = Family.objects.filter(responsible_name__icontains=search_query).order_by('responsible_name')
+        search_query_norm = remove_accents(search_query.lower())
+        families_list = [
+            f for f in families_all
+            if search_query_norm in remove_accents(f.responsible_name.lower())
+            or search_query_norm in remove_accents(f.registration_number.lower())
+            or search_query_norm in remove_accents(f.cpf.lower())
+            # Adicione outros campos se quiser
+        ]
     else:
-        families_list = Family.objects.all().order_by('responsible_name')
+        families_list = list(families_all)
 
     paginator = Paginator(families_list, 20)
     page_number = request.GET.get('page')
@@ -112,18 +127,20 @@ def family_list(request):
     return render(request, 'AppLSD/family_list.html', {
         'page_obj': page_obj,
         'request': request,
+        'search': search_query,
     })
 
 def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
+    
     if request.method == 'POST':
         form = FamilyForm(request.POST, request.FILES, instance=family)
         if form.is_valid():
             form.save()
-            return redirect('family_list')
+            return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
-    return render(request, 'AppLSD/family_form.html', {'form': form})
+    return render(request, 'AppLSD/family_form.html', {'form': form, 'family': family})
 
 def family_create(request):
     if request.method == 'POST':
@@ -152,6 +169,64 @@ def family_update(request, pk):
         form = FamilyForm(instance=family)
         formset = AlunoInlineFormSet(instance=family)
     return render(request, 'families/family_form.html', {'form': form, 'formset': formset})
+
+@login_required
+def adult_create(request):
+    family_id = request.GET.get('family_id')
+    if not family_id:
+        # Redirecione para a lista de famílias ou exiba uma mensagem de erro amigável
+        return redirect('family_list')
+
+    family = Family.objects.get(pk=family_id)
+    
+    if request.method == 'POST':
+        form = AdultForm(request.POST)
+        if form.is_valid():
+            adult = form.save(commit=False)
+            adult.family = family
+            adult.save()
+            return redirect('family_detail', pk=family.pk)
+    else:
+        form = AdultForm()
+    return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': family})
+
+@login_required
+def adult_detail(request, pk):
+    adult = get_object_or_404(Adult, pk=pk)
+    return render(request, 'AppLSD/adult_detail.html', {'adult': adult})
+
+def adult_edit(request, pk):
+    adult = get_object_or_404(Adult, pk=pk)
+    if request.method == 'POST':
+        form = AdultForm(request.POST, instance=adult)
+        if form.is_valid():
+            form.save()
+            return redirect('family_detail', pk=adult.family.pk)
+    else:
+        form = AdultForm(instance=adult)
+    return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': adult.family, 'adult': adult})
+
+@login_required
+def adult_delete_confirm(request, pk):
+    adult = get_object_or_404(Adult, pk=pk)
+    family_pk = adult.family.pk
+    error = None  # Inicializa a variável error
+
+    if request.method == 'POST':
+        senha = request.POST.get('senha')
+        usuario = request.user
+        user_autenticado = authenticate(username=usuario.username, password=senha)
+        if user_autenticado is not None:
+            adult.delete()
+            return redirect('family_detail', pk=family_pk)  # Redireciona para detalhes da família
+        else:
+            error = "Senha incorreta."
+
+    return render(request, 'AppLSD/adult_confirm_delete.html', {
+        'adult': adult,
+        'error': error,
+    })
+
 
 def family_autocomplete(request):
     term = request.GET.get("q", "")

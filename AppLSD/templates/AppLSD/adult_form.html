@@ -2,21 +2,21 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-    {% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno
+    {% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Adulto
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
-            <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno</h1>
+            <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Adulto</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
                 {{ form|crispy }}
                 <button type="submit" class="btn btn-primary">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
-                <a href="{% url 'aluno_list' %}" class="btn btn-secondary ms-2">Voltar</a>
+                <a href="/families/{{ family.pk }}/" class="btn btn-secondary ms-2">Voltar</a>
             </form>
         </div>
     </div>

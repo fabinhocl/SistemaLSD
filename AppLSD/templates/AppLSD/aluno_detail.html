@@ -16,9 +16,9 @@
     <tr><th>Bairro:</th><td>{{ aluno.family.neighborhood }}</td></tr>
     <tr><th>Telefone:</th><td>{{ aluno.family.telephone }}</td></tr>
     <tr><th>Data de Nascimento:</th><td>{{ aluno.birth_date|date:"d/m/Y" }}</td></tr>
+    <tr><th>Idade:</th><td>{{ aluno.idade }}</td></tr>
     <tr><th>Problema de Saúde:</th><td>{{ aluno.health_problem|default:"-" }}</td></tr>
-    <tr><th>Ações:</th>
-    
+    <tr><th>Medicamento:</th><td>{{ aluno.medication|default:"-" }}</td></tr>
 </tr>
 </table>
 
@@ -80,16 +80,16 @@
 <table class="table table-bordered">
     <thead><tr>
             <th>Data</th>
-            <th>Origem</th>
-            <th>Destino</th>
+            <th>Turma de Origem</th>
+            <th>Turma Atual</th>
             <th>Motivo</th>
         </tr></thead>
     <tbody>
         {% for mov in aluno.historico_turmas.all %}
             <tr>
                 <td>{{ mov.data_movimentacao|date:"d/m/Y" }}</td>
-                <td>{% if mov.turma_origem %}{{ mov.turma_origem.professor }}{% else %}-{% endif %}</td>
-                <td>{{ mov.turma_destino.professor }}</td>
+                <td>{% if mov.turma_origem %}{{ mov.turma_origem.faixa_etaria }}{% else %}-{% endif %}</td>
+                <td>{{ mov.turma_destino.faixa_etaria }}</td>
                 <td>{{ mov.motivo }}</td>
             </tr>
         {% empty %}

@@ -1,0 +1,30 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Detalhes do Adulto{% endblock %}
+
+{% block content %}
+<div class="print-logo" style="text-align:left; margin-bottom:5px;">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
+</div>
+
+<h2>Detalhes do Adulto/h2>
+<table class="table table-borderless w-50">
+    <tr><th>Matrícula:</th><td>{{ adulto.family.registration_number }}</td></tr>
+    <tr><th>Nome:</th><td>{{ adulto.name }}</td></tr>
+    <tr><th>Responsável:</th><td>{{ adulto.family.responsible_name }}</td></tr>
+    <tr><th>Telefone:</th><td>{{ adulto.family.telephone }}</td></tr>
+    <tr><th>Data de Nascimento:</th><td>{{ adulto.birth_date|date:"d/m/Y" }}</td></tr>
+    <tr><th>Idade:</th><td>{{ adulto.idade }}</td></tr>
+    
+</tr>
+</table>
+
+
+<div class="mt-4"></div>
+    <a href="{% url 'adult_edit' adulto.pk %}" class="btn btn-primary">Editar</a>
+    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+    <a href="{% url 'adult_delete_confirm' adulto.pk %}" class="btn btn-danger">Excluir</a>
+    <a href="{% url 'family_detail' pk=adult.family.pk %}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

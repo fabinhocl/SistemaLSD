@@ -1,35 +1,186 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
 {% block title %}Cadastrar Famílias{% endblock %}
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 {% block content %}
-    <h1 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Família</h1>
-    <form method="post" class="mb-4" enctype="multipart/form-data">
-        {% csrf_token %}
-        {% load crispy_forms_tags %}
-        {{ form.errors }}
-    {{ formset.non_form_errors }}
-    {% for fsform in formset.forms %}
-        {{ fsform.errors }}
-    {% endfor %}
-        {{ form|crispy }}
-
-    <!-- Adicione o management_form obrigatório do formset! -->
+<h1 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Família</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% load crispy_forms_tags %}
+    {{ form.errors }}
     {{ formset.management_form }}
 
- 
 
+    {# Renderize os demais campos individualmente usando o as_crispy_field #}
+    {{ form.registration_number|as_crispy_field }}
+    {{ form.responsible_name|as_crispy_field }}
+    {{ form.nis|as_crispy_field }}
+    {{ form.rg|as_crispy_field }}
+    {{ form.cpf|as_crispy_field }}
+    {{ form.birth_date|as_crispy_field }}
+    {{ form.sex|as_crispy_field }}
+    
+   
+   <label for="id_cep">CEP</label>
+   <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" />
+
+   <label for="id_address">Endereço</label>
+   <input type="text" id="id_address" name="address" class="form-control" />
+
+   <label for="id_neighborhood">Bairro</label>
+   <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" />
+
+   
+    {{ form.reference_point|as_crispy_field }}
+    {{ form.telephone|as_crispy_field }}
+    {{ form.marital_status|as_crispy_field }}
+    {{ form.education|as_crispy_field }}
+    {{ form.race|as_crispy_field }}
+    {{ form.religion|as_crispy_field }}
+    {{ form.social_benefits|as_crispy_field }}
+    {{ form.occupation|as_crispy_field }}
+    <div class="mb-3">
+        <label class="fw-bold">Trabalhando no momento?</label>
+        {{ form.is_working }}
+    </div>
+    <div class="mb-3" id="function-group">
+        <label class="fw-bold">Qual função?</label>
+        {{ form.function }}
+    </div>
+    <div class="mb-3">
+        <label class="fw-bold">Possui renda comprovada?</label>
+        {{ form.has_proven_income }}
+    </div>
+    <div class="mb-3" id="income-types-group">
+        <label class="fw-bold">Tipo de renda comprovada</label>
+        {{ form.income_types }}
+    </div>
+    {{ form.salary_range|as_crispy_field }}
+    <div class="mb-3">
+        <label class="fw-bold">Outras pessoas contribuem com a renda?</label>
+        {{ form.others_contribute }}
+    </div>
+    <div class="mb-3" id="who-contributes-group">
+        <label class="fw-bold">Quem contribui?</label>
+        {{ form.who_contributes }}
+    </div>
+    {{ form.num_residents|as_crispy_field }}
+    {{ form.has_elderly|as_crispy_field }}
+    {{ form.has_adolescent|as_crispy_field }}
+    {{ form.has_child|as_crispy_field }}
+    {{ form.has_pregnant|as_crispy_field }}
+    {{ form.file_info|as_crispy_field }}
+    <!-- Campos customizados com lógica JS -->
         
-        <button type="submit" class="btn btn-primary">{% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}</button>
-        <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar à Lista</a>
 
-        <!-- Botão para cadastrar aluno -->
+    <button type="submit" class="btn btn-primary">
+        {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
+    </button>
+    <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar à Lista</a>
+
+    <!-- Botão para cadastrar Assistido -->
         {% if form.instance.pk %}
-            <a href="{% url 'aluno_create' %}?family_id={{ form.instance.pk }}" class="btn btn-success btn-sm mt-2">
-                Cadastrar Aluno
+            <a href="{% url 'aluno_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">
+                Cadastrar Assistido
             </a>
         {% endif %}
-    </form>
+        <!-- Botão para cadastrar Adulto -->
+        {% if form.instance.pk %}
+            <a href="{% url 'adult_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">
+                Cadastrar Adulto
+            </a>
+        {% endif %}
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cepInput = document.getElementById('id_cep');
+    const enderecoInput = document.getElementById('id_address');
+    const bairroInput = document.getElementById('id_neighborhood');
+    // Adicione aqui outros campos se quiser preencher rua, bairro, cidade, etc.
+
+    function limpa_formulario_cep() {
+        if(enderecoInput) enderecoInput.value = '';
+        // Limpe outros campos se necessário.
+    }
+
+    cepInput.addEventListener('blur', function() {
+        var cep = cepInput.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!('erro' in data)) {
+                        if(enderecoInput) enderecoInput.value = data.logradouro || '';
+                        if(bairroInput) bairroInput.value = data.bairro || '';
+                        // Se quiser, preencha bairro, cidade, uf, etc.
+                        // document.getElementById('id_bairro').value = data.bairro || '';
+                        // document.getElementById('id_cidade').value = data.localidade || '';
+                        // document.getElementById('id_uf').value = data.uf || '';
+                    } else {
+                        limpa_formulario_cep();
+                        alert("CEP não encontrado.");
+                    }
+                });
+        } else {
+            limpa_formulario_cep();
+        }
+    });
+});
+document.addEventListener('DOMContentLoaded', function(){
+    // 1º Caso: habilitar tipos de renda
+    function toggleIncomeTypes() {
+        const sim = document.querySelector('input[name="has_proven_income"]:checked');
+        const incomeTypesGroup = document.getElementById('income-types-group');
+        const incomeTypesCheckboxes = incomeTypesGroup.querySelectorAll('input[type=checkbox]');
+        if (sim && sim.value === 'True') {
+            incomeTypesCheckboxes.forEach(cb => cb.disabled = false);
+        } else {
+            incomeTypesCheckboxes.forEach(cb => {
+                cb.checked = false;
+                cb.disabled = true;
+            });
+        }
+    }
+    document.querySelectorAll('input[name="has_proven_income"]').forEach(el => {
+        el.addEventListener('change', toggleIncomeTypes);
+    });
+    toggleIncomeTypes();
+
+    // 2º Caso: habilitar campo "quem contribui"
+    function toggleWhoContributes() {
+        const sim = document.querySelector('input[name="others_contribute"]:checked');
+        const campo = document.getElementById('id_who_contributes');
+        if (sim && sim.value === 'True') {
+            campo.disabled = false;
+        } else {
+            campo.value = '';
+            campo.disabled = true;
+        }
+    }
+    document.querySelectorAll('input[name="others_contribute"]').forEach(el => {
+        el.addEventListener('change', toggleWhoContributes);
+    });
+    toggleWhoContributes();
+    
+    function toggleFunctionField() {
+       // 2º Caso: habilitar campo "qual função?"
+        const trabalhandoSim = document.querySelector('input[name="is_working"][value="True"]:checked');
+        const campoFuncao = document.getElementById('id_function');
+        if (trabalhandoSim) {
+            campoFuncao.disabled = false;
+        } else {
+            campoFuncao.value = '';
+            campoFuncao.disabled = true;
+        }
+    }
+
+    document.querySelectorAll('input[name="is_working"]').forEach(el => {
+        el.addEventListener('change', toggleFunctionField);
+    });
+
+    toggleFunctionField(); // Ajusta ao carregar a página
+});
+</script>
 {% endblock %}
