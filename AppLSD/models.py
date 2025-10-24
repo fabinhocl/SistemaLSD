@@ -17,10 +17,11 @@ class Family(models.Model):
     # Dados básicos
     registration_number = models.CharField(max_length=100, default='')
     responsible_name = models.CharField(max_length=255, default='')
-    nis = models.CharField(max_length=20, blank=True, null=True)
-    rg = models.CharField(max_length=20, blank=True, null=True)
-    cpf = models.CharField(max_length=14, unique=True, blank=True, null=True)
-    birth_date = models.DateField(blank=True, null=True)
+    social_name = models.CharField(max_length=255, default='')
+    nis = models.CharField(max_length=20, default='', blank=True, null=True)
+    rg = models.CharField(max_length=20, default='', blank=True, null=True)
+    cpf = models.CharField(max_length=14, default='', unique=True, blank=True, null=True)
+    birth_date = models.DateField(default='', blank=True, null=True)
     ESCOLHA_SEXO = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('Masculino', 'Masculino'),
@@ -32,6 +33,7 @@ class Family(models.Model):
     neighborhood = models.CharField(max_length=100, default="Não informado")
     reference_point = models.CharField(max_length=200, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
+    telephone_2 = models.CharField(max_length=20, blank=True, null=True)
     # Estado civil
     ESTADO_CIVIL_CHOICES = [('solteira', 'Solteira'), ('casada', 'Casada'), ('separada', 'Separada'), ('viuva', 'Viúva'), ('divorciada', 'Divorciada'), ('uniao_estavel', 'União Estável'), ('convive', 'Convive com Alguém'), ('outro', 'Outro')]
     marital_status = models.CharField(max_length=30, choices=ESTADO_CIVIL_CHOICES, verbose_name="Estado Civil", default= "Escolha o estado civil", blank=True, null=True)
@@ -65,6 +67,8 @@ class Family(models.Model):
     ]
     religion = models.CharField(max_length=50, choices=RELIGIAO_CHOICES, verbose_name="Religião", default="Escolha a religião", blank=True, null=True)
     # Programas sociais (checkbox múltiplo)
+    is_benefits = models.BooleanField(default=False)
+    # Qual Programas sociais (checkbox múltiplo)
     PROGRAMAS_SOCIAIS_CHOICES = [
         ('bolsa_brasil', 'Programa Bolsa Brasil - PBF'),
         ('bpc', 'Benefício de Prestação Continuada - BPC'),
@@ -76,7 +80,7 @@ class Family(models.Model):
     
     # Trabalhando no momento
     is_working = models.BooleanField(default=False)
-    working_function = [('Sim', 'Sim'), ('Não', 'Não')]
+    working_function = [('', '---------'),  ('Sim', 'Sim'), ('Não', 'Não')]
 
     function = models.CharField(max_length=100, default=False, blank=True, null=False)
 
@@ -84,6 +88,7 @@ class Family(models.Model):
     has_proven_income = models.BooleanField(default=False)
     # Tipos de renda (checkbox múltiplo)
     INCOME_TYPE_CHOICES = [
+        ('', '---------'),  # Django usa por padrão esse rótulo se vazio
         ('carteira_assinada', 'Carteira Assinada'),
         ('contrato', 'Contrato'),
         ('pensao', 'Pensão'),
@@ -93,6 +98,7 @@ class Family(models.Model):
     income_types = models.JSONField(default=list, blank=True, null=False)
     # Faixa salarial
     SALARIO_CHOICES = [
+        ('', '---------'),  # Django usa por padrão esse rótulo se vazio
         ('1_sm', '1 Salário Mínimo'),
         ('2_sm', '2 Salários Mínimos'),
     ]
@@ -139,13 +145,29 @@ class Family(models.Model):
 class Adult(models.Model):
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
     name = models.CharField(max_length=100)
+    social_name = models.CharField(max_length=255, default='')
+    ESCOLHA_SEXO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Masculino', 'Masculino'),
+    ('Feminino', 'Feminino')
+    ]
+    sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
-    school_level = models.CharField(max_length=50)
+    ESCOLARIDADE_CHOICES = [
+        ('analfabeto', 'Analfabeto'),
+        ('fund_comp', 'Ens. Fund. Comp.'),
+        ('fund_incomp', 'Ens. Fund. Incomp.'),
+        ('med_comp', 'Ens. Med. Comp.'),
+        ('med_incomp', 'Ens. Med. Incomp.'),
+        ('sup_comp', 'Ens. Sup. Comp.'),
+        ('sup_incomp', 'Ens. Sup. Incomp.'),
+    ]
+    education = models.CharField(max_length=50, choices=ESCOLARIDADE_CHOICES, verbose_name="Escolaridade", default="Escolha a escolaridade", blank=True, null=True)
     ocupacao = models.CharField(max_length=100)
     renda = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=50)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    telephone = models.CharField(max_length=20, blank=True, null=True)
 
     @property
     def idade(self):
@@ -164,11 +186,42 @@ class Aluno(models.Model):
     name = models.CharField(max_length=200, default='')
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
+    ESCOLHA_SEXO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Masculino', 'Masculino'),
+    ('Feminino', 'Feminino')
+    ]
+    sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
     school = models.CharField(max_length=200, default='', blank=True)
-    serie = models.CharField(max_length=10, default='', blank=True)
-    turno = models.CharField(max_length=20, default='', blank=True)
-    health_problem = models.CharField(max_length=200, default='', blank=True)
-    status_lsd = models.CharField(max_length=50, default='', blank=True)
+    ENSINO_CHOICES = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('fundamental1', 'Ensino Fundamental 1'),
+    ('fundamental2', 'Ensino Fundamental 2'),
+    ('medio', 'Ensino Médio'),
+    ]
+    ensino = models.CharField(max_length=100, choices=ENSINO_CHOICES, default='', blank=True)
+    serie = models.CharField(max_length=10, verbose_name="Série", default='', blank=True)
+    ESCOLHA_TURNO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Matutino', 'Matutino'),
+    ('Vespertino', 'Vespertino')
+    ]
+    turno = models.CharField(max_length=20, choices=ESCOLHA_TURNO, default='', blank=True)
+    PROBLEMAS_SAUDE = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('yes', 'Tem'),
+    ('no', 'Não Tem')
+    ]
+    health_problem = models.CharField(max_length=200, choices=PROBLEMAS_SAUDE, default='', blank=True)
+    special_need = models.CharField(max_length=200, default='', blank=True)
+    STATUS_CHOICES = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('ativo', 'Ativo'),
+    ('inativo', 'Inativo'),
+    ('Suspenso', 'Suspenso'),
+    ('desligado', 'Desligado')
+    ]
+    status_lsd = models.CharField(max_length=50, choices=STATUS_CHOICES, default='', blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     #turma = models.ManyToManyRelationship(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     activities = models.ManyToManyField('Activity', blank=True)
@@ -236,7 +289,8 @@ class PerfilProfessor(models.Model):
 """
 # models.py (adapte conforme seu modelo)
 class PerfilUsuario(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='perfis')
+    #nivel_permissao = models.CharField(max_length=50)
     tipo = models.CharField(max_length=20, choices=[
         ('admin', 'Admin'),
         ('coordenação', 'Coordenação'),
@@ -255,7 +309,7 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def salvar_perfil_usuario(sender, instance, **kwargs):
     if hasattr(instance, 'perfilusuario'):
-        instance.perfilusuario.save()
+        instance.perfis.all()
 
 
 class FrequenciaTurma(models.Model):

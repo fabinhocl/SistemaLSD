@@ -12,7 +12,53 @@
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
-                {{ form|crispy }}
+                {% load crispy_forms_tags %}
+                {{ form.errors }}
+                {{ formset.management_form }}
+
+                {# Renderize os demais campos individualmente usando o as_crispy_field #}
+                {{ form.family|as_crispy_field }}
+                {{ form.name|as_crispy_field }}
+                {{ form.parentesco|as_crispy_field }}
+                {{ form.birth_date|as_crispy_field }}
+                {{ form.idade|as_crispy_field }}
+                {{ form.sex|as_crispy_field }}
+                {{ form.school|as_crispy_field }}
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <label for="ensino">Ensino</label>
+                        <select id="ensino" name="ensino" class="form-select" required>
+                        <option value="" selected disabled>Selecione o ensino</option>
+                        <option value="Fundamental1">Ensino Fundamental 1</option>
+                        <option value="Fundamental2">Ensino Fundamental 2</option>
+                        <option value="Medio">Ensino Médio</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="serie">Série</label>
+                        <select id="serie" name="serie" class="form-select" required>
+                        <option value="">Selecione a série</option>
+                        </select>
+                    </div>
+                </div>
+                    {{ form.turno|as_crispy_field }}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="problema_saude">Tem Problema de Saúde?</label>
+                        <select id="problema_saude" name="problema_saude" class="form-select">
+                        <option value="nao_tem">Não Tem</option>
+                        <option value="tem">Tem</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="special_need">Qual problema de saúde?</label>
+                        <input type="text" id="special_need" name="special_need" class="form-control" disabled>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.status_lsd|as_crispy_field }}
+                </div>
+
                 <button type="submit" class="btn btn-primary">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
@@ -22,6 +68,41 @@
     </div>
 </div>
 <script>
+
+const ensinoSeries = {
+  'Fundamental1': [
+    {value: '1', text: '1º ano'},
+    {value: '2', text: '2º ano'},
+    {value: '3', text: '3º ano'},
+    {value: '4', text: '4º ano'},
+    {value: '5', text: '5º ano'}
+  ],
+  'Fundamental2': [
+    {value: '6', text: '6º ano'},
+    {value: '7', text: '7º ano'},
+    {value: '8', text: '8º ano'},
+    {value: '9', text: '9º ano'}
+  ],
+  'Médio': [
+    {value: '1', text: '1º ano'},
+    {value: '2', text: '2º ano'},
+    {value: '3', text: '3º ano'}
+  ]
+};
+document.getElementById('ensino').addEventListener('change', function() {
+  const serieEl = document.getElementById('serie');
+  const ensinoVal = this.value;
+  serieEl.innerHTML = '<option value="">Selecione a série</option>';
+  if (ensinoSeries[ensinoVal]) {
+    ensinoSeries[ensinoVal].forEach(function(opt) {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.innerText = opt.text;
+      serieEl.appendChild(o);
+    });
+  }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const inputNasc = document.getElementById("id_birth_date");
     const inputIdade = document.getElementById("id_idade");
@@ -53,5 +134,27 @@ document.addEventListener('DOMContentLoaded', function() {
         exibirIdadeAnos();
     }
 });
+
+function toggleFunctionField() {
+    // 2º Caso: habilitar campo "qual problema de saúde?"
+    var selectProblema = document.getElementById('problema_saude');
+    var campoProblema = document.getElementById('special_need');
+    if (!selectProblema || !campoProblema) return;
+
+    function updateCampo() {
+        if (selectProblema.value === 'tem') {
+            campoProblema.disabled = false;
+        } else {
+            campoProblema.value = '';
+            campoProblema.disabled = true;
+        }
+    }
+
+    selectProblema.addEventListener('change', updateCampo);
+    // Ajusta ao carregar a página
+    updateCampo();
+}
+toggleFunctionField();
+
 </script>
 {% endblock %}

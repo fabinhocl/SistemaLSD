@@ -19,17 +19,17 @@ def validate_cpf(value):
 class FamilyForm(forms.ModelForm):
     nis = forms.CharField(
         max_length=11,
-        required=False,
+        required=True,
         validators=[RegexValidator(r'^\d{11}$', message='NIS deve ter 11 dígitos numéricos')]
     )
     rg = forms.CharField(
         max_length=20,
-        required=False,
+        required=True,
         validators=[RegexValidator(r'^\d+$', message='RG deve conter apenas dígitos')]
     )
     cpf = forms.CharField(
         max_length=14,
-        required=False,
+        required=True,
         validators=[validate_cpf]
     )
         
@@ -43,6 +43,26 @@ class FamilyForm(forms.ModelForm):
         )]
         
     )
+    telephone_2 = forms.CharField(
+        max_length=20,
+        required=False,
+        label="Telefone 2",
+        validators=[RegexValidator(
+            r'^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$',
+            message='Telefone no formato válido (ex: (99) 99999-9999)'
+        )]
+    )
+    is_benefits = forms.ChoiceField(
+        choices=[(True, 'Sim'), (False, 'Não')],
+        widget=forms.RadioSelect,
+        label="Beneficiário de Programas Sociais?"
+    )
+    social_benefits = forms.ChoiceField(
+        choices=Family.PROGRAMAS_SOCIAIS_CHOICES,
+        widget=forms.Select,
+        required=False,
+        label="Qual Programa?"
+    )   
     has_proven_income = forms.ChoiceField(
         choices=[(True, 'Sim'), (False, 'Não')],
         widget=forms.RadioSelect,
@@ -79,6 +99,7 @@ class FamilyForm(forms.ModelForm):
         fields = [
             'registration_number',
             'responsible_name',
+            'social_name',
             'nis',
             'rg',
             'cpf',
@@ -89,10 +110,12 @@ class FamilyForm(forms.ModelForm):
             'neighborhood',
             'reference_point',
             'telephone',
+            'telephone_2',
             'marital_status',
             'education',
             'race',
             'religion',
+            'is_benefits',
             'social_benefits',
             'occupation',
             'is_working',
@@ -112,6 +135,7 @@ class FamilyForm(forms.ModelForm):
         labels = {
             'registration_number': 'Número de Inscrição',
             'responsible_name': 'Responsável',
+            'social_name': 'Nome Social',
             'nis': 'NIS',
             'rg': 'RG',
             'cpf': 'CPF',
@@ -122,14 +146,15 @@ class FamilyForm(forms.ModelForm):
             'neighborhood': 'Bairro',
             'reference_point': 'Ponto de Referência',
             'telephone': 'Telefone',
+            'telephone_2': 'Telefone 2',
             'marital_status': 'Estado Civil',
             'education': 'Escolaridade',
             'race': 'Raça',
             'religion': 'Religião',
-            'social_benefits': 'Beneficiária de Programas Sociais',
+            'is_benefits': 'É Beneficiário(a) de Progrma Sociais',
+            'social_benefits': 'Qual Programas Sociais',
             'occupation': 'Ocupação/Profissão',
             'is_working': 'Está Trabalhando?',
-            
             'has_proven_income': 'Possui Renda Comprovada',
             'salary_range': 'Faixa Salarial',
             'others_contribute': 'Outras Pessoas Contribuem com a Renda da Família',
@@ -204,19 +229,31 @@ def calcular_idade(birth_date):
     return idade
 
 class AdultForm(forms.ModelForm):
+    telephone = forms.CharField(
+        max_length=20,
+        required=False,
+        label="Telefone",
+        validators=[RegexValidator(
+            r'^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$',
+            message='Telefone no formato válido (ex: (99) 99999-9999)'
+        )]
+        
+    )
     class Meta:
         model = Adult
-        fields = ['family', 'name', 'parentesco', 'birth_date', 'school_level', 'ocupacao', 'renda', 'status', 'phone']
+        fields = ['family', 'name', 'social_name', 'parentesco', 'birth_date', 'education', 'ocupacao', 'renda', 'status', 'telephone']
         labels = {
             'family': 'Família',
             'name': 'Nome',
+            'social_name': 'Nome Social',
+            'sex': 'Sexo',
             'parentesco': 'Parentesco',
             'birth_date': 'Data de Nascimento',
-            'school_level': 'Nível de Escolaridade',
+            'education': 'Escolaridade',
             'ocupacao': 'Ocupação/Profissão',
             'renda': 'Renda',
             'status': 'Situação',
-            'phone': 'Telefone',
+            'telephone': 'Telefone',
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-control'}),
@@ -227,24 +264,30 @@ class AlunoForm(forms.ModelForm):
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Aluno
+        fields = ['family', 'name', 'sex', 'parentesco', 'birth_date', 'idade', 'school', 'serie', 'ensino', 'turno', 'health_problem', 'special_need', 'status_lsd']
         exclude = ('activities',)  # Exclua 'activities' e 'family' se definido via inlineformset
         
         labels = {
             'family': 'Família',
             'name': 'Nome do Aluno',
+            'sex': 'Sexo',
             'parentesco': 'Parentesco',
             'birth_date': 'Data de Nascimento',
             'idade': 'Idade',
             'school': 'Escola',
             'serie': 'Série',
+            'ensino': 'Ensino',
             'turno': 'Turno',
             'health_problem': 'Problema de Saúde',
+            'special_need': 'Necessidade Especial',
             'status_lsd': 'Situação Atual no Lar',
             # adicione outros labels se necessário
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-control'}),
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
+            'ensino': forms.Select(attrs={'class': 'form-select', 'id': 'ensino'}),
+            'serie': forms.Select(attrs={'class': 'form-select', 'id': 'serie'})
             # Se não usa seleção automática de família nesse form, pode remover 'family' aqui
         }
 
@@ -264,6 +307,7 @@ class AlunoForm(forms.ModelForm):
             'serie',
             'turno',
             'health_problem',
+            'special_need',
             'status_lsd',
             'faixa_etaria',
             # outros campos, se houver
@@ -297,7 +341,7 @@ AlunoInlineFormSet = forms.inlineformset_factory(
 
 AdultFormSet = inlineformset_factory(
     Family, Adult,
-    fields=['name', 'parentesco', 'birth_date', 'school_level', 'ocupacao', 'renda', 'status', 'phone'],
+    fields=['name', 'parentesco', 'birth_date', 'education', 'ocupacao', 'renda', 'status', 'telephone'],
     extra=0, can_delete=True
 )
         

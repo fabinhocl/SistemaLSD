@@ -15,6 +15,7 @@
     {# Renderize os demais campos individualmente usando o as_crispy_field #}
     {{ form.registration_number|as_crispy_field }}
     {{ form.responsible_name|as_crispy_field }}
+    {{ form.social_name|as_crispy_field }}
     {{ form.nis|as_crispy_field }}
     {{ form.rg|as_crispy_field }}
     {{ form.cpf|as_crispy_field }}
@@ -34,11 +35,19 @@
    
     {{ form.reference_point|as_crispy_field }}
     {{ form.telephone|as_crispy_field }}
+    {{ form.telephone_2|as_crispy_field }}
     {{ form.marital_status|as_crispy_field }}
     {{ form.education|as_crispy_field }}
     {{ form.race|as_crispy_field }}
     {{ form.religion|as_crispy_field }}
-    {{ form.social_benefits|as_crispy_field }}
+    <div class="mb-3">
+        <label class="fw-bold">Beneficiário de Programas Sociais ?</label>
+        {{ form.is_benefits }}
+    </div>
+    <div class="mb-3" id="benefits-programs" style="display:none;">
+        <label class="fw-bold">Qual Programa?</label>
+        {{ form.social_benefits }}
+    </div>
     {{ form.occupation|as_crispy_field }}
     <div class="mb-3">
         <label class="fw-bold">Trabalhando no momento?</label>
@@ -181,6 +190,23 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
     toggleFunctionField(); // Ajusta ao carregar a página
+});
+document.addEventListener('DOMContentLoaded', function() {
+    function toggleBenefits() {
+        var yes = document.querySelector('input[name="is_benefits"]:checked');
+        var target = document.getElementById('benefits-programs');
+        if (yes && yes.value === "True") {
+            target.style.display = '';
+        } else {
+            target.style.display = 'none';
+            // Limpa seleção se quiser:
+            document.querySelectorAll('input[name="social_benefits"]').forEach(el => el.checked = false);
+        }
+    }
+    document.querySelectorAll('input[name="is_benefits"]').forEach(el => {
+        el.addEventListener('change', toggleBenefits);
+    });
+    toggleBenefits(); // Inicializa
 });
 </script>
 {% endblock %}

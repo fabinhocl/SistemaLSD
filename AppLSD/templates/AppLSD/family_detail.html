@@ -10,6 +10,7 @@
 <table class="table table-borderless w-50">
     <tr><th>Número de Inscrição:</th><td>{{ family.registration_number }}</td></tr>
     <tr><th>Nome Responsável:</th><td>{{ family.responsible_name }}</td></tr>
+    <tr><th>Nome Social:</th><td>{{ family.social_name }}</td></tr>
     <tr><th>Endereço:</th><td>{{ family.address }}</td></tr>
     <tr><th>Bairro:</th><td>{{ family.neighborhood }}</td></tr>
     <tr><th>Telefone:</th><td>{{ family.telephone }}</td></tr>
@@ -63,14 +64,15 @@
     Cadastrar Adulto
 </a>
 <table class="table table-bordered">
-    <thead><tr><th>Nome do Adulto</th><th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
     <tbody>
         {% for adulto in family.adults.all %}
             <tr>
                 <td>{{ adulto.name }}</td>
+                <td>{{ adulto.social_name }}</td>
                 <td>{{ adulto.parentesco }}</td>
                 <td>{{ adulto.idade }}</td>
-                <td>{{ adulto.phone }}</td>
+                <td>{{ adulto.telephone }}</td>
                 <td>
                     <a href="{% url 'adult_edit' pk=adulto.pk %}" class="btn btn-primary btn-sm">Editar</a>
                     <a href="{% url 'adult_delete_confirm' pk=adulto.pk %}" class="btn btn-danger btn-sm">Excluir</a>

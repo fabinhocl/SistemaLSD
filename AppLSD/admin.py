@@ -16,7 +16,9 @@ class ActivityAdmin(admin.ModelAdmin):
     search_fields = ['descricao', 'tipo']
 class PerfilUsuarioInline(admin.StackedInline):
     model = PerfilUsuario
-    can_delete = False
+    extra = 0  # ou 0 para não exibir nenhum por padrão
+    min_num = 0
+    can_delete = True
     verbose_name_plural = 'Perfil Usuário'
 
 @admin.register(FrequenciaTurma)
