@@ -209,8 +209,8 @@ class Aluno(models.Model):
     turno = models.CharField(max_length=20, choices=ESCOLHA_TURNO, default='', blank=True)
     PROBLEMAS_SAUDE = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
-    ('yes', 'Tem'),
-    ('no', 'Não Tem')
+    ('yes', 'Sim'),
+    ('no', 'Não')
     ]
     health_problem = models.CharField(max_length=200, choices=PROBLEMAS_SAUDE, default='', blank=True)
     special_need = models.CharField(max_length=200, default='', blank=True)

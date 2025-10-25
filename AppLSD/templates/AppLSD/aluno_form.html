@@ -29,9 +29,9 @@
                         <label for="ensino">Ensino</label>
                         <select id="ensino" name="ensino" class="form-select" required>
                         <option value="" selected disabled>Selecione o ensino</option>
-                        <option value="Fundamental1">Ensino Fundamental 1</option>
-                        <option value="Fundamental2">Ensino Fundamental 2</option>
-                        <option value="Medio">Ensino Médio</option>
+                        <option value="fundamental1">Ensino Fundamental 1</option>
+                        <option value="fundamental2">Ensino Fundamental 2</option>
+                        <option value="medio">Ensino Médio</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -46,8 +46,8 @@
                     <div class="col-md-4">
                         <label for="problema_saude">Tem Problema de Saúde?</label>
                         <select id="problema_saude" name="problema_saude" class="form-select">
-                        <option value="nao_tem">Não Tem</option>
-                        <option value="tem">Tem</option>
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim</option>
                         </select>
                     </div>
                     <div class="col-md-8">
@@ -70,20 +70,20 @@
 <script>
 
 const ensinoSeries = {
-  'Fundamental1': [
+  'fundamental1': [
     {value: '1', text: '1º ano'},
     {value: '2', text: '2º ano'},
     {value: '3', text: '3º ano'},
     {value: '4', text: '4º ano'},
     {value: '5', text: '5º ano'}
   ],
-  'Fundamental2': [
+  'fundamental2': [
     {value: '6', text: '6º ano'},
     {value: '7', text: '7º ano'},
     {value: '8', text: '8º ano'},
     {value: '9', text: '9º ano'}
   ],
-  'Médio': [
+  'medio': [
     {value: '1', text: '1º ano'},
     {value: '2', text: '2º ano'},
     {value: '3', text: '3º ano'}
@@ -135,26 +135,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function toggleFunctionField() {
-    // 2º Caso: habilitar campo "qual problema de saúde?"
-    var selectProblema = document.getElementById('problema_saude');
-    var campoProblema = document.getElementById('special_need');
-    if (!selectProblema || !campoProblema) return;
-
-    function updateCampo() {
-        if (selectProblema.value === 'tem') {
-            campoProblema.disabled = false;
-        } else {
-            campoProblema.value = '';
-            campoProblema.disabled = true;
-        }
+document.addEventListener('DOMContentLoaded', function () {
+  var probSaude = document.getElementById('problema_saude');
+  var qualProblema = document.getElementById('special_need');
+  probSaude.addEventListener('change', function () {
+    if (this.value === 'sim') {
+      qualProblema.disabled = false;
+      qualProblema.classList.remove('bg-light');
+    } else {
+      qualProblema.value = '';
+      qualProblema.disabled = true;
+      qualProblema.classList.add('bg-light');
     }
-
-    selectProblema.addEventListener('change', updateCampo);
-    // Ajusta ao carregar a página
-    updateCampo();
-}
-toggleFunctionField();
+  });
+  probSaude.dispatchEvent(new Event('change'));
+});
 
 </script>
 {% endblock %}
