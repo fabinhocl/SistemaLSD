@@ -9,7 +9,7 @@
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
-            <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno</h1>
+            <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Criança / Adolescente</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
                 {% load crispy_forms_tags %}
@@ -17,13 +17,24 @@
                 {{ formset.management_form }}
 
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
-                {{ form.family|as_crispy_field }}
-                {{ form.name|as_crispy_field }}
+                {% if family %}
+                    <p><strong>Família:</strong> ({{ family.registration_number }} {{ family.responsible_name }} - {{ family.cpf }})</p>
+                    {{ form.family }} {# hidden #}
+                {% else %}
+                    <label>Buscar por Inscrição, Nome ou CPF</label>
+                    <input type="text" name="family" id="busca_familia" value="" class="form-control" placeholder="Digite inscrição, nome ou CPF" autocomplete="off" onkeyup="buscarFamilia()">
+                    <div id="resultados_busca" class="list-group"></div>
+                    {{ form.family|as_crispy_field }}
+                {% endif %}
+
                 {{ form.parentesco|as_crispy_field }}
-                {{ form.birth_date|as_crispy_field }}
-                {{ form.idade|as_crispy_field }}
-                {{ form.sex|as_crispy_field }}
-                {{ form.school|as_crispy_field }}
+                {{ form.name|as_crispy_field }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
+                    <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-5">
                         <label for="ensino">Ensino</label>
@@ -40,8 +51,8 @@
                         <option value="">Selecione a série</option>
                         </select>
                     </div>
+                    <div class="col-md-3">{{ form.turno|as_crispy_field }}</div>
                 </div>
-                    {{ form.turno|as_crispy_field }}
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label for="problema_saude">Tem Problema de Saúde?</label>
@@ -55,10 +66,24 @@
                         <input type="text" id="special_need" name="special_need" class="form-control" disabled>
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="uso_medicacao">Faz uso de medicação?</label>
+                        <select id="uso_medicacao" name="uso_medicacao" class="form-select">
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="qual_medicacao">Qual medicação?</label>
+                        <input type="text" id="qual_medicacao" name="qual_medicacao" class="form-control" disabled>
+                    </div>
+                </div>
                 <div class="mb-3">
                     {{ form.status_lsd|as_crispy_field }}
                 </div>
 
+                
                 <button type="submit" class="btn btn-primary">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
@@ -68,6 +93,39 @@
     </div>
 </div>
 <script>
+
+function buscarFamilia() {
+    let termo = document.getElementById('busca_familia').value;
+    if (termo.length > 2) {
+        fetch('/families/buscar_family/?query=' + encodeURIComponent(termo))
+            .then(response => response.json())
+            .then(data => {
+                let html = '';
+                data.forEach(item => {
+                    html += `<button type="button" class="list-group-item list-group-item-action"
+                        onclick="selecionaFamilia(${item.id}, '${item.registration_number}', '${item.responsible_name}', '${item.cpf}')">
+                        ${item.registration_number} | ${item.responsible_name} | ${item.cpf}
+                    </button>`;
+                });
+                document.getElementById('resultados_busca').innerHTML = html;
+            });
+    } else {
+        document.getElementById('resultados_busca').innerHTML = '';
+    }
+}
+
+function selecionaFamilia(id, registro, nome, cpf) {
+    // Preenche hidden
+    var inputFam = document.getElementById('id_family');
+    if (inputFam) {
+        inputFam.value = id;
+        document.getElementById('busca_familia').value = `${registro} | ${nome} | ${cpf}`;
+        document.getElementById('resultados_busca').innerHTML =
+            `<div class="alert alert-success">Família: ${registro} | ${nome} | ${cpf}</div>`;
+    } else {
+        alert('Campo "family" não encontrado no formulário!');
+    }
+}
 
 const ensinoSeries = {
   'fundamental1': [
@@ -150,6 +208,23 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   probSaude.dispatchEvent(new Event('change'));
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  var usoMedicacao = document.getElementById('uso_medicacao');
+  var qualMedicacao = document.getElementById('qual_medicacao');
+  usoMedicacao.addEventListener('change', function () {
+    if (this.value === 'sim') {
+      qualMedicacao.disabled = false;
+      qualMedicacao.classList.remove('bg-light');
+    } else {
+      qualMedicacao.value = '';
+      qualMedicacao.disabled = true;
+      qualMedicacao.classList.add('bg-light');
+    }
+  });
+  usoMedicacao.dispatchEvent(new Event('change'));
+});
+
 
 </script>
 {% endblock %}

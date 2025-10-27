@@ -92,7 +92,7 @@ class FamilyForm(forms.ModelForm):
         required=False,
         label="Qual função?"
     )
-
+    idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Family
         
@@ -104,6 +104,7 @@ class FamilyForm(forms.ModelForm):
             'rg',
             'cpf',
             'birth_date',
+            'idade',
             'sex',
             'cep',
             'address',
@@ -125,7 +126,9 @@ class FamilyForm(forms.ModelForm):
             'salary_range',
             'others_contribute',
             'who_contributes',
+            'domicile_type',
             'num_residents',
+            'has_pcd',
             'has_elderly',
             'has_adolescent',
             'has_child',
@@ -133,13 +136,14 @@ class FamilyForm(forms.ModelForm):
             'file_info',
         ]
         labels = {
-            'registration_number': 'Número de Inscrição',
+            'registration_number': 'Inscrição',
             'responsible_name': 'Responsável',
             'social_name': 'Nome Social',
             'nis': 'NIS',
             'rg': 'RG',
             'cpf': 'CPF',
             'birth_date': 'Data de Nascimento',
+            'idade': 'Idade',
             'sex': 'Sexo',
             'cep': 'CEP',
             'address': 'Endereço',
@@ -161,6 +165,7 @@ class FamilyForm(forms.ModelForm):
             'who_contributes': 'Quem Contribui',
             'domicile_type': 'Informações sobre o Domicílio',
             'num_residents': 'Quantidade de Pessoas no Domicílio',
+            'has_pcd': 'Pessoa com Deficiência (PCD)',
             'has_elderly': 'Idoso',
             'has_adolescent': 'Adolescente',
             'has_child': 'Criança',
@@ -239,9 +244,10 @@ class AdultForm(forms.ModelForm):
         )]
         
     )
+    idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Adult
-        fields = ['family', 'name', 'social_name', 'parentesco', 'birth_date', 'education', 'ocupacao', 'renda', 'status', 'telephone']
+        fields = ['family', 'name', 'social_name', 'sex', 'parentesco', 'birth_date', 'idade', 'education', 'ocupacao', 'renda', 'status', 'telephone']
         labels = {
             'family': 'Família',
             'name': 'Nome',
@@ -249,6 +255,7 @@ class AdultForm(forms.ModelForm):
             'sex': 'Sexo',
             'parentesco': 'Parentesco',
             'birth_date': 'Data de Nascimento',
+            'idade': 'Idade',
             'education': 'Escolaridade',
             'ocupacao': 'Ocupação/Profissão',
             'renda': 'Renda',
@@ -256,7 +263,7 @@ class AdultForm(forms.ModelForm):
             'telephone': 'Telefone',
         }
         widgets = {
-            'family': forms.Select(attrs={'class': 'form-control'}),
+            'family': forms.HiddenInput(),
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
         }
 
@@ -264,7 +271,7 @@ class AlunoForm(forms.ModelForm):
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Aluno
-        fields = ['family', 'name', 'sex', 'parentesco', 'birth_date', 'idade', 'school', 'serie', 'ensino', 'turno', 'health_problem', 'special_need', 'status_lsd']
+        fields = ['family', 'name', 'sex', 'parentesco', 'birth_date', 'idade', 'school', 'serie', 'ensino', 'turno', 'health_problem', 'special_need', 'uso_medicacao', 'qual_medicacao', 'status_lsd']
         exclude = ('activities',)  # Exclua 'activities' e 'family' se definido via inlineformset
         
         labels = {
@@ -280,11 +287,13 @@ class AlunoForm(forms.ModelForm):
             'turno': 'Turno',
             'health_problem': 'Problema de Saúde',
             'special_need': 'Necessidade Especial',
+            'uso_medicacao': 'Uso de Medicação',
+            'qual_medicacao': 'Qual Medicação?',
             'status_lsd': 'Situação Atual no Lar',
             # adicione outros labels se necessário
         }
         widgets = {
-            'family': forms.Select(attrs={'class': 'form-control'}),
+            'family': forms.HiddenInput(),
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
             'ensino': forms.Select(attrs={'class': 'form-select', 'id': 'ensino'}),
             'serie': forms.Select(attrs={'class': 'form-select', 'id': 'serie'})
@@ -308,6 +317,8 @@ class AlunoForm(forms.ModelForm):
             'turno',
             'health_problem',
             'special_need',
+            'uso_medicacao',
+            'qual_medicacao',
             'status_lsd',
             'faixa_etaria',
             # outros campos, se houver
@@ -349,14 +360,14 @@ class TurmaForm(forms.ModelForm):
     class Meta:
         model = Turma
         fields = ['professor', 'faixa_etaria', 'sala', 'turno']
-        labels = {'professor': 'Nome da Professora', 'faixa_etaria': 'Faixa Etária', 'sala': 'Sala', 'turno': 'Turno'}
+        labels = {'professor': 'Nome da Educadora', 'faixa_etaria': 'Faixa Etária', 'sala': 'Sala', 'turno': 'Turno'}
 
 
 class ActivityForm(forms.ModelForm):
     class Meta:
         model = Activity
         fields = ['professor','descricao', 'tipo', 'dia_semana', 'turno']
-        labels = {'professor': 'Nome da Professor(a)','descricao': 'Nome da Atividade', 'tipo': 'Tipo', 'dia_semana': 'Dias da Semana', 'turno': 'Turno'}
+        labels = {'professor': 'Nome Facilitador(a)','descricao': 'Nome da Atividade', 'tipo': 'Tipo', 'dia_semana': 'Dias da Semana', 'turno': 'Turno'}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['professor'].queryset = User.objects.filter(perfilprofessor__tipo='atividade')

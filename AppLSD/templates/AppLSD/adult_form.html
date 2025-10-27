@@ -12,7 +12,37 @@
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Adulto</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
-                {{ form|crispy }}
+                {% if family %}
+                    <p><strong>Família:</strong> ({{ family.registration_number }} {{ family.responsible_name }} - {{ family.cpf }})</p>
+                    {{ form.family }} {# hidden #}
+                {% else %}
+                    <label>Buscar por Inscrição Nome ou CPF</label>
+                    <input type="text" name="family" id="busca_familia" value="" class="form-control" placeholder="Digite inscrição, nome ou CPF" autocomplete="off" onkeyup="buscarFamilia()">
+                    <div id="resultados_busca" class="list-group"></div>
+                    {{ form.family|as_crispy_field }}
+                {% endif %}
+                {{ form.parentesco|as_crispy_field }}
+                {{ form.name|as_crispy_field }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-8">{{ form.social_name|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+                </div>  
+                <div class="row mb-3">
+                    <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
+                    <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
+                </div>                
+                <div class="row mb-3">
+                    <div class="col-md-4">{{ form.education|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.ocupacao|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.renda|as_crispy_field }}</div>
+
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">{{ form.telephone|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.status|as_crispy_field }}</div>
+                </div>
+                
                 <button type="submit" class="btn btn-primary">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
@@ -53,5 +83,38 @@ document.addEventListener('DOMContentLoaded', function() {
         exibirIdadeAnos();
     }
 });
+
+function buscarFamilia() {
+    let termo = document.getElementById('busca_familia').value;
+    if (termo.length > 2) {
+        fetch('/families/buscar_family/?query=' + encodeURIComponent(termo))
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            data.forEach(item => {
+                html += `<button type="button" class="list-group-item list-group-item-action" onclick="selecionaFamilia(${item.id}, '${item.responsible_name}', '${item.registration_number}', '${item.cpf}')">
+                    ${item.registration_number} | ${item.responsible_name} | ${item.cpf}
+                </button>`;
+            });
+            document.getElementById('resultados_busca').innerHTML = html;
+        });
+    } else {
+        document.getElementById('resultados_busca').innerHTML = '';
+    }
+}
+
+function selecionaFamilia(id, registro, nome, cpf) {
+    // Preenche hidden
+    var inputFam = document.getElementById('id_family');
+    if (inputFam) {
+        inputFam.value = id;
+        document.getElementById('busca_familia').value = `${registro} | ${nome} | ${cpf}`;
+        document.getElementById('resultados_busca').innerHTML =
+            `<div class="alert alert-success">Família: ${registro} | ${nome} | ${cpf}</div>`;
+    } else {
+        alert('Campo "family" não encontrado no formulário!');
+    }
+}
+
 </script>
 {% endblock %}

@@ -47,6 +47,11 @@ def professor_turmas(request):
     return render(request, 'AppLSD/professor_turmas.html', {'turmas': turmas})
 
 @login_required
+def professor_atividades(request):
+    professor_atividades = Activity.objects.filter(turma__professor=request.user)
+    return render(request, 'AppLSD/professor_atividades.html', {'atividades': professor_atividades})
+
+@login_required
 def dashboard_presenca(request):
     hoje = timezone.now().date()
     
@@ -170,6 +175,19 @@ def family_update(request, pk):
         formset = AlunoInlineFormSet(instance=family)
     return render(request, 'families/family_form.html', {'form': form, 'formset': formset})
 
+def buscar_family(request):
+    query = request.GET.get('query', '')
+    families = Family.objects.filter(
+        Q(responsible_name__icontains=query) | Q(registration_number__icontains=query) | Q(cpf__icontains=query)
+    )[:10]
+    results = [{
+        'id': f.pk,
+        'responsible_name': f.responsible_name,
+        'cpf': f.cpf,
+        'registration_number': f.registration_number
+    } for f in families]
+    return JsonResponse(results, safe=False)
+
 @login_required
 def adult_create(request):
     family_id = request.GET.get('family_id')
@@ -188,6 +206,9 @@ def adult_create(request):
             return redirect('family_detail', pk=family.pk)
     else:
         form = AdultForm()
+        if family:
+            form.fields['family'].initial = family.pk  # mantém selecionado
+            form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
     return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': family})
 
 @login_required
@@ -264,6 +285,9 @@ def aluno_create(request):
             return redirect('aluno_list')
     else:
         form = AlunoForm()
+        if family:
+            form.fields['family'].initial = family.pk  # mantém selecionado
+            form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
     return render(request, "AppLSD/aluno_form.html", {"form": form})
 
 @login_required

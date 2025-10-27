@@ -6,7 +6,210 @@
 {% endblock %}
 
 {% block content %}
+<div class="container mt-4">{% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno
+{% endblock %}
+
+{% block content %}
 <div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 mx-auto">
+            <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Criança / Adolescente</h1>
+            <form method="post" class="mb-4">
+                {% csrf_token %}
+                {% load crispy_forms_tags %}
+                {{ form.errors }}
+                {{ formset.management_form }}
+
+                {# Renderize os demais campos individualmente usando o as_crispy_field #}
+                {% if family %}
+                    <p><strong>Família:</strong> ({{ family.registration_number }} {{ family.responsible_name }} - {{ family.cpf }})</p>
+                    {{ form.family }} {# hidden #}
+                {% else %}
+                    <label>Buscar por Inscrição, Nome ou CPF</label>
+                    <input type="text" id="busca_familia" class="form-control" placeholder="Digite inscrição, nome ou CPF" autocomplete="off" onkeyup="buscarFamilia()">
+                    <div id="resultados_busca" class="list-group"></div>
+                    {{ form.family|as_crispy_field }}
+                {% endif %}
+
+                {{ form.parentesco|as_crispy_field }}
+                {{ form.name|as_crispy_field }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
+                    <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <label for="ensino">Ensino</label>
+                        <select id="ensino" name="ensino" class="form-select" required>
+                        <option value="" selected disabled>Selecione o ensino</option>
+                        <option value="fundamental1">Ensino Fundamental 1</option>
+                        <option value="fundamental2">Ensino Fundamental 2</option>
+                        <option value="medio">Ensino Médio</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="serie">Série</label>
+                        <select id="serie" name="serie" class="form-select" required>
+                        <option value="">Selecione a série</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">{{ form.turno|as_crispy_field }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="problema_saude">Tem Problema de Saúde?</label>
+                        <select id="problema_saude" name="problema_saude" class="form-select">
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="special_need">Qual problema de saúde?</label>
+                        <input type="text" id="special_need" name="special_need" class="form-control" disabled>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="uso_medicacao">Faz uso de medicação?</label>
+                        {{ form.uso_medicacao|as_crispy_field }}
+                    </div>
+                    <div class="col-md-8">
+                        <label for="qual_medicacao">Qual medicação?</label>
+                        {{ form.qual_medicacao|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.status_lsd|as_crispy_field }}
+                </div>
+
+                
+                <button type="submit" class="btn btn-primary">
+                {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
+                </button>
+                <a href="{% url 'aluno_list' %}" class="btn btn-secondary ms-2">Voltar</a>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+
+function buscarFamilia() {
+    let termo = document.getElementById('busca_familia').value;
+    if (termo.length > 2) {
+        fetch('/families/buscar_family/?query=' + encodeURIComponent(termo))
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            data.forEach(item => {
+                html += `<button type="button" class="list-group-item list-group-item-action" onclick="selecionaFamilia(${item.id}, '${item.responsible_name}', '${item.registration_number}', '${item.cpf}')">
+                    ${item.registration_number} | ${item.responsible_name} | ${item.cpf}
+                </button>`;
+            });
+            document.getElementById('resultados_busca').innerHTML = html;
+        });
+    } else {
+        document.getElementById('resultados_busca').innerHTML = '';
+    }
+}
+
+function preencherCamposPessoa(id, cpf, nome) {
+    // Preencher campos do formulário conforme necessário (ajuste os selects/detalhes para seu form)
+    document.getElementById('id_family').value = id;
+    document.getElementById('id_cpf').value = cpf;
+    document.getElementById('id_responsible_name').value = nome;
+    document.getElementById('resultados_busca').innerHTML = '';
+}
+
+const ensinoSeries = {
+  'fundamental1': [
+    {value: '1', text: '1º ano'},
+    {value: '2', text: '2º ano'},
+    {value: '3', text: '3º ano'},
+    {value: '4', text: '4º ano'},
+    {value: '5', text: '5º ano'}
+  ],
+  'fundamental2': [
+    {value: '6', text: '6º ano'},
+    {value: '7', text: '7º ano'},
+    {value: '8', text: '8º ano'},
+    {value: '9', text: '9º ano'}
+  ],
+  'medio': [
+    {value: '1', text: '1º ano'},
+    {value: '2', text: '2º ano'},
+    {value: '3', text: '3º ano'}
+  ]
+};
+document.getElementById('ensino').addEventListener('change', function() {
+  const serieEl = document.getElementById('serie');
+  const ensinoVal = this.value;
+  serieEl.innerHTML = '<option value="">Selecione a série</option>';
+  if (ensinoSeries[ensinoVal]) {
+    ensinoSeries[ensinoVal].forEach(function(opt) {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.innerText = opt.text;
+      serieEl.appendChild(o);
+    });
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const inputNasc = document.getElementById("id_birth_date");
+    const inputIdade = document.getElementById("id_idade");
+
+    function calcularIdade(nasc) {
+        if(!nasc) return '';
+        const partes = nasc.split('-');
+        if(partes.length !== 3) return '';
+        const nascimento = new Date(partes[0], partes[1]-1, partes[2]);
+        const hoje = new Date();
+        let idade = hoje.getFullYear() - nascimento.getFullYear();
+        const m = hoje.getMonth() - nascimento.getMonth();
+        if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+            idade--;
+        }
+        return idade;
+    }
+
+     function exibirIdadeAnos() {
+        if(inputNasc && inputIdade) {
+            const idade = calcularIdade(inputNasc.value);
+            inputIdade.value = idade ? idade + " anos" : '';
+        }
+    }
+
+    if(inputNasc && inputIdade) {
+        inputNasc.addEventListener("change", exibirIdadeAnos);
+        inputNasc.addEventListener("blur", exibirIdadeAnos);
+        exibirIdadeAnos();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+  var probSaude = document.getElementById('problema_saude');
+  var qualProblema = document.getElementById('special_need');
+  probSaude.addEventListener('change', function () {
+    if (this.value === 'sim') {
+      qualProblema.disabled = false;
+      qualProblema.classList.remove('bg-light');
+    } else {
+      qualProblema.value = '';
+      qualProblema.disabled = true;
+      qualProblema.classList.add('bg-light');
+    }
+  });
+  probSaude.dispatchEvent(new Event('change'));
+});
+
+</script>
+{% endblock %}
     <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Aluno</h1>

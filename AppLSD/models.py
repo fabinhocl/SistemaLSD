@@ -88,7 +88,6 @@ class Family(models.Model):
     has_proven_income = models.BooleanField(default=False)
     # Tipos de renda (checkbox múltiplo)
     INCOME_TYPE_CHOICES = [
-        ('', '---------'),  # Django usa por padrão esse rótulo se vazio
         ('carteira_assinada', 'Carteira Assinada'),
         ('contrato', 'Contrato'),
         ('pensao', 'Pensão'),
@@ -118,6 +117,7 @@ class Family(models.Model):
     
     # Extras
     num_residents = models.IntegerField(default=0)
+    has_pcd = models.BooleanField(default=False)
     has_elderly = models.BooleanField(default=False)
     has_adolescent = models.BooleanField(default=False)
     has_child = models.BooleanField(default=False)
@@ -164,9 +164,9 @@ class Adult(models.Model):
         ('sup_incomp', 'Ens. Sup. Incomp.'),
     ]
     education = models.CharField(max_length=50, choices=ESCOLARIDADE_CHOICES, verbose_name="Escolaridade", default="Escolha a escolaridade", blank=True, null=True)
-    ocupacao = models.CharField(max_length=100)
-    renda = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50)
+    ocupacao = models.CharField(max_length=100, blank=True, null=True)
+    renda = models.CharField(max_length=100, blank=True, null=True)
+    status = models.CharField(max_length=50, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
 
     @property
@@ -214,6 +214,14 @@ class Aluno(models.Model):
     ]
     health_problem = models.CharField(max_length=200, choices=PROBLEMAS_SAUDE, default='', blank=True)
     special_need = models.CharField(max_length=200, default='', blank=True)
+    MEDICATION_CHOICES = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('yes', 'Sim'),
+    ('no', 'Não')
+    ]
+    uso_medicacao = models.CharField(max_length=200, choices=MEDICATION_CHOICES, default='', blank=True)
+    qual_medicacao = models.CharField(max_length=200, default='', blank=True)
+    
     STATUS_CHOICES = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('ativo', 'Ativo'),
@@ -247,7 +255,12 @@ class Turma(models.Model):
     FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('10-12 anos', '10 a 12 anos'),('13-17 anos', '13 a 17 anos')]
     faixa_etaria = models.CharField(max_length=15, choices=FAIXAS_ETARIAS, verbose_name="Faixa Etária", default="Selecione a faixa  etária")
     sala = models.CharField(max_length=100)
-    turno = models.CharField(max_length=50)
+    ESCOLHA_TURNO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Matutino', 'Matutino'),
+    ('Vespertino', 'Vespertino')
+    ]
+    turno = models.CharField(max_length=20, choices=ESCOLHA_TURNO, default='', blank=True)
     ano_letivo = models.IntegerField(default=timezone.now().year)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -356,10 +369,28 @@ class MovimentacaoTurmaAluno(models.Model):
 class OcorrenciaAluno(models.Model):
     aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, related_name="ocorrencias")
     data = models.DateField(auto_now_add=True)
-    tipo = models.CharField(max_length=50)   # Ex: "Comportamento", "Saúde", etc.
+    ESCOLHA_OCORRENCIA = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Advertência', 'Advertência'),
+    ('Atestado Médico', 'Atestado Médico'),
+    ('Afastamento Atividades', 'Afastamentodas Atividades'),
+    ('Desligamento', 'Desligamento'),
+    ('Elogio', 'Elogio'),
+    ('Suspensão', 'Suspensão'),
+    ('Outro', 'Outro')
+    ]
+    tipo = models.CharField(max_length=100, choices=ESCOLHA_OCORRENCIA, default='', blank=True)
     descricao = models.TextField()
     responsavel = models.CharField(max_length=100, blank=True)  # Quem registrou
-    observacoes = models.TextField(blank=True)
+    ESCOLHA_OBSERVACAO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Doença', 'Doença'),
+    ('Indisciplina', 'Indisciplina'),
+    ('Descumprimento das regras da instituição', 'Descumprimento das regras da instituição'),
+    ('Falta', 'Falta'),
+    ('Outro', 'Outro')
+    ]
+    observacoes = models.CharField(max_length=100, choices=ESCOLHA_OBSERVACAO, default='', blank=True)
 
     def __str__(self):
         return f"{self.aluno.name} - {self.tipo} - {self.data}"

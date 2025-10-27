@@ -4,103 +4,167 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 {% block content %}
-<h1 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Família</h1>
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {% load crispy_forms_tags %}
-    {{ form.errors }}
-    {{ formset.management_form }}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 mx-auto">
+            <h1 class="mb-4">{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Família</h1>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% load crispy_forms_tags %}
+                {{ form.errors }}
+                {{ formset.management_form }}
 
 
-    {# Renderize os demais campos individualmente usando o as_crispy_field #}
-    {{ form.registration_number|as_crispy_field }}
-    {{ form.responsible_name|as_crispy_field }}
-    {{ form.social_name|as_crispy_field }}
-    {{ form.nis|as_crispy_field }}
-    {{ form.rg|as_crispy_field }}
-    {{ form.cpf|as_crispy_field }}
-    {{ form.birth_date|as_crispy_field }}
-    {{ form.sex|as_crispy_field }}
-    
-   
-   <label for="id_cep">CEP</label>
-   <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" />
+                {# Renderize os demais campos individualmente usando o as_crispy_field #}
+            <!-- Linha 1 -->
+            <div class="row mb-3">
+                <div class="col-md-2">{{ form.registration_number|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.responsible_name|as_crispy_field }}</div>
+                <div class="col-md-4">{{ form.social_name|as_crispy_field }}</div>
+            </div>
+            <!-- Linha 2 -->
+            <div class="row mb-3">
+                <div class="col-md-4">{{ form.nis|as_crispy_field }}</div>
+                <div class="col-md-4">{{ form.rg|as_crispy_field }}</div>
+                <div class="col-md-4">{{ form.cpf|as_crispy_field }}</div>
+            </div>
+                <!-- Linha 3 -->
+            <div class="row mb-3">
+                <div class="col-md-4">{{ form.birth_date|as_crispy_field }}</div>
+                <div class="col-md-4">{{ form.idade|as_crispy_field }}</div>
+                <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+            </div>
+            
+                <!-- Linha 4 -->
+            <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="id_cep">CEP</label>
+                <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" />
+            </div>
+            <div class="col-md-9">
+                <label for="id_address">Endereço</label>
+                <input type="text" id="id_address" name="address" class="form-control" />
+            </div>
+            </div>
 
-   <label for="id_address">Endereço</label>
-   <input type="text" id="id_address" name="address" class="form-control" />
+            <!-- Linha 5 -->
 
-   <label for="id_neighborhood">Bairro</label>
-   <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" />
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="id_neighborhood">Bairro</label>
+                    <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" />
+                </div>
+                <div class="col-md-6">{{ form.reference_point|as_crispy_field }}</div>
+            </div>
+            <!-- Linha 6 -->
+            <div class="row mb-3">
+                <div class="col-md-6">{{ form.telephone|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.telephone_2|as_crispy_field }}</div>
+            </div>
+            
+                
+                <!-- Linha 7 -->
+                <div class="row mb-3">
+                <div class="col-md-6">{{ form.marital_status|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.education|as_crispy_field }}</div>
+                </div>
 
-   
-    {{ form.reference_point|as_crispy_field }}
-    {{ form.telephone|as_crispy_field }}
-    {{ form.telephone_2|as_crispy_field }}
-    {{ form.marital_status|as_crispy_field }}
-    {{ form.education|as_crispy_field }}
-    {{ form.race|as_crispy_field }}
-    {{ form.religion|as_crispy_field }}
-    <div class="mb-3">
-        <label class="fw-bold">Beneficiário de Programas Sociais ?</label>
-        {{ form.is_benefits }}
-    </div>
-    <div class="mb-3" id="benefits-programs" style="display:none;">
-        <label class="fw-bold">Qual Programa?</label>
-        {{ form.social_benefits }}
-    </div>
-    {{ form.occupation|as_crispy_field }}
-    <div class="mb-3">
-        <label class="fw-bold">Trabalhando no momento?</label>
-        {{ form.is_working }}
-    </div>
-    <div class="mb-3" id="function-group">
-        <label class="fw-bold">Qual função?</label>
-        {{ form.function }}
-    </div>
-    <div class="mb-3">
-        <label class="fw-bold">Possui renda comprovada?</label>
-        {{ form.has_proven_income }}
-    </div>
-    <div class="mb-3" id="income-types-group">
-        <label class="fw-bold">Tipo de renda comprovada</label>
-        {{ form.income_types }}
-    </div>
-    {{ form.salary_range|as_crispy_field }}
-    <div class="mb-3">
-        <label class="fw-bold">Outras pessoas contribuem com a renda?</label>
-        {{ form.others_contribute }}
-    </div>
-    <div class="mb-3" id="who-contributes-group">
-        <label class="fw-bold">Quem contribui?</label>
-        {{ form.who_contributes }}
-    </div>
-    {{ form.num_residents|as_crispy_field }}
-    {{ form.has_elderly|as_crispy_field }}
-    {{ form.has_adolescent|as_crispy_field }}
-    {{ form.has_child|as_crispy_field }}
-    {{ form.has_pregnant|as_crispy_field }}
-    {{ form.file_info|as_crispy_field }}
-    <!-- Campos customizados com lógica JS -->
-        
+                <!-- Linha 8 -->
+                <div class="row mb-3">
+                <div class="col-md-6">{{ form.race|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.religion|as_crispy_field }}</div>
+                </div>
 
-    <button type="submit" class="btn btn-primary">
-        {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
-    </button>
-    <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar à Lista</a>
-
-    <!-- Botão para cadastrar Assistido -->
-        {% if form.instance.pk %}
-            <a href="{% url 'aluno_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">
-                Cadastrar Assistido
-            </a>
-        {% endif %}
-        <!-- Botão para cadastrar Adulto -->
-        {% if form.instance.pk %}
-            <a href="{% url 'adult_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">
-                Cadastrar Adulto
-            </a>
-        {% endif %}
-</form>
+                <div class="row mb-4">
+                    <div class="col-md-5">
+                        <label for="id_is_benefits">Beneficiário de Programas Sociais ?</label>
+                        {{ form.is_benefits }}
+                    </div>
+                    <div class="col-md-4">
+                        <div id="benefits-programs" style="display:none;">
+                        <label for="social_benefits">Qual Programa?</label>
+                        {{ form.social_benefits }}
+                    </div>
+                </div>    
+                    
+                <div class="row mb-4">
+                    <div class="row mb-3"></div>
+                        <div class="col-md-5">
+                            <label for="id_occupation">Ocupação/Profissão</label>
+                            {{ form.occupation }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="id_is_working">Trabalhando no momento?</label>
+                            {{ form.is_working }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_function">Qual função?</label>
+                            {{ form.function }}
+                        </div>
+                    </div>    
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label>Possui renda comprovada?</label>
+                        {{ form.has_proven_income }}
+                    </div>
+                    <div class="col-md-9" id="income-types-group">
+                        <label>Tipo de renda comprovada</label>
+                        {{ form.income_types }}
+                    </div>
+                </div>
+                <!-- Linha 9 -->
+                <div class="row mb-3">
+                    <div class="col-md-3">{{ form.salary_range|as_crispy_field }}</div>
+                    <div class="col-md-6">
+                        <label>Outras pessoas contribuem com a renda?</label>
+                        {{ form.others_contribute }}
+                    </div>
+                    <div class="col-md-3" id="who-contributes-group">
+                        <label>Sim, quem?</label>
+                        {{ form.who_contributes }}
+                    </div>
+               <div class="row mb-3">
+                   <div class="col-md-6">{{ form.domicile_type|as_crispy_field }}</div>
+                   <div class="col-md-6">{{ form.num_residents|as_crispy_field }}</div>
+               </div>
+                
+                <!-- Linha 13 -->
+                    <div class="row mb-3">
+                        <div class="col-md-2"> {{ form.has_child|as_crispy_field }} </div>
+                        <div class="col-md-2"> {{ form.has_adolescent|as_crispy_field }} </div>
+                        <div class="col-md-2"> {{ form.has_pregnant|as_crispy_field }} </div>
+                        <div class="col-md-2">{{ form.has_elderly|as_crispy_field }}</div>
+                        <div class="col-md-4"> {{ form.has_pcd|as_crispy_field }} </div>
+                    </div>    
+                   
+                <!-- Linha 14 -->
+                <div class="row mb-3">
+                    <div class="col-md-8">{{ form.file_info|as_crispy_field }}</div>
+                </div>
+                <!-- Campos customizados com lógica JS -->
+               
+                <div>   
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
+                    </button>
+                    
+                        <a href="{% url 'family_list' %}" class="btn btn-secondary btn-sm">Voltar à Lista</a>
+                </div>
+            </form>
+                <!-- Botão para cadastrar Assistido -->
+                    {% if form.instance.pk %}
+                        <a href="{% url 'aluno_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">Cadastrar Assistido</a>
+                    {% endif %}
+                    <!-- Botão para cadastrar Adulto -->
+                    {% if form.instance.pk %}
+                        <a href="{% url 'adult_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">Cadastrar Adulto</a>
+                        </a>
+                    {% endif %}
+            
+        </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -207,6 +271,38 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('change', toggleBenefits);
     });
     toggleBenefits(); // Inicializa
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const inputNasc = document.getElementById("id_birth_date");
+    const inputIdade = document.getElementById("id_idade");
+
+    function calcularIdade(nasc) {
+        if(!nasc) return '';
+        const partes = nasc.split('-');
+        if(partes.length !== 3) return '';
+        const nascimento = new Date(partes[0], partes[1]-1, partes[2]);
+        const hoje = new Date();
+        let idade = hoje.getFullYear() - nascimento.getFullYear();
+        const m = hoje.getMonth() - nascimento.getMonth();
+        if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+            idade--;
+        }
+        return idade;
+    }
+
+     function exibirIdadeAnos() {
+        if(inputNasc && inputIdade) {
+            const idade = calcularIdade(inputNasc.value);
+            inputIdade.value = idade ? idade + " anos" : '';
+        }
+    }
+
+    if(inputNasc && inputIdade) {
+        inputNasc.addEventListener("change", exibirIdadeAnos);
+        inputNasc.addEventListener("blur", exibirIdadeAnos);
+        exibirIdadeAnos();
+    }
 });
 </script>
 {% endblock %}

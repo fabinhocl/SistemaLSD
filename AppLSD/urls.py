@@ -30,6 +30,7 @@ urlpatterns = [
     #path('families/delete/<int:pk>/', views_templates.family_delete, name='family_delete'),
     path('families/<int:pk>/', views_templates.family_detail, name='family_detail'),
     path('families/<int:pk>/delete/', views_templates.family_delete_confirm, name='family_delete_confirm'),
+    path('families/buscar_family/', views_templates.buscar_family, name='buscar_family'),
     
     #Adultos
     path('adult/new/', views_templates.adult_create, name='adult_create'),

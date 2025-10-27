@@ -23,7 +23,7 @@
 </table>
 
 <table class="table table-bordered">
-    <h4>Turma Matriculada</h4>
+    <h4>Turma Inserida</h4>
 <table class="table table-bordered">
     <thead>
         <tr>
@@ -48,12 +48,13 @@
         {% endif %}
     </tbody>
 </table>
-    <h4>Atividades Matriculadas</h4>
+    <h4>Atividades Inseridas</h4>
 <table class="table table-bordered">
     <thead>
         <tr>
             <th>Atividade</th>
             <th>Turno</th>
+            <th>Facilitador(a)</th>
             
         </tr>
     </thead>
@@ -68,6 +69,7 @@
                         -
                     {% endif %}
                 </td>
+                <td>{{ activity.professor }}</td>
             </tr>
         {% empty %}
             <tr>
