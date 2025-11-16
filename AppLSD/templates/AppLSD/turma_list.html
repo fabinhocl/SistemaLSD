@@ -25,7 +25,7 @@
         <tbody>
         {% for turma in page_obj %}
             <tr>
-                <td>{{ turma.professor }}</td>
+                <td>{{ turma.educadora.first_name }}</td>
                 <td>{{ turma.sala }}</td>
                 <td>{{ turma.turno }}</td>
                 <td>{{ turma.faixa_etaria }}</td>

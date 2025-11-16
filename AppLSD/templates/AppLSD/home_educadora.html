@@ -8,7 +8,7 @@
     <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
 </div>
 
-<h2>Turmas do Professor {{ user.get_full_name }}</h2>
+<h2>Turmas da Educadora {{ user.get_full_name }}</h2>
 
 <div class="row">
     {% for turma in turmas %}
@@ -19,7 +19,6 @@
             </div>
             <div class="card-body">
                 <p><strong>Total de alunos:</strong> {{ turma.alunos.count }}</p>
-                <a href="{% url 'turma_presenca' turma.pk %}" class="btn btn-primary">Registrar Presença</a>
                 <a href="{% url 'turma_detail' turma.pk %}" class="btn btn-info">Ver Detalhes</a>
             </div>
         </div>

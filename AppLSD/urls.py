@@ -4,10 +4,12 @@ from .views import FamilyViewSet, AlunoViewSet, TurmaViewSet, ActivityViewSet, F
 from .import views_templates # importa as views para templates
 from .import views
 from django.contrib.auth import views as auth_views
+from django.contrib import admin
 from dal import autocomplete
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
+from . import views
 
 router = DefaultRouter()
 router.register(r'families', FamilyViewSet)
@@ -22,6 +24,9 @@ urlpatterns = [
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('home/', views_templates.home, name='home'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
+    path('dashboard/', include('dashboard_lsd.urls')),
+    #path('home_facilitador/', views_templates.home_facilitador, name='home_facilitador'),
+    #path('home_educadora/', views_templates.home_educadora, name='home_educadora'),
     
     #Famílias
     path('families/', views_templates.family_list, name='family_list'),
@@ -69,11 +74,20 @@ urlpatterns = [
     path('activities/<int:activity_id>/relatorio-presenca/', views_templates.relatorio_presenca_activity, name='relatorio_presenca_activity'),
     
     path('family-autocomplete/', views.FamilyAutocomplete.as_view(), name='family-autocomplete'),
-    path('professor/turmas/', views_templates.professor_turmas, name='professor_turmas'),
-    path('professor/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
+    path('educadora/turmas/', views_templates.home_educadora, name='home_educadora'),
+    path('educadora/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
+    path('facilitador/atividades/', views_templates.home_facilitador, name='home_facilitador'),
+    path('facilitador/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/presenca/', views_templates.dashboard_presenca, name='dashboard_presenca'),
+
+    #Gerenciamento de Usuários (Admin)
+    path('usuarios/gerenciar/', views_templates.usuarios_gerenciar, name='usuarios_gerenciar'),
+    path('usuarios/cadastrar/', views_templates.cadastrar_usuario, name='cadastrar_usuario'),
+    path('usuarios/editar/<int:usuario_id>/', views_templates.editar_usuario, name='editar_usuario'),
+    path('usuarios/<int:usuario_id>/editar_perfis/', views_templates.editar_perfis_usuario, name='editar_perfis_usuario'),
+    path('usuarios/<int:usuario_id>/resetar_senha/', views_templates.resetar_senha_usuario, name='resetar_senha_usuario'),
     
     #Relatórios
     path('relatorios/', views_templates.home_relatorios, name='home_relatorios'),
@@ -82,11 +96,16 @@ urlpatterns = [
     path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
     path('relatorio/aluno/busca/', views_templates.relatorio_busca_aluno, name='relatorio_busca_aluno'),
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
-        
+    
     
    #path('families/autocomplete/', views_templates.family_autocomplete, name="family_autocomplete"),
 
 
     # se desejar, adicione outras rotas para Child, Turma e Activity em views_templates.py aqui
+    path('admin/', admin.site.urls),
     path('api/', include(router.urls)),  # rotas da API REST prefixadas com api/
+    path('dashboard/', include('dashboard_lsd.urls')),  # dashboard integrado
+    path('django_plotly_dash/', include('django_plotly_dash.urls')),   # necessário para Dash funcionar
+    #path('', include('AppLSD.urls')),
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

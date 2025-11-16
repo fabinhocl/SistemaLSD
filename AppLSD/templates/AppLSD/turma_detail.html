@@ -7,7 +7,8 @@ Detalhes da Turma - {{ turma.nome }}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Turma: {{ turma.professor }} - {{ turma.sala }}</h1>
+    <h1>Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
+    <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
     <p><strong>Turno:</strong> {{ turma.turno }}</p>
 
     <h2 class="mt-4">Alunos da Turma</h2>

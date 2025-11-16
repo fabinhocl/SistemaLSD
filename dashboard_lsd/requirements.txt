@@ -1,0 +1,6 @@
+dash
+plotly
+pandas
+sqlite3
+requests
+dash_table

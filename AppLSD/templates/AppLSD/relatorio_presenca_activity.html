@@ -3,7 +3,7 @@
 {% block title %}Relatório - {{ atividade.nome }}{% endblock %}
 {% block content %}
 
-<h3>Chamada da Atividade: {{ atividade.descricao }} — Data: {{ data }}</h3>
+<h3>Chamada da Atividade: {{ atividade.atividade }} — Data: {{ data }}</h3>
 <form method="get" class="mb-3">
     <label for="data" class="form-label">Escolher Data:</label>
     <input type="date" id="data" name="data" value="{{ request.GET.data }}">

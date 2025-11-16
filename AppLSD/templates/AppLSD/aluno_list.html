@@ -29,7 +29,7 @@
                 <td>{{ aluno.name }}</td>
                 <td>{{ aluno.family.responsible_name }}</td>
                 <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
-                <td>{% if aluno.turma %}{{ aluno.turma.professor }} - {{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
+                <td>{% if aluno.turma %}{{ aluno.turma.educadora }} - {{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
                 <td>
                 <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-info btn-sm">Visualizar</a>
                 </td>

@@ -1,0 +1,10 @@
+{% extends "AppLSD/base.html" %}
+{% block content %}
+
+<form method="post">
+    {% csrf_token %}
+    <label>Nova senha para {{ usuario.username }}</label>
+    <input type="password" name="nova_senha">
+    <button type="submit">Redefinir senha</button>
+</form>
+{% endblock %}

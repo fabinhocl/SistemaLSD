@@ -1,0 +1,57 @@
+{% extends "AppLSD/base.html" %}
+{% block content %}
+
+<h1 class="mb-4">Gerenciar Usuários</h1>
+<div class="mb-3">
+        <a href="{% url 'cadastrar_usuario' %}" class="btn btn-success">Cadastrar Novo usuário</a>
+        <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
+        <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+    </div>
+<table class="table table-bordered table-hover">
+    <tr>
+        <th>Nome</th>
+        <th>Usuário</th>
+        <th>Email</th>
+        <th>Perfis</th>
+        <th>Status</th>
+        <th>Ação</th>
+    </tr>
+    {% for usuario in usuarios %}
+    <tr>
+        <td>{{ usuario.get_full_name|default:usuario.username }}</td>
+        <td>{{ usuario.username }}</td>
+        <td>{{ usuario.email }}</td>
+        <td>
+            {% for perfil in usuario.perfis.all %}
+                <span class="badge bg-info">{{ perfil.tipo }}</span>
+            {% endfor %}
+        </td>
+        <td>
+            {% if usuario.is_active %}
+                <span class="text-success">Ativo</span>
+            {% else %}
+                <span class="text-danger">Inativo</span>
+            {% endif %}
+        </td>
+        <td>
+    <!-- Botão editar usuario -->
+    <a class="btn btn-warning btn-sm" href="{% url 'editar_usuario' usuario.id %}">Editar</a>
+    {% if usuario.is_active %}
+        <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="desativar_id" value="{{ usuario.id }}">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Desativar usuário?')">Desativar</button>
+        </form>
+    {% else %}
+        <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="ativar_id" value="{{ usuario.id }}">
+            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Ativar usuário?')">Ativar</button>
+        </form>
+    {% endif %}
+</td>
+
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

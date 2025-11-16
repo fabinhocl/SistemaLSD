@@ -4,23 +4,46 @@
 {% block title %}Detalhes do Aluno{% endblock %}
 
 {% block content %}
-<div class="print-logo" style="text-align:left; margin-bottom:5px;">
-    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
-</div>
 
-<h2>Detalhes do Aluno</h2>
-<table class="table table-borderless w-50">
-    <tr><th>Matrícula:</th><td>{{ aluno.family.registration_number }}</td></tr>
-    <tr><th>Nome:</th><td>{{ aluno.name }}</td></tr>
-    <tr><th>Responsável:</th><td>{{ aluno.family.responsible_name }}</td></tr>
-    <tr><th>Bairro:</th><td>{{ aluno.family.neighborhood }}</td></tr>
-    <tr><th>Telefone:</th><td>{{ aluno.family.telephone }}</td></tr>
-    <tr><th>Data de Nascimento:</th><td>{{ aluno.birth_date|date:"d/m/Y" }}</td></tr>
-    <tr><th>Idade:</th><td>{{ aluno.idade }}</td></tr>
-    <tr><th>Problema de Saúde:</th><td>{{ aluno.health_problem|default:"-" }}</td></tr>
-    <tr><th>Medicamento:</th><td>{{ aluno.medication|default:"-" }}</td></tr>
-</tr>
-</table>
+
+<h2 class="row justify-content-center"> Detalhes do Assistido</h2>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 mx-auto">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
+                <div class="col-md-8"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            </div>
+            <div class="row mb-3">    
+                <div class="col-md-4"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
+                <div class="col-md-4"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
+                <div class="col-md-4"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Responsável:</strong> <div>{{ aluno.family.responsible_name }}</div></div>
+                <div class="col-md-4"><strong>Telefone responsável:</strong> <div>{{ aluno.family.telephone }}</div></div>
+                <div class="col-md-4"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
+                <div class="col-md-3"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display }}</div></div>
+                <div class="col-md-3"><strong>Série:</strong> <div>{{ aluno.serie }}</div></div>
+                <div class="col-md-2"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>Problema de Saúde:</strong> <div>{{ aluno.get_health_problem_display }}</div></div>
+                <div class="col-md-6"><strong>Qual Problema de Saúde:</strong> <div>{{ aluno.special_need }}</div></div>
+            </div>
+            <div class="row mb-3">    
+                <div class="col-md-6"><strong>Faz uso de Medicamento:</strong> <div>{{ aluno.uso_medicacao }}</div></div>
+                <div class="col-md-6"><strong>Medicamento:</strong> <div>{{ aluno.qual_medicacao }}</div></div>
+            </div>
+            <div class="row mb-3">    
+                <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.status_lsd }}</div></div>
+            </div>
+        </div> 
+    </div>    
+</div>
 
 <table class="table table-bordered">
     <h4>Turma Inserida</h4>
@@ -36,7 +59,7 @@
     <tbody>
         {% if aluno.turma %}
             <tr>
-                <td>{{ aluno.turma.professor }}</td>
+                <td>{{ aluno.turma.educadora }}</td>
                 <td>{{ aluno.turma.faixa_etaria }}</td>
                 <td>{{ aluno.turma.sala }}</td>
                 <td>{{ aluno.turma.turno }}</td>
@@ -69,7 +92,7 @@
                         -
                     {% endif %}
                 </td>
-                <td>{{ activity.professor }}</td>
+                <td>{{ activity.facilitador }}</td>
             </tr>
         {% empty %}
             <tr>

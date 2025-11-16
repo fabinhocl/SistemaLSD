@@ -5,92 +5,142 @@
 
 {% block content %}
 
-
-<h2>Detalhes da Família</h2>
-<table class="table table-borderless w-50">
-    <tr><th>Número de Inscrição:</th><td>{{ family.registration_number }}</td></tr>
-    <tr><th>Nome Responsável:</th><td>{{ family.responsible_name }}</td></tr>
-    <tr><th>Nome Social:</th><td>{{ family.social_name }}</td></tr>
-    <tr><th>Endereço:</th><td>{{ family.address }}</td></tr>
-    <tr><th>Bairro:</th><td>{{ family.neighborhood }}</td></tr>
-    <tr><th>Telefone:</th><td>{{ family.telephone }}</td></tr>
-    <tr><th>NIS:</th><td>{{ family.nis }}</td></tr>
-    <tr><th>RG:</th><td>{{ family.rg }}</td></tr>
-    <tr><th>CPF:</th><td>{{ family.cpf }}</td></tr>
-    <tr><th>Data de Nascimento:</th><td>{{ family.birth_date }}</td></tr>
-    <tr><th>Sexo:</th><td>{{ family.sex }}</td></tr>
-    <tr><th>Ponto de Referência:</th><td>{{ family.reference_point }}</td></tr>
-    <tr><th>Estado Civil:</th><td>{{ family.marital_status }}</td></tr>
-    <tr><th>Escolaridade:</th><td>{{ family.education }}</td></tr>
-    <tr><th>Raça:</th><td>{{ family.race }}</td></tr>
-    <tr><th>Religião:</th><td>{{ family.religion }}</td></tr>
-    <tr><th>Beneficiária de Programas Sociais:</th><td>{{ family.social_benefits }}</td></tr>
-    <tr><th>Ocupação/Profissão:</th><td>{{ family.occupation }}</td></tr>
-    <tr><th>Possui Renda Comprovada:</th><td>{{ family.has_proven_income }}</td></tr>
-    <tr><th>1 Salário Mínimo:</th><td>{{ family.min_salary_1 }}</td></tr>
-    <tr><th>2 Salários Mínimos:</th><td>{{ family.min_salary_2 }}</td></tr>
-    <tr><th>Outras Pessoas Contribuem com a Renda da Família:</th><td>{{ family.others_contribute }}</td></tr>
-    <tr><th>Quem Contribui:</th><td>{{ family.who_contributes }}</td></tr>
-    <tr><th>Quantidade de Pessoas no Domicílio:</th><td>{{ family.num_residents }}</td></tr>
-    <tr><th>Idoso:</th><td>{{ family.has_elderly }}</td></tr>
-    <tr><th>Adolescente:</th><td>{{ family.has_adolescent }}</td></tr>
-    <tr><th>Criança:</th><td>{{ family.has_child }}</td></tr>
-    <tr><th>Gestante:</th><td>{{ family.has_pregnant }}</td></tr>
-    <tr><th>Documentação:</th><td>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</td>
+<div class="container mt-4">
     
-</table>
-<h2>Composição Familiar</h2>
-<h3 class="mt-4">Crianças / Adolescente</h3>
-<a href="{% url 'aluno_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
-    Cadastrar Assistido
-</a>
-<table class="table table-bordered">
-    <thead><tr><th>Nome do Assistido</th><th>Idade</th><th>Turma</th></tr></thead>
-    <tbody>
-        {% for aluno in family.alunos.all %}
-            <tr>
-                <td>{{ aluno.name }}</td>
-                <td>{{ aluno.idade }}</td>
-                <td>{% if aluno.turma %}{{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="3" class="text-center">Nenhum aluno vinculado a esta família.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+<h2 class="row justify-content-center"> Detalhes da Família</h2>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 mx-auto">
+                <div class="row mb-3">
+                    <div class="col-md-2"><strong>Inscrição:</strong> <div>{{ family.registration_number }}</div></div>
+                    <div class="col-md-6"><strong>Responsável:</strong> <div>{{ family.responsible_name }}</div></div>
+                    <div class="col-md-4"><strong>Nome Social:</strong> <div>{{ family.social_name }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>NIS:</strong> <div>{{ family.nis }}</div></div>
+                    <div class="col-md-4"><strong>RG:</strong> <div>{{ family.rg }}</div></div>
+                    <div class="col-md-4"><strong>CPF:</strong> <div>{{ family.cpf }}</div></div>
+                </div>             
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Data de Nascimento:</strong> <div>{{ family.birth_date|date:'d/m/Y' }}</div></div>
+                    <div class="col-md-4"><strong>Idade:</strong> <div>{{ family.idade }}</div></div>
+                    <div class="col-md-4"><strong>Sexo:</strong> <div>{{ family.get_sex_display }}</div></div>
+                </div>  
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>CEP:</strong> <div>{{ family.cep }}</div></div>
+                    <div class="col-md-5"><strong>Endereço:</strong> <div>{{ family.address }}</div></div>
+                    <div class="col-md-4"><strong>Bairro:</strong> <div>{{ family.neighborhood }}</div></div>
+                    
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Ponto de referência:</strong> <div>{{ family.reference_point }}</div></div>
+                    <div class="col-md-3"><strong>Telefone 1:</strong> <div>{{ family.telephone }}</div></div>
+                    <div class="col-md-3"><strong>Telefone 2:</strong> <div>{{ family.telephone_2 }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Estado Civil:</strong> <div>{{ family.get_marital_status_display }}</div></div>
+                    <div class="col-md-3"><strong>Escolaridade:</strong> <div>{{ family.get_education_display }}</div></div>
+                    <div class="col-md-3"><strong>Raça:</strong> <div>{{ family.get_race_display }}</div></div>
+                    <div class="col-md-3"><strong>Religião:</strong> <div>{{ family.get_religion_display }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Beneficiária de Programas Sociais:</strong> <div>{{ family.get_is_benefits_display }}</div></div>
+                    <div class="col-md-6"><strong>Qual Programa Social:</strong> <div>{{ family.get_social_benefits_display }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Ocupação/Profissão:</strong> <div>{{ family.occupation }}</div></div>
+                    <div class="col-md-4"><strong>Trabalhando no momento?:</strong> <div>{{ family.get_is_working_display }}</div></div>
+                    <div class="col-md-4"><strong>Qual função?:</strong> <div>{{ family.function }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Possui Renda Comprovada:</strong> <div>{{ family.get_has_proven_income_display }}</div></div>
+                    <div class="col-md-4"><strong>Tipo de renda comprovada:</strong> <div>{{ family.income_types_display }}</div></div>
+                    <div class="col-md-4"><strong>Faixa Salarial:</strong> <div>{{ family.get_salary_range_display }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Outras Pessoas Contribuem com a Renda da Família:</strong> <div>{{ family.get_others_contribute_display }}</div></div>
+                    <div class="col-md-6"><strong>Quem Contribui:</strong> <div>{{ family.who_contributes }}</div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Informações sobre o domicílio:</strong> <div>{{ family.get_domicile_type_display }}</div></div>
+                    <div class="col-md-6"><strong>Quantidade de Pessoas no Domicílio:</strong> <div>{{ family.num_residents }}</div></div>
+                </div>
+                <div class="row mb-3">
+                        <div class="col-md-2"><strong>Adulto:</strong> <div>{{ family.has_adult }}</div></div>
+                        <div class="col-md-2"><strong>Idoso:</strong> <div>{{ family.has_elderly }}</div></div>
+                        <div class="col-md-2"><strong>Gestante:</strong> <div>{{ family.has_pregnant }}</div></div>
+                        <div class="col-md-2"><strong>PCD:</strong> <div>{{ family.has_pcd }}</div></div>
+                        <div class="col-md-2"><strong>Adolescente:</strong> <div>{{ family.has_adolescent }}</div></div>
+                        <div class="col-md-2"><strong>Criança:</strong> <div>{{ family.has_child }}</div></div>
+                        
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Documentação:</strong> <div>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</div></div>
+                    <div class="col-md-6"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                </div>
+    
+            </div>
+        </div>
+    </div>    
+    <h2 class="row justify-content-center"> Composição Familiar</h2>
+    <h3 class="row justify-content-center mt-4">Crianças / Adolescente</h3>
+    <a href="{% url 'aluno_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
+        Cadastrar Assistido
+    </a>
+    <div class="row mb-3"></div>
+    <table class="table table-bordered">
+        <thead><tr><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
+        <tbody>
+            {% for aluno in family.alunos.all %}
+                <tr>
+                    <td>{{ aluno.name }}</td>
+                    <td>{{ aluno.idade }}</td>
+                    <td>{% if aluno.turma %}{{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
+                    <td>    
+                    <a href="{% url 'aluno_edit' pk=aluno.pk %}" class="btn btn-primary btn-sm">Editar</a>
+                        <a href="{% url 'aluno_detail' pk=aluno.pk %}" class="btn btn-danger btn-sm">Visualizar</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3" class="text-center">Nenhum aluno vinculado a esta família.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-<h3 class="mt-4">Adultos Vinculados</h3>
-<a href="{% url 'adult_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
-    Cadastrar Adulto
-</a>
-<table class="table table-bordered">
-    <thead><tr><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
-    <tbody>
-        {% for adulto in family.adults.all %}
-            <tr>
-                <td>{{ adulto.name }}</td>
-                <td>{{ adulto.social_name }}</td>
-                <td>{{ adulto.parentesco }}</td>
-                <td>{{ adulto.idade }}</td>
-                <td>{{ adulto.telephone }}</td>
-                <td>
-                    <a href="{% url 'adult_edit' pk=adulto.pk %}" class="btn btn-primary btn-sm">Editar</a>
-                    <a href="{% url 'adult_delete_confirm' pk=adulto.pk %}" class="btn btn-danger btn-sm">Excluir</a>
-                
-            </tr>
-        {% empty %}
-            <tr><td colspan="3" class="text-center">Nenhum adulto vinculado a esta família.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <h3 class="row justify-content-center mt-4">Adultos Vinculados</h3>
+    <a href="{% url 'adult_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
+        Cadastrar Adulto
+    </a>
+    <div class="row mb-3"></div>
+    <table class="table table-bordered">
+        <thead><tr><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
+        <tbody>
+            {% for adulto in family.adults.all %}
+                <tr>
+                    <td>{{ adulto.name }}</td>
+                    <td>{{ adulto.social_name }}</td>
+                    <td>{{ adulto.parentesco }}</td>
+                    <td>{{ adulto.idade }}</td>
+                    <td>{{ adulto.telephone }}</td>
+                    <td>
+                        <a href="{% url 'adult_edit' pk=adulto.pk %}" class="btn btn-primary btn-sm">Editar</a>
+                        <a href="{% url 'adult_delete_confirm' pk=adulto.pk %}" class="btn btn-danger btn-sm">Excluir</a>
+                    
+                </tr>
+            {% empty %}
+                <tr><td colspan="3" class="text-center">Nenhum adulto vinculado a esta família.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-                
-    </tbody>
-</table>
-<div class="mt-3 no-print">
-    <a href="{% url 'family_edit' family.pk %}" class="btn btn-primary">Editar</a>
-    <a href="{% url 'family_delete_confirm' family.pk %}" class="btn btn-danger">Excluir</a>
-    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
-    <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar</a>
-</div>
+                    
+        </tbody>
+    </table>
+    <div class="mt-3 no-print">
+        <a href="{% url 'family_edit' family.pk %}" class="btn btn-primary">Editar</a>
+        <a href="{% url 'family_delete_confirm' family.pk %}" class="btn btn-danger">Excluir</a>
+        <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+        <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar</a>
+    </div>
+</div> 
 {% endblock %}

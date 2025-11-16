@@ -1,0 +1,14 @@
+{% extends "AppLSD/base.html" %}
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+    <h3>Perfis do usuário: {{ usuario.username }}</h3>
+    {% for tipo in tipos_perfil %}
+    <div>
+        <input type="checkbox" name="tipos_perfil" value="{{ tipo }}"
+        {% if usuario.perfis.filter(tipo=tipo).exists %}checked{% endif %}> {{ tipo|title }}
+    </div>
+    {% endfor %}
+    <button type="submit">Salvar</button>
+</form>
+{% endblock %}

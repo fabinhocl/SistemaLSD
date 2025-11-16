@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -39,13 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     'rest_framework',
     'AppLSD',
+    'dashboard_lsd',
     'dal',
     'dal_select2',
     'crispy_forms',
     'crispy_bootstrap5',
-    'widget_tweaks' 
+    'widget_tweaks',
+    'channels',          # Necessário para websocket no Dash
+    'dpd_static_support', # Para servir assets do Dash 
 ]
 
 MIDDLEWARE = [
@@ -77,6 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'larsaodomingos.wsgi.application'
+ASGI_APPLICATION = 'larsaodomingos.asgi.application'  # ajuste para seu projeto
 
 
 # Database
@@ -135,8 +141,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -147,8 +157,17 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 
 #STATIC_ROOT = BASE_DIR / 'staticfiles'
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 LOGIN_REDIRECT_URL = '/home/'   # redireciona para /home/ após login com sucesso
 LOGOUT_REDIRECT_URL = '/accounts/login/'  # redireciona para login após logout
+
+# Adicione isto para desenvolvimento:
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+X_FRAME_OPTIONS = 'ALLOWALL'

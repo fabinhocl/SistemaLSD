@@ -7,10 +7,10 @@ Detalhes da Atividade - {{ atividade.nome }}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Atividade: {{ atividade.descricao }}</h1>
-    <p><strong>Professor:</strong> {{ atividade.professor }}</p>
-    <p><strong>Tipo:</strong> {{ atividade.tipo }}</p>
-    <p><strong>Dias da Semana:</strong> {{ atividade.dia_semana }}</p>
+    <h1>Atividade: {{ atividade.atividade }}</h1>
+    <p><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</p>
+    <p><strong>Tipo:</strong> {{ atividade.get_tipo_display }}</p>
+    <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
     <p><strong>Turno:</strong> {{ atividade.turno }}</p>
 
     <h2 class="mt-4">Alunos da Atividade</h2>

@@ -3,6 +3,7 @@
 {% block title %}Cadastrar Famílias{% endblock %}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -37,14 +38,14 @@
             
                 <!-- Linha 4 -->
             <div class="row mb-3">
-            <div class="col-md-3">
-                <label for="id_cep">CEP</label>
-                <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" />
-            </div>
-            <div class="col-md-9">
-                <label for="id_address">Endereço</label>
-                <input type="text" id="id_address" name="address" class="form-control" />
-            </div>
+                <div class="col-md-3">
+                    <label for="id_cep">CEP</label>
+                    <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" value="{{ form.initial.cep }}" />
+                </div>
+                <div class="col-md-9">
+                    <label for="id_address">Endereço</label>
+                    <input type="text" id="id_address" name="address" class="form-control" value="{{ form.initial.address }}" />
+                </div>
             </div>
 
             <!-- Linha 5 -->
@@ -52,7 +53,7 @@
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label for="id_neighborhood">Bairro</label>
-                    <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" />
+                    <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" value="{{ form.initial.neighborhood }}" />
                 </div>
                 <div class="col-md-6">{{ form.reference_point|as_crispy_field }}</div>
             </div>
@@ -77,70 +78,75 @@
 
                 <div class="row mb-4">
                     <div class="col-md-5">
-                        <label for="id_is_benefits">Beneficiário de Programas Sociais ?</label>
-                        {{ form.is_benefits }}
+                        
+                        {{ form.is_benefits|as_crispy_field }}
                     </div>
                     <div class="col-md-4">
                         <div id="benefits-programs" style="display:none;">
-                        <label for="social_benefits">Qual Programa?</label>
-                        {{ form.social_benefits }}
+                        
+                        {{ form.social_benefits|as_crispy_field }}
                     </div>
                 </div>    
                     
                 <div class="row mb-4">
                     <div class="row mb-3"></div>
                         <div class="col-md-5">
-                            <label for="id_occupation">Ocupação/Profissão</label>
-                            {{ form.occupation }}
+                            
+                            {{ form.occupation|as_crispy_field  }}
                         </div>
                         <div class="col-md-4">
-                            <label for="id_is_working">Trabalhando no momento?</label>
-                            {{ form.is_working }}
+                            {{ form.is_working|as_crispy_field  }}
                         </div>
                         <div class="col-md-3">
-                            <label for="id_function">Qual função?</label>
-                            {{ form.function }}
+                            {{ form.function|as_crispy_field  }}
                         </div>
                     </div>    
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-3">
-                        <label>Possui renda comprovada?</label>
-                        {{ form.has_proven_income }}
+                        
+                        {{ form.has_proven_income|as_crispy_field  }}
                     </div>
-                    <div class="col-md-9" id="income-types-group">
-                        <label>Tipo de renda comprovada</label>
-                        {{ form.income_types }}
+                    <div class="col-md-6" id="income-types-group">
+                        
+                        {{ form.income_types|as_crispy_field  }}
                     </div>
+                    <div class="col-md-3">{{ form.salary_range|as_crispy_field }}</div>
                 </div>
                 <!-- Linha 9 -->
                 <div class="row mb-3">
-                    <div class="col-md-3">{{ form.salary_range|as_crispy_field }}</div>
-                    <div class="col-md-6">
-                        <label>Outras pessoas contribuem com a renda?</label>
-                        {{ form.others_contribute }}
+                    
+                    <div class="col-md-6">              
+                        {{ form.others_contribute|as_crispy_field  }}
                     </div>
                     <div class="col-md-3" id="who-contributes-group">
-                        <label>Sim, quem?</label>
-                        {{ form.who_contributes }}
+                        {{ form.who_contributes|as_crispy_field  }}
                     </div>
                <div class="row mb-3">
                    <div class="col-md-6">{{ form.domicile_type|as_crispy_field }}</div>
                    <div class="col-md-6">{{ form.num_residents|as_crispy_field }}</div>
+                    
                </div>
+                              
                 
-                <!-- Linha 13 -->
-                    <div class="row mb-3">
-                        <div class="col-md-2"> {{ form.has_child|as_crispy_field }} </div>
-                        <div class="col-md-2"> {{ form.has_adolescent|as_crispy_field }} </div>
-                        <div class="col-md-2"> {{ form.has_pregnant|as_crispy_field }} </div>
-                        <div class="col-md-2">{{ form.has_elderly|as_crispy_field }}</div>
-                        <div class="col-md-4"> {{ form.has_pcd|as_crispy_field }} </div>
-                    </div>    
+                <div class="row">
+                    <div class="col-md-2">{{ form.has_adult|as_crispy_field }}</div>
+                    <div class="col-md-2">{{ form.has_elderly|as_crispy_field }}</div>
+                    <div class="col-md-2">{{ form.has_pcd|as_crispy_field }}</div>
+                    <div class="col-md-2">{{ form.has_adolescent|as_crispy_field }}</div>
+                    <div class="col-md-2">{{ form.has_child|as_crispy_field }}</div>
+                    <div class="col-md-2">{{ form.has_pregnant|as_crispy_field }}</div>
+                </div>
+                <span id="erro-qtd" style="color:red;display:none;">A soma dos tipos deve ser igual ao total.</span>
                    
                 <!-- Linha 14 -->
                 <div class="row mb-3">
                     <div class="col-md-8">{{ form.file_info|as_crispy_field }}</div>
+                </div>
+
+                <!-- Linha 15 -->
+                <div class="row mb-3">
+                    <div class="col-md-3">{{ form.status|as_crispy_field }}</div>
                 </div>
                 <!-- Campos customizados com lógica JS -->
                
@@ -152,15 +158,20 @@
                         <a href="{% url 'family_list' %}" class="btn btn-secondary btn-sm">Voltar à Lista</a>
                 </div>
             </form>
+            <div class="row mb-3">
+                    <div class="col-md-6">
                 <!-- Botão para cadastrar Assistido -->
                     {% if form.instance.pk %}
-                        <a href="{% url 'aluno_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">Cadastrar Assistido</a>
+                        <a href="{% url 'aluno_create' %}?family_id={{ family.id }}" class="btn btn-info btn-sm mt-2">Cadastrar Assistido</a>
                     {% endif %}
+                </div>
+                <div class="col-md-6">
                     <!-- Botão para cadastrar Adulto -->
                     {% if form.instance.pk %}
-                        <a href="{% url 'adult_create' %}?family_id={{ family.id }}" class="btn btn-success btn-sm mt-2">Cadastrar Adulto</a>
-                        </a>
+                        <a href="{% url 'adult_create' %}?family_id={{ family.id }}" class="btn btn-info btn-sm mt-2">Cadastrar Adulto</a>
                     {% endif %}
+                </div>
+            </div>
             
         </div>
     </div>
@@ -201,78 +212,91 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-document.addEventListener('DOMContentLoaded', function(){
-    // 1º Caso: habilitar tipos de renda
-    function toggleIncomeTypes() {
-        const sim = document.querySelector('input[name="has_proven_income"]:checked');
-        const incomeTypesGroup = document.getElementById('income-types-group');
-        const incomeTypesCheckboxes = incomeTypesGroup.querySelectorAll('input[type=checkbox]');
-        if (sim && sim.value === 'True') {
-            incomeTypesCheckboxes.forEach(cb => cb.disabled = false);
-        } else {
-            incomeTypesCheckboxes.forEach(cb => {
-                cb.checked = false;
-                cb.disabled = true;
-            });
-        }
-    }
-    document.querySelectorAll('input[name="has_proven_income"]').forEach(el => {
-        el.addEventListener('change', toggleIncomeTypes);
-    });
-    toggleIncomeTypes();
 
-    // 2º Caso: habilitar campo "quem contribui"
-    function toggleWhoContributes() {
-        const sim = document.querySelector('input[name="others_contribute"]:checked');
-        const campo = document.getElementById('id_who_contributes');
-        if (sim && sim.value === 'True') {
-            campo.disabled = false;
+document.addEventListener('DOMContentLoaded', function () {
+    // Beneficiário de Programas Sociais
+    var beneficioRadios = document.getElementsByName('is_benefits');
+    var benefitsProgramsDiv = document.getElementById('benefits-programs');
+
+    function toggleBenefitsPrograms() {
+        var selected = Array.from(beneficioRadios).find(r => r.checked);
+        if (selected && selected.value === "sim") {
+            benefitsProgramsDiv.style.display = '';
+            // Habilitar campo interno, se necessário
+            var sb = document.getElementById('id_social_benefits');
+            if (sb) sb.disabled = false;
         } else {
-            campo.value = '';
-            campo.disabled = true;
+            benefitsProgramsDiv.style.display = 'none';
+            var sb = document.getElementById('id_social_benefits');
+            if (sb) {
+                sb.disabled = true;
+                sb.value = '';
+            }
         }
     }
-    document.querySelectorAll('input[name="others_contribute"]').forEach(el => {
-        el.addEventListener('change', toggleWhoContributes);
-    });
-    toggleWhoContributes();
+    beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
+    toggleBenefitsPrograms();
+
+
+    // Trabalhando no momento? (função)
+    var trabalhoRadios = document.getElementsByName('is_working');
+    var funcaoField = document.getElementById('id_function');
+    function toggleFuncaoField() {
+        var selected = Array.from(trabalhoRadios).find(r => r.checked);
+        if (selected && selected.value === "sim") {
+            funcaoField.disabled = false;
+            funcaoField.classList.remove('bg-light');
+        } else {
+            funcaoField.value = '';
+            funcaoField.disabled = true;
+            funcaoField.classList.add('bg-light');
+        }
+    }
+    trabalhoRadios.forEach(r => r.addEventListener('change', toggleFuncaoField));
+    toggleFuncaoField();
+
+    // Renda comprovada (tipos)
+    var rendaRadios = document.getElementsByName('has_proven_income');
+    var rendaTypesGroup = document.getElementById('income-types-group');
+    var rendaTypesField = document.getElementById('id_income_types');
+    function toggleRendaTypes() {
+        var selected = Array.from(rendaRadios).find(r => r.checked);
+        if (selected && selected.value === "sim") {
+            rendaTypesGroup.style.display = '';
+            if (rendaTypesField) rendaTypesField.disabled = false;
+        } else {
+            rendaTypesGroup.style.display = 'none';
+            if (rendaTypesField) {
+                rendaTypesField.disabled = true;
+                rendaTypesField.value = '';
+            }
+        }
+    }
+    rendaRadios.forEach(r => r.addEventListener('change', toggleRendaTypes));
+    toggleRendaTypes();
+
+    // Outras pessoas contribuem com a renda
+    var contribuiRadios = document.getElementsByName('others_contribute');
+    var quemGroup = document.getElementById('who-contributes-group');
+    var quemField = document.getElementById('id_who_contributes');
+    function toggleQuemContribui() {
+        var selected = Array.from(contribuiRadios).find(r => r.checked);
+        if (selected && selected.value === "sim") {
+            quemGroup.style.display = '';
+            quemField.disabled = false;
+        } else {
+            quemGroup.style.display = 'none';
+            quemField.value = '';
+            quemField.disabled = true;
+        }
+    }
+    contribuiRadios.forEach(r => r.addEventListener('change', toggleQuemContribui));
+    toggleQuemContribui();
+
+});
+
     
-    function toggleFunctionField() {
-       // 2º Caso: habilitar campo "qual função?"
-        const trabalhandoSim = document.querySelector('input[name="is_working"][value="True"]:checked');
-        const campoFuncao = document.getElementById('id_function');
-        if (trabalhandoSim) {
-            campoFuncao.disabled = false;
-        } else {
-            campoFuncao.value = '';
-            campoFuncao.disabled = true;
-        }
-    }
-
-    document.querySelectorAll('input[name="is_working"]').forEach(el => {
-        el.addEventListener('change', toggleFunctionField);
-    });
-
-    toggleFunctionField(); // Ajusta ao carregar a página
-});
-document.addEventListener('DOMContentLoaded', function() {
-    function toggleBenefits() {
-        var yes = document.querySelector('input[name="is_benefits"]:checked');
-        var target = document.getElementById('benefits-programs');
-        if (yes && yes.value === "True") {
-            target.style.display = '';
-        } else {
-            target.style.display = 'none';
-            // Limpa seleção se quiser:
-            document.querySelectorAll('input[name="social_benefits"]').forEach(el => el.checked = false);
-        }
-    }
-    document.querySelectorAll('input[name="is_benefits"]').forEach(el => {
-        el.addEventListener('change', toggleBenefits);
-    });
-    toggleBenefits(); // Inicializa
-});
-
+/// calculo da idade
 document.addEventListener('DOMContentLoaded', function() {
     const inputNasc = document.getElementById("id_birth_date");
     const inputIdade = document.getElementById("id_idade");
@@ -303,6 +327,42 @@ document.addEventListener('DOMContentLoaded', function() {
         inputNasc.addEventListener("blur", exibirIdadeAnos);
         exibirIdadeAnos();
     }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    function validarDistribuicao() {
+        var total = parseInt(document.getElementById('num_residents').value) || 0;
+        var adulto = parseInt(document.getElementById('has_adult').value) || 0;
+        var idoso = parseInt(document.getElementById('has_elderly').value) || 0;
+        var pcd = parseInt(document.getElementById('has_pcd').value) || 0;
+        var adolescente = parseInt(document.getElementById('has_adolescent').value) || 0;
+        var crianca = parseInt(document.getElementById('has_child').value) || 0;
+        var gestante = parseInt(document.getElementById('has_pregnant').value) || 0;
+        var soma = pcd + adulto + +idoso + adolescente + crianca + gestante;
+
+        if (soma !== total) {
+            document.getElementById('erro-qtd').style.display = '';
+        } else {
+            document.getElementById('erro-qtd').style.display = 'none';
+        }
+    }
+
+    document.getElementById('num_residents').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_pcd').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_adult').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_elderly').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_adolescent').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_child').addEventListener('input', validarDistribuicao);
+    document.getElementById('has_pregnant').addEventListener('input', validarDistribuicao);
+});
+</script>
+<script>
+$(document).ready(function(){
+  $("#cpf").inputmask("999.999.999-99", {
+    clearIncomplete: true,
+    showMaskOnHover: false,
+    showMaskOnFocus: true
+  });
 });
 </script>
 {% endblock %}

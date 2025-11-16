@@ -8,10 +8,10 @@ class Family(models.Model):
 
 class Turma(models.Model):
     faixa_etaria = models.CharField(max_length=100)
-    professor = models.CharField(max_length=200)
+    educadora = models.CharField(max_length=200)
 
 class Activity(models.Model):
-    descricao = models.CharField(max_length=200)
+    atividade = models.CharField(max_length=200)
     tipo = models.CharField(max_length=50)  # cultural ou esportiva
 
 class Child(models.Model):

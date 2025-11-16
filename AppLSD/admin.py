@@ -13,7 +13,7 @@ class TurmaAdmin(admin.ModelAdmin):
     search_fields = ['name', 'responsible_name']
 class ActivityAdmin(admin.ModelAdmin):
     list_per_page = 300  # Define 300 atividades por página no admin
-    search_fields = ['descricao', 'tipo']
+    search_fields = ['atividade', 'tipo']
 class PerfilUsuarioInline(admin.StackedInline):
     model = PerfilUsuario
     extra = 0  # ou 0 para não exibir nenhum por padrão

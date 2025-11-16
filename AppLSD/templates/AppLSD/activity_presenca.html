@@ -1,11 +1,11 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
-{% block title %}Presença - {{ atividade.descricao }}{% endblock %}
+{% block title %}Presença - {{ atividade.atividade }}{% endblock %}
 {% block content %}
 
 
-<h2>Atividade: {{ atividade.descricao }} </h2>
-<h2>Professor: {{ atividade.professor }}</h2>
+<h2>Atividade: {{ atividade.atividade }} </h2>
+<h2>Professor: {{ atividade.facilitador.get_full_name }}</h2>
 <p><strong>Data:</strong> {{ hoje|date:"d/m/Y" }} </p>>
 
 <form method="post">

@@ -19,5 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('AppLSD.urls')),  # Inclui todas as rotas do app, sem prefixo extra
+    path('', include('AppLSD.urls')),
+    #path('', include('dashboard_lsd.urls')),     # Inclui todas as rotas do app, sem prefixo extra
 ]

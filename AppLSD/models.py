@@ -8,6 +8,7 @@ from datetime import date
 
 #from localflavor.br.forms import BRCPFField
 import re
+import ast
 
 
 class Family(models.Model):
@@ -65,9 +66,14 @@ class Family(models.Model):
         ('matriz_africana', 'Matriz Africana'),
         ('nao_possui', 'Não possui religião'),
     ]
-    religion = models.CharField(max_length=50, choices=RELIGIAO_CHOICES, verbose_name="Religião", default="Escolha a religião", blank=True, null=True)
+    religion = models.CharField(max_length=30, choices=RELIGIAO_CHOICES, verbose_name="Religião", default="Escolha a religião", blank=True, null=True)
+    # Escolhas SIM ou NÂO
+    SIM_NAO_CHOICES = [
+    ('sim', 'Sim'),
+    ('não', 'Não')
+]
     # Programas sociais (checkbox múltiplo)
-    is_benefits = models.BooleanField(default=False)
+    is_benefits = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
     # Qual Programas sociais (checkbox múltiplo)
     PROGRAMAS_SOCIAIS_CHOICES = [
         ('bolsa_brasil', 'Programa Bolsa Brasil - PBF'),
@@ -75,17 +81,16 @@ class Family(models.Model):
         ('cria_alagoana', 'Criança Alagoana - CRIA'),
     ]
     social_benefits = models.CharField(max_length=255, choices=PROGRAMAS_SOCIAIS_CHOICES, verbose_name="Programas Sociais", blank=True, null=True)
+    
     # Ocupação/profissão
     occupation = models.CharField(max_length=100, blank=True, null=True)
     
     # Trabalhando no momento
-    is_working = models.BooleanField(default=False)
-    working_function = [('', '---------'),  ('Sim', 'Sim'), ('Não', 'Não')]
-
+    is_working = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
     function = models.CharField(max_length=100, default=False, blank=True, null=False)
 
     # Renda comprovada
-    has_proven_income = models.BooleanField(default=False)
+    has_proven_income = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
     # Tipos de renda (checkbox múltiplo)
     INCOME_TYPE_CHOICES = [
         ('carteira_assinada', 'Carteira Assinada'),
@@ -106,7 +111,7 @@ class Family(models.Model):
     #min_salary_2 = models.BooleanField(default=False)
 
     # Outras pessoas contribuem
-    others_contribute = models.BooleanField(default=False)
+    others_contribute = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
     who_contributes = models.CharField(max_length=100, blank=True, null=True)
 
      # Informações sobre o domicílio
@@ -117,12 +122,18 @@ class Family(models.Model):
     
     # Extras
     num_residents = models.IntegerField(default=0)
-    has_pcd = models.BooleanField(default=False)
-    has_elderly = models.BooleanField(default=False)
-    has_adolescent = models.BooleanField(default=False)
-    has_child = models.BooleanField(default=False)
-    has_pregnant = models.BooleanField(default=False)
+    has_pcd = models.IntegerField(default=0)
+    has_adult = models.IntegerField(default=0)
+    has_elderly = models.IntegerField(default=0)
+    has_adolescent = models.IntegerField(default=0)
+    has_child = models.IntegerField(default=0)
+    has_pregnant = models.IntegerField(default=0)
     file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
+    STATUS_CHOICES = [
+        ('ativo', 'Ativo'), ('inativo', 'Inativo')
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, blank=True, null=True)
+    
     #aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, related_name='families')
 
 
@@ -194,7 +205,7 @@ class Aluno(models.Model):
     sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
     school = models.CharField(max_length=200, default='', blank=True)
     ENSINO_CHOICES = [
-    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('', 'Selecione o ensino'),  # Django usa por padrão esse rótulo se vazio
     ('fundamental1', 'Ensino Fundamental 1'),
     ('fundamental2', 'Ensino Fundamental 2'),
     ('medio', 'Ensino Médio'),
@@ -207,19 +218,17 @@ class Aluno(models.Model):
     ('Vespertino', 'Vespertino')
     ]
     turno = models.CharField(max_length=20, choices=ESCOLHA_TURNO, default='', blank=True)
-    PROBLEMAS_SAUDE = [
-    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
-    ('yes', 'Sim'),
-    ('no', 'Não')
+    PROBLEMA_SAUDE_CHOICES = [
+    ('sim', 'Sim'),
+    ('não', 'Não')
     ]
-    health_problem = models.CharField(max_length=200, choices=PROBLEMAS_SAUDE, default='', blank=True)
+    health_problem = models.CharField(max_length=3, choices=PROBLEMA_SAUDE_CHOICES, default='', blank=True)
     special_need = models.CharField(max_length=200, default='', blank=True)
     MEDICATION_CHOICES = [
-    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
-    ('yes', 'Sim'),
-    ('no', 'Não')
+    ('sim', 'Sim'),
+    ('não', 'Não')
     ]
-    uso_medicacao = models.CharField(max_length=200, choices=MEDICATION_CHOICES, default='', blank=True)
+    uso_medicacao = models.CharField(max_length=10, choices=MEDICATION_CHOICES, default='', blank=True)
     qual_medicacao = models.CharField(max_length=200, default='', blank=True)
     
     STATUS_CHOICES = [
@@ -229,7 +238,7 @@ class Aluno(models.Model):
     ('Suspenso', 'Suspenso'),
     ('desligado', 'Desligado')
     ]
-    status_lsd = models.CharField(max_length=50, choices=STATUS_CHOICES, default='', blank=True)
+    status_lsd = models.CharField(max_length=15, choices=STATUS_CHOICES, default='', blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     #turma = models.ManyToManyRelationship(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     activities = models.ManyToManyField('Activity', blank=True)
@@ -251,7 +260,7 @@ class Aluno(models.Model):
     Representa uma turma de assistidos.
     """
 class Turma(models.Model):
-    professor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
+    educadora = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
     FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('10-12 anos', '10 a 12 anos'),('13-17 anos', '13 a 17 anos')]
     faixa_etaria = models.CharField(max_length=15, choices=FAIXAS_ETARIAS, verbose_name="Faixa Etária", default="Selecione a faixa  etária")
     sala = models.CharField(max_length=100)
@@ -268,38 +277,46 @@ class Turma(models.Model):
 
 
     def __str__(self):
-        return f"{self.sala} - Prof: {self.professor.get_full_name() if self.professor else 'Sem Professor'}"
+        return f"{self.sala} - Educadora: {self.educadora.get_full_name() if self.educadora else 'Sem Educadora'}"
 
 """
     Representa uma atividade (cultural, esportiva, etc) com alunos associados.
     """
 
 class Activity(models.Model):
-    descricao = models.CharField(max_length=200, default='', blank=True)
-    professor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='atividades')
-    tipo = models.CharField(max_length=50, default='', blank=True)  # cultural ou esportiva
+    atividade = models.CharField(max_length=200, default='', blank=True)
+    facilitador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='atividades')
+    TIPO_CHOICES = (
+        ('arte_cultura', 'Arte e Cultura'),
+        ('educativa', 'Socioeducativa'),
+        ('esporte', 'Esporte e Lazer'),
+        ('tecnologia', 'Tecnologia'),
+    )
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, default='', blank=True)
     dia_semana =models.CharField(max_length=50, default='', blank=True)
-    turno = models.CharField(max_length=20, default='', blank=True)
+    ESCOLHA_TURNO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Matutino', 'Matutino'),
+    ('Vespertino', 'Vespertino')
+    ]
+    turno = models.CharField(max_length=50, choices=ESCOLHA_TURNO, default='', blank=True)
     alunos = models.ManyToManyField('Aluno', related_name='atividades')
     def __str__(self):
-        return self.descricao
+        return self.atividade
+
+    def get_dia_semana_display(self):
+            if not self.dia_semana:
+                return "-"
+            try:
+                dias = ast.literal_eval(self.dia_semana)
+                if isinstance(dias, list):
+                    return ', '.join([str(dia).capitalize() for dia in dias])
+            # Se salva como string separada por vírgula
+                return self.dia_semana
+            except Exception:
+                return self.dia_semana
 
 
-
-
-
-"""
-class PerfilProfessor(models.Model):
-    TIPOS = (
-        ('atividade', 'Professor de Atividade'),
-        ('turma', 'Professor de Turma'),
-    )
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=50, choices=TIPOS)
-
-    def __str__(self):
-        return f"{self.user.get_full_name()} ({self.get_tipo_display()})"
-"""
 # models.py (adapte conforme seu modelo)
 class PerfilUsuario(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='perfis')
@@ -308,8 +325,10 @@ class PerfilUsuario(models.Model):
         ('admin', 'Admin'),
         ('coordenação', 'Coordenação'),
         ('supervisor', 'Supervisor'),
-        ('professor', 'Professor'),
+        ('educadora', 'Educadora'),
+        ('facilitador', 'Facilitador(a)'),
         ('administrativo', 'Administrativo'),
+        ('diretoria', 'Diretoria'),
         ('colaborador', 'Colaborador'),
     ])
 

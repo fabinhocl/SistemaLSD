@@ -1,22 +1,25 @@
+from dal import autocomplete
+from .models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario
+from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
+from django import forms
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
-from dal import autocomplete
-from .models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult
-from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm
-from django import forms
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponse  
-from django.db.models import Count, Q, Avg
+from django.http import JsonResponse, HttpResponse 
+from django.db.models import Count, Q, Avg, Value, CharField
 from django.forms.models import inlineformset_factory
 from datetime import date
+from .permissoes import require_perfil
+from .utils import usuario_tem_perfil
+from AppLSD.templatetags.perfil_tags import has_perfil
 # Concatena e ordena por data
 from itertools import chain
 from operator import itemgetter
 from openpyxl import Workbook
-from django.db.models import Value, CharField
 import plotly.graph_objs as go
 import plotly.offline as opy
 import io
@@ -30,10 +33,169 @@ def root_redirect(request):
         return redirect('home')  # nome da sua view home
     else:
         return redirect('login')  # nome padrão da view de login
+"""   
+def require_perfil(perfil_tipo):
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return HttpResponseForbidden("Não autenticado.")
+            if not request.user.perfis.filter(tipo=perfil_tipo).exists():
+                return HttpResponseForbidden("Você não possui permissão para esta página.")
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+"""   
+@require_perfil('educadora')
+def view_educadora(request):
+    # apenas educadora acessa
+    pass
+
+@require_perfil('facilitador')
+def view_facilitador(request):
+    # apenas facilitador acessa
+    pass
+
+@require_perfil('admin')
+def view_admin(request):
+    # apenas admin acessa
+    pass
+
+@require_perfil('educadora')
+def registrar_frequencia(request, turma_id):
+    perfil = request.user.perfis.get(tipo='educadora')
+    turma = get_object_or_404(Turma, id=turma_id, educadora=perfil)
+    # Resto da lógica
+
+@require_perfil('facilitador')
+def registrar_frequencia(request, turma_id):
+    perfil = request.user.perfis.get(tipo='facilitador')
+    turma = get_object_or_404(Turma, id=turma_id, facilitador=perfil)
+    # Resto da lógica
+
+@require_perfil('coordenacao')
+def dashboard_coordenador(request):
+    # Coordenação pode acessar dashboards/admin de turmas
+    pass
+
+@require_perfil('diretoria')
+def dashboard_diretoria(request):
+    # Diretoria pode acessar dashboards/admin de turmas
+    pass
+
+@require_perfil('admin')
+def usuarios_gerenciar(request):
+     # Lista todos os usuários do sistema, com seus perfis associados
+    termo = request.GET.get("busca", "")
+    usuarios = User.objects.all().prefetch_related('perfis')
+    if termo:
+        usuarios = usuarios.filter(username__icontains=termo) | usuarios.filter(first_name__icontains=termo)
+    if request.method == "POST":
+        # Exemplo: desativar usuário
+        user_id = request.POST.get("desativar_id")
+        if user_id:
+            usuario = get_object_or_404(User, id=user_id)
+            usuario.is_active = False
+            usuario.save()
+            return redirect('usuarios_gerenciar')
+        user_id = request.POST.get("ativar_id")
+        if user_id:
+            usuario = get_object_or_404(User, id=user_id)
+            usuario.is_active = True
+            usuario.save()
+            return redirect('usuarios_gerenciar')
+
+    # Você pode adicionar filtros por busca, etc.
+    return render(request, 'AppLSD/usuarios_gerenciar.html', {
+        "usuarios": usuarios,
+    })
     
+
+
+@require_perfil('admin')
+def editar_perfis_usuario(request, usuario_id):
+    usuario = User.objects.get(id=usuario_id)
+    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
+    if request.method == "POST":
+        novos_perfis = request.POST.getlist('tipos_perfil')
+        # Remove perfis não marcados
+        usuario.perfis.exclude(tipo__in=novos_perfis).delete()
+        # Adiciona os novos perfis
+        for tipo in novos_perfis:
+            if not usuario.perfis.filter(tipo=tipo).exists():
+                PerfilUsuario.objects.create(user=usuario, tipo=tipo)
+        return redirect('usuarios_gerenciar')
+    return render(request, 'AppLSD/editar_perfis.html', {"usuario": usuario, "tipos_perfil": tipos_perfil})
+
+@require_perfil('admin')
+def editar_usuario(request, usuario_id):
+    usuario = get_object_or_404(User, id=usuario_id)
+    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
+    perfis_do_usuario = list(usuario.perfis.values_list('tipo', flat=True))
+    if request.method == "POST":
+        usuario.first_name = request.POST.get('nome')
+        usuario.email = request.POST.get('email')
+        usuario.is_active = True if request.POST.get('is_active') == 'on' else False
+        usuario.save()
+        # Atualiza perfis
+        novos_perfis = request.POST.getlist('tipos_perfil')
+        # Remove perfis não marcados
+        usuario.perfis.exclude(tipo__in=novos_perfis).delete()
+        # Adiciona perfis marcados
+        for tipo in novos_perfis:
+           if tipo not in perfis_do_usuario:
+                PerfilUsuario.objects.create(user=usuario, tipo=tipo)
+        return redirect('usuarios_gerenciar')
+    return render(request, 'AppLSD/editar_usuario.html', {
+        'usuario': usuario,
+        'tipos_perfil': tipos_perfil,
+        'perfis_do_usuario': perfis_do_usuario,
+    })
+
+@require_perfil('admin')
+def resetar_senha_usuario(request, usuario_id):
+    usuario = User.objects.get(id=usuario_id)
+    if request.method == "POST":
+        nova_senha = request.POST.get("nova_senha")
+        usuario.set_password(nova_senha)
+        usuario.save()
+        return redirect('usuarios_gerenciar')
+    return render(request, 'AppLSD/resetar_senha.html', {"usuario": usuario})
+
+@require_perfil('admin')
+def cadastrar_usuario(request):
+    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Perfis enviados como lista
+            perfis = request.POST.getlist("perfis")
+            for perfil in perfis:
+                PerfilUsuario.objects.create(user=user, tipo=perfil)
+            return redirect('usuarios_gerenciar')
+    else:
+        form = UsuarioForm()
+    return render(request, 'AppLSD/cadastrar_usuario.html', {"form": form, "tipos_perfil": tipos_perfil})
+
 @login_required
 def home(request):
-    return render(request, 'AppLSD/home.html')
+    if usuario_tem_perfil(request.user, "facilitador"):
+        return redirect('home_facilitador')
+    elif usuario_tem_perfil(request.user, "educadora"):
+        return redirect('home_educadora')
+    elif usuario_tem_perfil(request.user, "diretoria"):
+        return redirect('lsd_dashboard/dashboard')  # ou o nome correto do path para dashboard
+    return render(request, "AppLSD/home.html", {
+        "usuario_admin": usuario_tem_perfil(request.user, "admin"),
+        "usuario_coord": usuario_tem_perfil(request.user, "coordenacao"),
+        "usuario_supervisor": usuario_tem_perfil(request.user, "supervisor"),
+        "usuario_educadora": usuario_tem_perfil(request.user, "educadora"),
+        "usuario_facilitador": usuario_tem_perfil(request.user, "facilitador"),
+        "usuario_dir": usuario_tem_perfil(request.user, "diretoria"),
+        "usuario_adm": usuario_tem_perfil(request.user, "administrativo"),
+        "usuario_colab": usuario_tem_perfil(request.user, "colaborador"),
+    })
    
 def remove_accents(text):
     return ''.join(
@@ -42,14 +204,14 @@ def remove_accents(text):
     )
 
 @login_required
-def professor_turmas(request):
-    turmas = Turma.objects.filter(professor=request.user)
-    return render(request, 'AppLSD/professor_turmas.html', {'turmas': turmas})
+def home_educadora(request):
+    educadora_turmas = Turma.objects.filter(educadora=request.user)
+    return render(request, 'AppLSD/home_educadora.html', {'turmas': educadora_turmas})
 
 @login_required
-def professor_atividades(request):
-    professor_atividades = Activity.objects.filter(turma__professor=request.user)
-    return render(request, 'AppLSD/professor_atividades.html', {'atividades': professor_atividades})
+def home_facilitador(request):
+    facilitador_atividades = Activity.objects.filter(facilitador=request.user)
+    return render(request, 'AppLSD/home_facilitador.html', {'atividades': facilitador_atividades})
 
 @login_required
 def dashboard_presenca(request):
@@ -63,6 +225,7 @@ def dashboard_presenca(request):
         chamada__data=hoje, presente=False
     ).count()
     turmas_ativas = Turma.objects.filter(alunos__isnull=False).distinct().count()
+    atividades_ativas = Activity.objects.filter(alunos__isnull=False).distinct().count()
     
     # Frequência por turma
     turmas_com_frequencia = []
@@ -75,14 +238,30 @@ def dashboard_presenca(request):
             
             turma.media_presenca = media_presenca * 100
             turmas_com_frequencia.append(turma)
+      
+
+ # Frequência por Atividade
+    atividades_com_frequencia = []
+    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')):
+        if atividade.total_alunos > 0:
+            media_presenca = FrequenciaAluno.objects.filter(
+                aluno__atividades=atividade,
+                chamada__data__gte=hoje - timezone.timedelta(days=7)
+            ).aggregate(Avg('presente'))['presente__avg'] or 0
+            
+            atividade.media_presenca = media_presenca * 100
+            atividades_com_frequencia.append(atividade)
+    
     
     return render(request, 'AppLSD/dashboard_presenca.html', {
         'total_alunos': total_alunos,
         'presentes_hoje': presentes_hoje,
         'faltas_hoje': faltas_hoje,
         'turmas_ativas': turmas_ativas,
-        'turmas_com_frequencia': turmas_com_frequencia
+        'turmas_com_frequencia': turmas_com_frequencia,
+        'atividades_com_frequencia': atividades_com_frequencia
     })
+
 
 @login_required
 def family_detail(request, pk):
@@ -135,9 +314,10 @@ def family_list(request):
         'search': search_query,
     })
 
+
 def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
-    
+
     if request.method == 'POST':
         form = FamilyForm(request.POST, request.FILES, instance=family)
         if form.is_valid():
@@ -265,30 +445,34 @@ def aluno_list(request):
 
     return render(request, 'AppLSD/aluno_list.html', {'page_obj': page_obj})
 
+@login_required
 def aluno_create(request):
     family_id = request.GET.get('family_id')
-    family = Family.objects.get(pk=family_id) if family_id else None
-    
-    if request.method == "POST":
+    family = get_object_or_404(Family, pk=family_id) if family_id else None
+    #if not family_id:
+        # Redirecione para a lista de famílias ou exiba uma mensagem de erro amigável
+     #   return redirect('family_list')
+
+    #family = Family.objects.get(pk=family_id)
+    if request.method == 'POST':
         form = AlunoForm(request.POST)
         if form.is_valid():
             aluno = form.save(commit=False)
+            # Associa família caso venha selecionada/fixa
             if family:
                 aluno.family = family
-            elif not aluno.family:
-                # Não foi informado nem pelo formulário
-                return HttpResponse("É obrigatório informar a família ao cadastrar um aluno.", status=400)
             aluno.save()
-            # redirecionar para a lista de alunos ou detalhes da família
-            if family:
-                return redirect('family_detail', pk=family.pk)
-            return redirect('aluno_list')
+            return redirect('aluno_list')  # Ou outro local desejado
+            #return redirect('family_detail', pk=family.pk)
     else:
-        form = AlunoForm()
+        # Se veio a família, preenche campo oculto. Senão, deixa campo visível
+        initial_data = {'family': family} if family else {}
+        form = AlunoForm(initial=initial_data)
+        #form = AlunoForm()
         if family:
-            form.fields['family'].initial = family.pk  # mantém selecionado
+            #form.fields['family'].initial = family.pk  # mantém selecionado
             form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
-    return render(request, "AppLSD/aluno_form.html", {"form": form})
+    return render(request, 'AppLSD/aluno_form.html', {'form': form, 'family': family})
 
 @login_required
 def aluno_detail(request, pk):
@@ -332,7 +516,7 @@ def turma_detail(request, turma_id):
     return render(request, 'AppLSD/turma_detail.html', {'turma': turma})
 
 def turma_list(request):
-    class_list = Turma.objects.all().order_by('professor', 'sala', 'turno')
+    class_list = Turma.objects.all().order_by('educadora', 'sala', 'turno')
     paginator = Paginator(class_list, 100)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -395,7 +579,7 @@ def activity_detail(request, activity_id):
     
 
 def activity_list(request):
-    activity_list = Activity.objects.all().order_by('descricao')
+    activity_list = Activity.objects.all().order_by('atividade')
     paginator = Paginator(activity_list, 100)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -636,7 +820,7 @@ def relatorio_mensal_aluno(request):
     {
         'data': reg.data,
         'presente': reg.presente,
-        'tipo': f"Atividade: {reg.atividade.descricao}" if reg.atividade else "Atividade",
+        'tipo': f"Atividade: {reg.atividade.atividade}" if reg.atividade else "Atividade",
     }
     for reg in registros_atividade
     ]

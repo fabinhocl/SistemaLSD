@@ -1,0 +1,34 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Minhas Atividades{% endblock %}
+
+{% block content %}
+
+<h2>Atividades do Facilitador: {{ user.get_full_name }}</h2>
+
+<div class="row">
+    {% for atividade in atividades %}
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ atividade.atividade }}</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Tipo:</strong> {{ atividade.get_tipo_display }}</p>
+                <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
+                <p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
+                <a href="{% url 'activity_detail' atividade.pk %}" class="btn btn-info">Ver Detalhes</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p>Nenhuma turma atribuída a você.</p>
+    {% endfor %}
+</div>
+
+<div class="mt-4 no-print">
+    <a href="{% url 'dashboard_presenca' %}" class="btn btn-secondary">Dashboard Geral</a>
+    <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+</div>
+{% endblock %}

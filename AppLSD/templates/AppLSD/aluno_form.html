@@ -12,9 +12,7 @@
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Criança / Adolescente</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
-                {% load crispy_forms_tags %}
-                {{ form.errors }}
-                {{ formset.management_form }}
+                
 
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
                 {% if family %}
@@ -34,6 +32,9 @@
                     <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
                     <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+                </div>
+                 <div class="row mb-3">
+                    <div class="col-md-8">{{ form.school|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-5">
@@ -55,9 +56,9 @@
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <label for="problema_saude">Tem Problema de Saúde?</label>
-                        <select id="problema_saude" name="problema_saude" class="form-select">
-                        <option value="nao">Não</option>
+                        <label for="health_problem">Tem Problema de Saúde?</label>
+                        <select id="health_problem" name="health_problem" class="form-select">
+                        <option value="não">Não</option>
                         <option value="sim">Sim</option>
                         </select>
                     </div>
@@ -70,7 +71,7 @@
                     <div class="col-md-4">
                         <label for="uso_medicacao">Faz uso de medicação?</label>
                         <select id="uso_medicacao" name="uso_medicacao" class="form-select">
-                        <option value="nao">Não</option>
+                        <option value="não">Não</option>
                         <option value="sim">Sim</option>
                         </select>
                     </div>
@@ -194,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-  var probSaude = document.getElementById('problema_saude');
+  var probSaude = document.getElementById('health_problem');
   var qualProblema = document.getElementById('special_need');
   probSaude.addEventListener('change', function () {
     if (this.value === 'sim') {
