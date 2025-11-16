@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'widget_tweaks',
     'channels',          # Necessário para websocket no Dash
-    'dpd_static_support', # Para servir assets do Dash 
+    #'dpd_static_support', # Para servir assets do Dash 
 ]
 
 MIDDLEWARE = [
