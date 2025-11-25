@@ -13,7 +13,7 @@
 
     <table class="table table-striped table-bordered">
         <thead>
-            <tr>
+            <tr class="text-center">
                 <th>Inscrição</th>
                 <th>Nome</th>
                 <th>Responsável</th>
@@ -25,11 +25,11 @@
         <tbody>
             {% for aluno in page_obj %}
             <tr>
-                <td>{{ aluno.family.registration_number }}</td>
+                <td class="text-center">{{ aluno.family.registration_number }}</td>
                 <td>{{ aluno.name }}</td>
                 <td>{{ aluno.family.responsible_name }}</td>
-                <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
-                <td>{% if aluno.turma %}{{ aluno.turma.educadora }} - {{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
+                <td class="text-center">{{ aluno.birth_date|date:"d/m/Y" }}</td>
+                <td class="text-center">{% if aluno.turma %}{{ aluno.turma.educadora.first_name }} - {{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
                 <td>
                 <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-info btn-sm">Visualizar</a>
                 </td>

@@ -58,7 +58,6 @@ urlpatterns = [
     path('turma/edit/<int:pk>/', views_templates.turma_edit, name='turma_edit'),
     path('turma/delete/<int:pk>/', views_templates.turma_delete, name='turma_delete'),
     path('turma/<int:turma_id>/', views_templates.turma_detail, name='turma_detail'),
-    path('turma/<int:turma_id>/presenca/', views_templates.iniciar_chamada_turma, name='iniciar_chamada_turma'),
     path('turmas/<int:turma_id>/adicionar-alunos/', views_templates.turma_add_alunos, name='turma_add_alunos'),
     path('turma/<int:turma_id>/relatorio-presenca/', views_templates.relatorio_presenca_turma, name='relatorio_presenca_turma'),
 
@@ -89,8 +88,13 @@ urlpatterns = [
     path('usuarios/<int:usuario_id>/editar_perfis/', views_templates.editar_perfis_usuario, name='editar_perfis_usuario'),
     path('usuarios/<int:usuario_id>/resetar_senha/', views_templates.resetar_senha_usuario, name='resetar_senha_usuario'),
     
+    #Frequência de Turmas e Atividades
+    path('frequencia/turma/<int:turma_id>/', views_templates.iniciar_frequencia_turma, name='frequencia_turma_iniciar'),
+    path('frequencia/<int:frequencia_id>/editar/', views_templates.editar_frequencia_turma, name='frequencia_editar'),
+    path('frequencia/<int:frequencia_id>/visualizar/', views_templates.visualizar_frequencia_turma, name='frequencia_visualizar'),
+    
     #Relatórios
-    path('relatorios/', views_templates.home_relatorios, name='home_relatorios'),
+    path('relatorios/', views_templates.dashboard_completo, name='home_relatorios'),
     path('relatorio/aluno/grafico/', views_templates.relatorio_grafico_mensal_aluno, name='relatorio_grafico_mensal_aluno'),
     path('relatorio/aluno/export_excel/', views_templates.exportar_frequencia_mensal_aluno_excel, name='exportar_frequencia_mensal_aluno_excel'),
     path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),

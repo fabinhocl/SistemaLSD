@@ -11,10 +11,25 @@ Detalhes da Turma - {{ turma.nome }}
     <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
     <p><strong>Turno:</strong> {{ turma.turno }}</p>
 
-    <h2 class="mt-4">Alunos da Turma</h2>
+    <!-- DEBUG: Mostrar informações de permissão -->
+    {% if user.is_superuser %}
+    <div class="alert alert-warning">
+        <strong>DEBUG INFO:</strong><br>
+        Usuário: {{ user.username }}<br>
+        É coordenação: {{ is_coordenacao }}<br>
+        É educadora: {{ is_educadora }}<br>
+        Pode editar: {{ pode_editar }}<br>
+        Pode visualizar: {{ pode_visualizar }}<br>
+        Pode iniciar: {{ pode_iniciar }}<br>
+        Já tem frequência: {{ ja_tem_frequencia }}
+    </div>
+    {% endif %}
+
+    <h2 class="text-center mt-4">Alunos da Turma</h2>
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Inscrição</th>
                 <th>Nome</th>
                 <th>Data de nascimento</th>
                 <th>Ações</th>
@@ -23,6 +38,7 @@ Detalhes da Turma - {{ turma.nome }}
         <tbody>
             {% for aluno in turma.alunos.all %}
             <tr>
+                <td>{{ aluno.family.registration_number }}</td>
                 <td>{{ aluno.name }}</td>
                 <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
                 <td>
@@ -38,9 +54,40 @@ Detalhes da Turma - {{ turma.nome }}
             {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'iniciar_chamada_turma' turma.id %}" class="btn btn-success">Iniciar Frequência</a>
-    <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
-    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
-    <a href="{% url 'turma_list' %}" class="btn btn-secondary ms-2">Voltar à lista de turmas</a>
+      <!-- BOTÕES DE FREQUÊNCIA -->
+    <div class="mt-4">
+        {% if ja_tem_frequencia %}
+            <!-- Já existe frequência hoje -->
+            <div class="alert alert-info">
+                Frequência de hoje já foi iniciada.
+            </div>
+            
+            {% if pode_editar %}
+                <!-- Coordenação pode editar -->
+                <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Editar Frequência de Hoje
+                </a>
+            {% endif %}
+            
+            {% if pode_visualizar %}
+                <!-- Educadora e Coordenação podem visualizar -->
+                <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
+                    <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
+                </a>
+            {% endif %}
+            
+        {% else %}
+            <!-- Não existe frequência hoje - pode iniciar -->
+            {% if pode_iniciar %}
+            <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
+                <i class="fas fa-play"></i> Iniciar Frequência
+            </a>
+            {% endif %}
+        {% endif %}
+        
+        <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
+        <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
+        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar à lista de turmas</a>
+    </div>
 </div>
 {% endblock %}

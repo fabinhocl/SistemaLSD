@@ -46,17 +46,17 @@
 <h3>Frequência por Turma (Últimos 7 dias)</h3>
 <table class="table table-striped">
     <thead>
-        <tr>
+        <tr class="text-center" >
             <th>Turma</th>
-            <th>Alunos Matriculados</th>
+            <th>Alunos Inseridos</th>
             <th>Média de Presença</th>
             <th>Ações</th>
         </tr>
     </thead>
     <tbody>
         {% for turma in turmas_com_frequencia %}
-        <tr>
-            <td>{{ turma.faixa_etaria }}</td>
+        <tr class="text-center">
+            <td>{{ turma.educadora.first_name }} - {{ turma.faixa_etaria }}</td>
             <td>{{ turma.total_alunos }}</td>
             <td>{{ turma.media_presenca|floatformat:1 }}%</td>
             <td>
@@ -70,7 +70,7 @@
 <h3>Frequência por Atividades (Últimos 7 dias)</h3>
 <table class="table table-striped">
     <thead>
-        <tr>
+        <tr class="text-center">
             <th>Atividades</th>
             <th>Facilitador</th>
             <th>Alunos Matriculados</th>
@@ -79,21 +79,24 @@
         </tr>
     </thead>
     <tbody>
-        {% for atividades in atividades_com_frequencia %}
-        <tr>
-            <td>{{ atividades.atividade }}</td>
-            <td>{{ atividades.facilitador }}</td>
-            <td>{{ atividades.total_alunos }}</td>
-            <td>{{ atividades.media_presenca|floatformat:1 }}%</td>
-            <td>
-                <a href="{% url 'activity_detail' atividades.pk %}" class="btn btn-sm btn-info">Ver Detalhes</a>
-            </td>
-        </tr>
+        {% for atividade in atividades_com_frequencia %}
+    <tr class="text-center">
+        <td>{{ atividade.atividade }}</td>
+        <td>{{ atividade.facilitador.first_name }}</td>
+        <td>{{ atividade.total_alunos }}</td>
+        <td>{{ atividade.media_presenca }}%</td>
+        <td>
+            <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-info">Ver Detalhes</a>
+        </td>
+    </tr>
+        {% empty %}
+            <tr><td colspan="5">Nenhuma atividade registrada nos últimos 7 dias.</td></tr>
         {% endfor %}
     </tbody>
 </table>
 <div class="no-print">
     <a href="{% url 'home' %}" class="btn btn-secondary">Voltar ao Início</a>
+    <a href="{% url 'home_relatorios' %}" class="btn btn-primary">Voltar Relatórios</a>
     <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
 </div>
 {% endblock %}

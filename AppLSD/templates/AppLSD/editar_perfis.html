@@ -5,10 +5,12 @@
     <h3>Perfis do usuário: {{ usuario.username }}</h3>
     {% for tipo in tipos_perfil %}
     <div>
-        <input type="checkbox" name="tipos_perfil" value="{{ tipo }}"
-        {% if usuario.perfis.filter(tipo=tipo).exists %}checked{% endif %}> {{ tipo|title }}
+        <input type="checkbox" name="tipos_perfil" value="{{ tipo }}" id="perfil_{{ tipo }}"
+        {% if tipo in perfis_do_usuario %}checked{% endif %}>
+            <label for="perfil_{{ tipo }}">{{ tipo|title }}</label>
     </div>
     {% endfor %}
     <button type="submit">Salvar</button>
+    <a href="{% url 'usuarios_gerenciar' %}">Voltar</a>
 </form>
 {% endblock %}

@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
@@ -31,6 +32,7 @@ class Family(models.Model):
     sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
     cep = models.CharField("CEP", max_length=9, blank=False, null=True)
     address = models.CharField(max_length=300, blank=False, null=True)
+    number = models.CharField(max_length=10, default="S/N", blank=True, null=True)
     neighborhood = models.CharField(max_length=100, default="Não informado")
     reference_point = models.CharField(max_length=200, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
@@ -321,27 +323,45 @@ class Activity(models.Model):
 class PerfilUsuario(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='perfis')
     #nivel_permissao = models.CharField(max_length=50)
-    tipo = models.CharField(max_length=20, choices=[
-        ('admin', 'Admin'),
-        ('coordenação', 'Coordenação'),
-        ('supervisor', 'Supervisor'),
-        ('educadora', 'Educadora'),
-        ('facilitador', 'Facilitador(a)'),
-        ('administrativo', 'Administrativo'),
-        ('diretoria', 'Diretoria'),
-        ('colaborador', 'Colaborador'),
-    ])
+    tipo_perfil = models.CharField(max_length=20, default='colaborador', 
+        choices=[
+            ('admin', 'Admin'),
+            ('coordenacao', 'Coordenação'),
+            ('servicosocial', 'Serviço Social'),
+            ('educadora', 'Educadora'),
+            ('facilitador', 'Facilitador(a)'),
+            ('administrativo', 'Administrativo'),
+            ('diretoria', 'Diretoria'),
+            ('colaborador', 'Colaborador'),
+            ('financeiro', 'Financeiro'),
+            ('nutricao', 'Nutrição'),
+        ]
+    )
+    def __str__(self):
+        return f"{self.user.username} - {self.get_tipo_perfil_display()}"
+    
+    class Meta:
+        verbose_name = 'Perfil de Usuário'
+        verbose_name_plural = 'Perfis de Usuários'
 
 # Criar Perfil automaticamente ao criar User
 @receiver(post_save, sender=User)
 def criar_perfil_usuario(sender, instance, created, **kwargs):
-    if created:
-       PerfilUsuario.objects.create(user=instance)
+    if created and not PerfilUsuario.objects.filter(user=instance, tipo_perfil='colaborador').exists():
+        PerfilUsuario.objects.create(user=instance, tipo_perfil='colaborador')
 
 @receiver(post_save, sender=User)
 def salvar_perfil_usuario(sender, instance, **kwargs):
     if hasattr(instance, 'perfilusuario'):
         instance.perfis.all()
+    
+def cadastrar_educadora(request):
+    if request.method == "POST":
+        # ... criar user/usuario ...
+        # Antes de adicionar perfil:
+        PerfilUsuario.objects.filter(user=usuario, tipo_perfil='colaborador').delete()
+        PerfilUsuario.objects.create(user=usuario, tipo_perfil='educadora')
+
 
 
 class FrequenciaTurma(models.Model):
@@ -349,6 +369,12 @@ class FrequenciaTurma(models.Model):
     turma = models.ForeignKey('Turma', on_delete=models.CASCADE, null=True, blank=True)
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)  # True: presente, False: falta
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='frequencias_turma_criadas')
 
     def __str__(self):
         return f"{self.aluno} - {self.turma} - {self.data} - {'Presente' if self.presente else 'Falta'}"
@@ -361,6 +387,12 @@ class FrequenciaAtividade(models.Model):
     atividade = models.ForeignKey('Activity', on_delete=models.CASCADE, null=True, blank=True)
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='frequencias_atividade_criadas')
 
     def __str__(self):
         return f"{self.aluno} - {self.atividade} - {self.data} - {'Presente' if self.presente else 'Falta'}"

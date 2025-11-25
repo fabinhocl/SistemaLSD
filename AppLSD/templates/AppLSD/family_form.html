@@ -42,10 +42,11 @@
                     <label for="id_cep">CEP</label>
                     <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" value="{{ form.initial.cep }}" />
                 </div>
-                <div class="col-md-9">
+                <div class="col-md-6">
                     <label for="id_address">Endereço</label>
                     <input type="text" id="id_address" name="address" class="form-control" value="{{ form.initial.address }}" />
                 </div>
+                <div class="col-md-3">{{ form.number|as_crispy_field }}</div>
             </div>
 
             <!-- Linha 5 -->

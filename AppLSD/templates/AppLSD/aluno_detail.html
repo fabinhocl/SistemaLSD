@@ -84,7 +84,7 @@
     <tbody>
         {% for activity in aluno.atividades.all %}
             <tr>
-                <td>{{ activity.descricao }}</td>
+                <td>{{ activity.atividade }}</td>
                 <td>
                     {% if activity.turno %}
                         {{ activity.turno }}

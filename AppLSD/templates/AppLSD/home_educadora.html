@@ -4,18 +4,16 @@
 {% block title %}Minhas Turmas{% endblock %}
 
 {% block content %}
-<div class="print-logo" style="text-align:left; margin-bottom:5px;">
-    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
-</div>
 
-<h2>Turmas da Educadora {{ user.get_full_name }}</h2>
+
+<h2 class="justify-content-center">Turmas da Educadora {{ user.get_full_name }}</h2>
 
 <div class="row">
     {% for turma in turmas %}
     <div class="col-md-6 mb-3">
         <div class="card">
-            <div class="card-header">
-                <h5>{{ turma.faixa_etaria }}</h5>
+            <div class="card-header" style="background-color: #f8f9fa;">
+                <h5>{{ turma.faixa_etaria }} - {{ turma.turno }}</h5>
             </div>
             <div class="card-body">
                 <p><strong>Total de alunos:</strong> {{ turma.alunos.count }}</p>

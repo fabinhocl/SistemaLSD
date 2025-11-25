@@ -4,45 +4,85 @@
 {% block title %}Relatórios de Frequência{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Turmas</h2>
-<div class="row">
-    {% for turma in turmas %}
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">{{ turma.sala }}</h5>
-                <a href="{% url 'relatorio_presenca_turma' turma.id %}" class="btn btn-primary">Ver Relatório</a>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
+    <h2 class="text-center">Frequência - Resumo</h2>
 
-<h2 class="mb-4 mt-5">Atividades</h2>
-<div class="row">
-    {% for atividade in atividades %}
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">{{ atividade.descricao }}</h5>
-                <a href="{% url 'relatorio_presenca_activity' atividade.id %}" class="btn btn-primary">Ver Relatório</a>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ total_alunos }}</h3>
+                    <p>Total de Alunos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ presentes_hoje }}</h3>
+                    <p>Presentes Hoje</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-danger">{{ faltas_hoje }}</h3>
+                    <p>Faltas Hoje</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ turmas_ativas }}</h3>
+                    <p>Turmas Ativas</p>
+                </div>
             </div>
         </div>
     </div>
-    {% endfor %}
-</div>
 
-<h3 class="mt-4">Relatório Mensal do Aluno</h3>
-<div class="row">
-    <div class="col-md-4 mb-3">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <a href="{% url 'relatorio_mensal_aluno' %}" class="btn btn-primary w-100">Ver Relatório Mensal</a>
+    <h2 class="text-center mb-4">Turmas</h2>
+    <div class="row">
+        {% for turma in turmas %}
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="text-center card-title">{{ turma.educadora.first_name }} - {{ turma.sala }}</h5>
+                    <h5 class="text-center card-title">{{ turma.turno }}</h5>
+                    <div class="d-flex justify-content-center"><a href="{% url 'relatorio_presenca_turma' turma.id %}" class="text-center btn btn-primary">Ver Relatório</a></div>
+                </div>
             </div>
-            
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2 class="mb-4 mt-5">Atividades</h2>
+    <div class="row">
+        {% for atividade in atividades %}
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="text-center card-title">{{ atividade.atividade }} - {{ atividade.facilitador.first_name }}</h5>
+                    <h5 class="text-center card-title">{{ atividade.turno }}</h5>
+                    <div class="d-flex justify-content-center"><a href="{% url 'relatorio_presenca_activity' atividade.id %}" class="text-center btn btn-primary">Ver Relatório</a></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h3 class="mt-4">Relatório Mensal do Aluno</h3>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <a href="{% url 'relatorio_mensal_aluno' %}" class="btn btn-primary w-100">Ver Relatório Mensal</a>
+                </div>
+                
+            </div>
         </div>
     </div>
-</div>
-    <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
+        <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
+        <a href="{% url 'dashboard_presenca' %}" class="btn btn-primary">Dashboard Turmas</a>
 
 {% endblock %}

@@ -23,7 +23,7 @@
         <td>{{ usuario.email }}</td>
         <td>
             {% for perfil in usuario.perfis.all %}
-                <span class="badge bg-info">{{ perfil.tipo }}</span>
+                <span class="badge bg-info">{{ perfil.tipo_perfil }}</span>
             {% endfor %}
         </td>
         <td>

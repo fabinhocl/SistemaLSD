@@ -1,4 +1,9 @@
 {% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    Editar Usuário
+{% endblock %}
 {% block content %}
 <h2>Editar Usuário: {{ usuario.username }}</h2>
 <form method="post">{% csrf_token %}
@@ -8,9 +13,12 @@
     <input type="email" name="email" value="{{ usuario.email }}"><br>
     <label>Perfis:</label><br>
     <div class="btn-group" role="group" aria-label="Perfis" style="margin-bottom:10px;">
-        {% for tipo in tipos_perfil %}
-            <input type="checkbox" class="btn-check" id="perfil_{{ tipo }}" name="tipos_perfil" value="{{ tipo }}"
-            {% if tipo in perfis_do_usuario %}checked{% endif %} autocomplete="off">
+        {% for tipo in tipo_perfil_choices %}
+            <input type="checkbox" class="btn-check"
+                   name="tipo_perfil"
+                   value="{{ tipo }}"
+                   id="perfil_{{ tipo }}"
+                   {% if tipo in perfis_do_usuario %}checked{% endif %}>
             <label class="btn btn-outline-secondary" for="perfil_{{ tipo }}">{{ tipo|title }}</label>
         {% endfor %}
     </div>

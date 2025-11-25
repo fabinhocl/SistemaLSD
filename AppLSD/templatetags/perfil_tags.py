@@ -4,12 +4,11 @@ from django import template
 register = template.Library()
 
 @register.filter
-def has_perfil(user, tipo):
+def has_perfil(user, tipo_perfil):
     """
     Uso: {% if user|has_perfil:"admin" %}
     """
-    return hasattr(user, 'perfis') and user.perfis.filter(tipo=tipo).exists()
-
+    return hasattr(user, 'perfis') and user.perfis.filter(tipo_perfil=tipo_perfil).exists()
 """@register.filter
 def perfil_count(user, tipo):
     """

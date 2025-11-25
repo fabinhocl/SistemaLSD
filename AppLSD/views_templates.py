@@ -1,21 +1,23 @@
+from pyexpat.errors import messages
 from dal import autocomplete
-from .models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario
+from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario
+from .utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil # ✅ Importar as funções
+from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
 from django import forms
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse 
 from django.db.models import Count, Q, Avg, Value, CharField
 from django.forms.models import inlineformset_factory
-from datetime import date
+from datetime import date, timedelta
 from .permissoes import require_perfil
-from .utils import usuario_tem_perfil
-from AppLSD.templatetags.perfil_tags import has_perfil
 # Concatena e ordena por data
 from itertools import chain
 from operator import itemgetter
@@ -63,13 +65,13 @@ def view_admin(request):
 
 @require_perfil('educadora')
 def registrar_frequencia(request, turma_id):
-    perfil = request.user.perfis.get(tipo='educadora')
+    perfil = request.user.perfis.get(tipo_perfil='educadora')
     turma = get_object_or_404(Turma, id=turma_id, educadora=perfil)
     # Resto da lógica
 
 @require_perfil('facilitador')
 def registrar_frequencia(request, turma_id):
-    perfil = request.user.perfis.get(tipo='facilitador')
+    perfil = request.user.perfis.get(tipo_perfil='facilitador')
     turma = get_object_or_404(Turma, id=turma_id, facilitador=perfil)
     # Resto da lógica
 
@@ -85,13 +87,14 @@ def dashboard_diretoria(request):
 
 @require_perfil('admin')
 def usuarios_gerenciar(request):
-     # Lista todos os usuários do sistema, com seus perfis associados
+    # Lista todos os usuários do sistema, com seus perfis associados
     termo = request.GET.get("busca", "")
     usuarios = User.objects.all().prefetch_related('perfis')
     if termo:
         usuarios = usuarios.filter(username__icontains=termo) | usuarios.filter(first_name__icontains=termo)
+
+    # processamento POST igual ao seu código
     if request.method == "POST":
-        # Exemplo: desativar usuário
         user_id = request.POST.get("desativar_id")
         if user_id:
             usuario = get_object_or_404(User, id=user_id)
@@ -105,50 +108,65 @@ def usuarios_gerenciar(request):
             usuario.save()
             return redirect('usuarios_gerenciar')
 
-    # Você pode adicionar filtros por busca, etc.
+    # Lista de tipos de perfil a partir do model
+    from AppLSD.models import PerfilUsuario
+    tipos_perfil = [tp[0] for tp in PerfilUsuario._meta.get_field('tipo_perfil').choices]
+
+    # Se estiver mostrando perfis de um único usuário (por exemplo, ao editar), passe assim:
+    perfis_do_usuario = []
+    usuario_id = request.GET.get("usuario_id")  # exemplo para edição de um usuário
+    if usuario_id:
+        usuario = get_object_or_404(User, id=usuario_id)
+        perfis_por_usuario = {usuario.id: [perfil.tipo_perfil for perfil in usuario.perfis.all()]
+        for usuario in usuarios
+}
+    # Caso contrário, pode passar vazio ou lista para cada usuário no contexto conforme sua lógica/template
+
     return render(request, 'AppLSD/usuarios_gerenciar.html', {
         "usuarios": usuarios,
+        "tipos_perfil": tipos_perfil,
+        "perfis_do_usuario": perfis_do_usuario,
     })
-    
+
 
 
 @require_perfil('admin')
 def editar_perfis_usuario(request, usuario_id):
     usuario = User.objects.get(id=usuario_id)
-    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
+    tipo_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "servico social", "financeiro", "nutricao"]
     if request.method == "POST":
-        novos_perfis = request.POST.getlist('tipos_perfil')
+        novos_perfis = request.POST.getlist('tipo_perfil')
         # Remove perfis não marcados
-        usuario.perfis.exclude(tipo__in=novos_perfis).delete()
+        usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
         # Adiciona os novos perfis
         for tipo in novos_perfis:
-            if not usuario.perfis.filter(tipo=tipo).exists():
-                PerfilUsuario.objects.create(user=usuario, tipo=tipo)
+            if not usuario.perfis.filter(tipo_perfil=tipo).exists():
+                PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
         return redirect('usuarios_gerenciar')
-    return render(request, 'AppLSD/editar_perfis.html', {"usuario": usuario, "tipos_perfil": tipos_perfil})
+    return render(request, 'AppLSD/editar_perfis.html', {"usuario": usuario, "tipo_perfil": tipo_perfil})
 
 @require_perfil('admin')
 def editar_usuario(request, usuario_id):
     usuario = get_object_or_404(User, id=usuario_id)
-    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
-    perfis_do_usuario = list(usuario.perfis.values_list('tipo', flat=True))
+    tipo_perfil_choices = [tp[0] for tp in PerfilUsuario._meta.get_field('tipo_perfil').choices]
+    perfis_do_usuario = list(usuario.perfis.values_list('tipo_perfil', flat=True))
     if request.method == "POST":
         usuario.first_name = request.POST.get('nome')
         usuario.email = request.POST.get('email')
         usuario.is_active = True if request.POST.get('is_active') == 'on' else False
         usuario.save()
         # Atualiza perfis
-        novos_perfis = request.POST.getlist('tipos_perfil')
+        novos_perfis = request.POST.getlist('tipo_perfil')
         # Remove perfis não marcados
-        usuario.perfis.exclude(tipo__in=novos_perfis).delete()
+        usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
         # Adiciona perfis marcados
         for tipo in novos_perfis:
            if tipo not in perfis_do_usuario:
-                PerfilUsuario.objects.create(user=usuario, tipo=tipo)
+                PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
         return redirect('usuarios_gerenciar')
     return render(request, 'AppLSD/editar_usuario.html', {
         'usuario': usuario,
-        'tipos_perfil': tipos_perfil,
+        'tipo_perfil_choices': tipo_perfil_choices,  # sempre use o nome claro!   
         'perfis_do_usuario': perfis_do_usuario,
     })
 
@@ -164,7 +182,7 @@ def resetar_senha_usuario(request, usuario_id):
 
 @require_perfil('admin')
 def cadastrar_usuario(request):
-    tipos_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "supervisor"]
+    tipo_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "servico social", "financeiro", "nutricao"]
     if request.method == 'POST':
         form = UsuarioForm(request.POST)
         if form.is_valid():
@@ -172,11 +190,11 @@ def cadastrar_usuario(request):
             # Perfis enviados como lista
             perfis = request.POST.getlist("perfis")
             for perfil in perfis:
-                PerfilUsuario.objects.create(user=user, tipo=perfil)
+                PerfilUsuario.objects.create(user=user, tipo_perfil=perfil)
             return redirect('usuarios_gerenciar')
     else:
         form = UsuarioForm()
-    return render(request, 'AppLSD/cadastrar_usuario.html', {"form": form, "tipos_perfil": tipos_perfil})
+    return render(request, 'AppLSD/cadastrar_usuario.html', {"form": form, "tipo_perfil": tipo_perfil})
 
 @login_required
 def home(request):
@@ -195,6 +213,9 @@ def home(request):
         "usuario_dir": usuario_tem_perfil(request.user, "diretoria"),
         "usuario_adm": usuario_tem_perfil(request.user, "administrativo"),
         "usuario_colab": usuario_tem_perfil(request.user, "colaborador"),
+        "usuario_finan": usuario_tem_perfil(request.user, "financeiro"),
+        "usuario_nutri": usuario_tem_perfil(request.user, "nutricao"),
+
     })
    
 def remove_accents(text):
@@ -213,10 +234,105 @@ def home_facilitador(request):
     facilitador_atividades = Activity.objects.filter(facilitador=request.user)
     return render(request, 'AppLSD/home_facilitador.html', {'atividades': facilitador_atividades})
 
+#Mesclagem das views de dashboard de presença e relatórios
+@login_required
+def dashboard_completo(request):
+    """
+    View combinada do Dashboard de Presença e Relatórios
+    """
+    today = timezone.now().date()
+    
+    # ===== DASHBOARD DE PRESENÇA =====
+    
+    # Total de alunos ativos
+    total_alunos = Aluno.objects.count()
+    
+    # Presentes hoje - contar FrequenciaAluno com presente=True
+    presentes_hoje = FrequenciaAluno.objects.filter(
+        chamada__data=today,
+        presente=True
+    ).count()
+    
+    # Faltas hoje - contar FrequenciaAluno com presente=False
+    faltas_hoje = FrequenciaAluno.objects.filter(
+        chamada__data=today,
+        presente=False
+    ).count()
+    
+    # Turmas ativas (ajuste o filtro conforme seu modelo)
+    turmas_ativas = Turma.objects.count()
+    # Se não tiver campo is_active, use: turmas_ativas = Turma.objects.count()
+    
+    # ===== RELATÓRIOS =====
+    
+    # Buscar turmas para os relatórios (ajuste conforme necessário)
+    turmas = Turma.objects.all()
+    
+  
+    
+    # Frequência por turma
+    turmas_com_frequencia = []
+    for turma in Turma.objects.annotate(total_alunos=Count('alunos')):
+        if turma.total_alunos > 0:
+            media_presenca = FrequenciaAluno.objects.filter(
+                aluno__turma=turma,
+                chamada__data__gte=today - timezone.timedelta(days=7)
+            ).aggregate(Avg('presente'))['presente__avg'] or 0
+            
+            turma.media_presenca = media_presenca * 100
+            turmas_com_frequencia.append(turma)
+      
+  # Se você tem atividades, inclua também
+    atividades_ativas = Activity.objects.count()
+    atividades = Activity.objects.all()
+    
+    # Frequência por Atividade
+    atividades_com_frequencia = []
+    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')):
+        if atividade.total_alunos > 0:
+            media_presenca = FrequenciaAluno.objects.filter(
+                aluno__atividades=atividade,
+                chamada__data__gte=today - timezone.timedelta(days=7)
+            ).aggregate(Avg('presente'))['presente__avg'] or 0
+                
+            atividade.media_presenca = media_presenca * 100
+            atividades_com_frequencia.append(atividade)
+
+    #relatório de turmas e atividades
+    turmas = Turma.objects.all()
+    atividades = Activity.objects.all()
+    alunos = Aluno.objects.all()  # Incluído para o relatório de aluno
+    
+    # ===== CONTEXTO =====
+    
+    context = {
+        # Dados do Dashboard de Presença
+        'total_alunos': total_alunos,
+        'presentes_hoje': presentes_hoje,
+        'faltas_hoje': faltas_hoje,
+        'turmas_ativas': turmas_ativas,
+        'atividades_ativas': atividades_ativas,
+        'turmas_com_frequencia': turmas_com_frequencia,
+        'atividades_com_frequencia': atividades_com_frequencia,
+        #Dados do relatório
+        'turmas': turmas,
+        'atividades': atividades,
+        'alunos': alunos,
+       
+        # 'atividades': atividades,  # Se você tiver atividades
+    }
+    
+    return render(request, 'AppLSD/home_relatorios.html', context)
+    
+    
+        
+   
+
+#Tela para Educadora e Facilitador
 @login_required
 def dashboard_presenca(request):
     hoje = timezone.now().date()
-    
+    semana = hoje - timedelta(days=7)
     total_alunos = Aluno.objects.count()
     presentes_hoje = FrequenciaAluno.objects.filter(
         chamada__data=hoje, presente=True
@@ -225,7 +341,6 @@ def dashboard_presenca(request):
         chamada__data=hoje, presente=False
     ).count()
     turmas_ativas = Turma.objects.filter(alunos__isnull=False).distinct().count()
-    atividades_ativas = Activity.objects.filter(alunos__isnull=False).distinct().count()
     
     # Frequência por turma
     turmas_com_frequencia = []
@@ -238,30 +353,41 @@ def dashboard_presenca(request):
             
             turma.media_presenca = media_presenca * 100
             turmas_com_frequencia.append(turma)
-      
-
- # Frequência por Atividade
-    atividades_com_frequencia = []
-    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')):
-        if atividade.total_alunos > 0:
-            media_presenca = FrequenciaAluno.objects.filter(
-                aluno__atividades=atividade,
-                chamada__data__gte=hoje - timezone.timedelta(days=7)
-            ).aggregate(Avg('presente'))['presente__avg'] or 0
-            
-            atividade.media_presenca = media_presenca * 100
-            atividades_com_frequencia.append(atividade)
     
+    # IDs das atividades com presenças registradas nos últimos 7 dias
+    atividades_ids = FrequenciaAtividade.objects.filter(
+        data__gte=semana
+    ).values_list('atividade_id', flat=True).distinct()
+
+    atividades_com_frequencia = []
+    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')).filter(id__in=atividades_ids):
+        if atividade.total_alunos > 0:
+            # Conta o número de presenças nos últimos 7 dias
+            presencas = FrequenciaAtividade.objects.filter(
+                atividade=atividade,
+                data__gte=semana,
+                presente=True
+            ).count()
+            media = (presencas / atividade.total_alunos * 100) if atividade.total_alunos else 0
+            atividade.media_presenca = round(media, 1)
+            atividades_com_frequencia.append(atividade)
+
+    # ...demais contextos e return...
     
     return render(request, 'AppLSD/dashboard_presenca.html', {
+        # Dados do Dashboard de Presença
         'total_alunos': total_alunos,
         'presentes_hoje': presentes_hoje,
         'faltas_hoje': faltas_hoje,
         'turmas_ativas': turmas_ativas,
+        #'atividades_ativas': atividades_ativas,
         'turmas_com_frequencia': turmas_com_frequencia,
-        'atividades_com_frequencia': atividades_com_frequencia
+        'atividades_com_frequencia': atividades_com_frequencia,
+        #Dados do relatório
+        #'turmas': turmas,
+        #'atividades': atividades,
+        #'alunos': alunos,
     })
-
 
 @login_required
 def family_detail(request, pk):
@@ -512,8 +638,105 @@ def aluno_delete_confirm(request, pk):
 
 @login_required
 def turma_detail(request, turma_id):
-    turma = get_object_or_404(Turma, pk=turma_id)
-    return render(request, 'AppLSD/turma_detail.html', {'turma': turma})
+    """
+    Exibe detalhes da turma com verificação de frequência do dia
+    """
+    turma = get_object_or_404(Turma, id=turma_id)
+    alunos = Aluno.objects.filter(turma=turma)
+    today = timezone.now().date()
+     # Verificar se já existe frequência para hoje
+    frequencia_hoje = FrequenciaTurma.objects.filter(
+        turma=turma,
+        data=today
+    ).first()
+   # Verificar grupos do usuário =====
+    user = request.user
+    tipo_perfil = None
+
+     # Buscar o perfil do usuário (pode ter múltiplos perfis)
+    perfis = user.perfis.all()
+    
+    if perfis.exists():
+        # Pegar o primeiro perfil (ou você pode implementar lógica para múltiplos)
+        tipo_perfil = perfis.first().tipo_perfil
+    # DEBUG: 
+    print(f"===== DEBUG TURMA DETAIL =====")
+    print(f"Usuário: {user.username}")
+    print(f"Tipo de Perfil: {tipo_perfil}")
+    print(f"Todos os perfis: {list(perfis.values_list('tipo_perfil', flat=True))}")
+    print(f"É superuser: {user.is_superuser}")
+    
+    # Verificar permissão do usuário
+    is_coordenacao = (tipo_perfil == 'coordenacao') or user.is_superuser
+    is_educadora = (tipo_perfil == 'educadora')
+
+
+    print(f"is_coordenacao: {is_coordenacao}")
+    print(f"is_educadora: {is_educadora}")
+    print(f"Frequência hoje existe: {frequencia_hoje is not None}")
+    print(f"==============================\n")
+
+    
+    # Lógica de permissões
+    pode_editar = False
+    pode_visualizar = False
+    pode_iniciar = True
+    
+    if frequencia_hoje:
+        # Já existe frequência hoje
+        pode_iniciar = False
+
+        if is_coordenacao:
+            pode_editar = True
+            pode_visualizar = True
+        elif is_educadora:
+            pode_visualizar = True
+            pode_editar = False  # Educadora não pode editar depois de criar
+        else:
+            # Não existe frequência - qualquer um pode iniciar
+            pode_iniciar = True
+    
+    context = {
+        'turma': turma,
+        'alunos': alunos,
+        'frequencia_hoje': frequencia_hoje,
+        'ja_tem_frequencia': frequencia_hoje is not None,
+        'pode_editar': pode_editar,
+        'pode_visualizar': pode_visualizar,
+        'pode_iniciar': pode_iniciar,
+        'is_coordenacao': is_coordenacao,
+        'is_educadora': is_educadora,
+    }
+    return render(request, 'AppLSD/turma_detail.html', context)
+
+def get_tipo_perfil(user):
+    """
+    Retorna o tipo de perfil do usuário
+    """
+    if user.is_superuser:
+        return 'admin'
+    
+    perfis = user.perfis.all()
+    if perfis.exists():
+        return perfis.first().tipo_perfil
+    
+    return None
+
+"""
+def is_coordenacao(user):
+    
+    #Verifica se o usuário é coordenação
+        tipo_perfil = get_tipo_perfil(user)
+    return tipo_perfil == 'coordenacao' or user.is_superuser
+"""
+
+def is_educadora(user):
+    """
+    Verifica se o usuário é educadora   
+    """
+    tipo_perfil = get_tipo_perfil(user)
+    return tipo_perfil == 'educadora'
+
 
 def turma_list(request):
     class_list = Turma.objects.all().order_by('educadora', 'sala', 'turno')
@@ -551,25 +774,113 @@ def turma_delete(request, pk):
     return render(request, 'AppLSD/turma_confirm_delete.html', {'turma': turma})
 
 @login_required
-def iniciar_chamada_turma(request, turma_id):
-    turma = Turma.objects.get(id=turma_id)
-    alunos = Aluno.objects.filter(turma=turma)
-    data_chamada = request.POST.get('data', date.today())
+def iniciar_frequencia_turma(request, turma_id):
+    """
+    Inicia uma nova frequência para a turma.
+    Educadora registra frequência se não existe, senão apenas visualiza.
+    """
+    turma = get_object_or_404(Turma, id=turma_id)
+    today = timezone.now().date()
 
+    # Verificar se já existe frequência hoje
+    frequencia_existente = FrequenciaTurma.objects.filter(
+        turma=turma,
+        data=today
+    ).first()
+
+    if frequencia_existente:
+        messages.warning(request, 'Já existe uma frequência registrada para hoje!')
+        # Redireciona para VISUALIZAÇÃO da frequência existente
+        return redirect('frequencia_visualizar', frequencia_id=frequencia_existente.id)
+
+    # Criar nova chamada
+    chamada = FrequenciaTurma.objects.create(
+        turma=turma,
+        data=today,
+        criado_por=request.user  # Se você tiver esse campo
+    )
+
+    # Redireciona para REGISTRO da nova frequência (educadora marca presença/falta)
+    return redirect('frequencia_turma_iniciar', turma_id=turma.id)
+
+    
+    # Redirecionar para página de registro de presença
+    #return redirect('frequencia_turma_iniciar', turma_id=chamada.turma.id)
+
+def visualizar_frequencia_turma(request, frequencia_id):
+    """
+    Visualiza a frequência em modo somente leitura
+    """
+    chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
+    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
+    
+    # Buscar alunos da turma
+    alunos_turma = Aluno.objects.filter(turma=chamada.turma)
+    
+    # Verificar permissão
+    is_coordenadora = request.user.groups.filter(name='Coordenadora').exists() or request.user.is_superuser
+    
+    context = {
+        'chamada': chamada,
+        'presencas': presencas,
+        'alunos_turma': alunos_turma,
+        'modo_visualizacao': True,
+        'pode_editar': is_coordenadora,
+    }
+    
+    return render(request, 'AppLSD/frequencia_turma_visualizar.html', context)
+"""
+def is_coordenacao(user):
+    return user.groups.filter(name='Coordenacao').exists() or user.is_superuser
+"""
+
+@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
+def editar_frequencia_turma(request, frequencia_id):
+    """
+    Edita a frequência - apenas coordenadoras
+    """
+    chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
+    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
+    alunos_turma = Aluno.objects.filter(turma=chamada.turma)
+    
     if request.method == 'POST':
-        for aluno in alunos:
-            presente = bool(request.POST.get(f'presente_{aluno.id}'))
-            freq, created = FrequenciaTurma.objects.update_or_create(
-                aluno=aluno, turma=turma, data=data_chamada,
-                defaults={'presente': presente}
-            )
-        return render(request, 'AppLSD/sucesso_turma.html', {'turma': turma, 'data': data_chamada})
-
-    return render(request, 'AppLSD/turma_presenca.html', {
-        'turma': turma,
-        'alunos': alunos,
-        'data': request.POST.get('data') or date.today().isoformat()
-    })
+        # Processar alterações
+        for aluno in alunos_turma:
+            # Radio button: 'presente' ou 'falta'
+            presenca_status = request.POST.get(f'presenca_{aluno.id}')
+            presente = (presenca_status == 'presente')
+            motivo_falta = request.POST.get(f'motivo_falta_{aluno.id}', '')
+            
+            # Atualizar ou criar registro
+            try:
+        # Buscar registro existente
+                freq_aluno = FrequenciaAluno.objects.get(chamada=chamada, aluno=aluno)
+                freq_aluno.presente = presente
+                freq_aluno.motivo_falta = motivo_falta if not presente else ''
+                freq_aluno.save()
+            except FrequenciaAluno.DoesNotExist:
+                # Se não existe, cria novo registro
+                FrequenciaAluno.objects.create(
+                    chamada=chamada,
+                    aluno=aluno,
+                    presente=presente,
+                    motivo_falta=motivo_falta if not presente else ''
+                )
+        messages.success(request, 'Frequência atualizada com sucesso!')
+        return redirect('turma_detail', turma_id=chamada.turma.id)
+            
+    # Criar dicionário de presenças para facilitar no template
+    presencas_dict = {p.aluno.id: p for p in presencas}
+    
+    
+    context = {
+        'chamada': chamada,
+        'presencas': presencas_dict,
+        'alunos_turma': alunos_turma,
+        'modo_edicao': True,
+    }
+    
+    return render(request, 'AppLSD/frequencia_turma_editar.html', context)
 
 @login_required
 def activity_detail(request, activity_id):
@@ -747,24 +1058,31 @@ def relatorio_presenca_turma(request, turma_id, data=None):
     turma = Turma.objects.get(id=turma_id)
     alunos = Aluno.objects.filter(turma=turma)
 
-    # Primeiro verifica se há data passada por URL (GET)
+    # Busca data filtrada via URL (GET)
     data_get = request.GET.get('data')
     if data_get:
         data = data_get
 
+    chamada = None
+    presencas_dict = {}
     if data:
-        chamadas = FrequenciaTurma.objects.filter(turma=turma, data=data)
+        chamada = FrequenciaTurma.objects.filter(turma=turma, data=data).first()
     else:
-        chamada_recente = FrequenciaTurma.objects.filter(turma=turma).order_by('-data').first()
-        data = chamada_recente.data if chamada_recente else None
-        chamadas = FrequenciaTurma.objects.filter(turma=turma, data=data) if data else []
+        chamada = FrequenciaTurma.objects.filter(turma=turma).order_by('-data').first()
+        data = chamada.data if chamada else None
+
+    if chamada:
+        presencas = FrequenciaAluno.objects.filter(chamada=chamada)
+        presencas_dict = {p.aluno_id: p for p in presencas}
 
     return render(request, 'AppLSD/relatorio_presenca_turma.html', {
         'turma': turma,
         'alunos': alunos,
-        'chamadas': chamadas,
+        'chamada': chamada,
         'data': data,
+        'presencas_dict': presencas_dict,
     })
+
 
 @login_required
 def relatorio_presenca_activity(request, activity_id, data=None):
@@ -897,7 +1215,7 @@ def exportar_frequencia_mensal_aluno_excel(request):
     wb.save(response)
     return response
 
-
+""" 
 @login_required
 def home_relatorios(request):
     turmas = Turma.objects.all()
@@ -908,3 +1226,45 @@ def home_relatorios(request):
         'atividades': atividades,
         'alunos': alunos,
     })
+"""
+
+def registrar_faltas_automaticas(chamada):
+    """
+    Registra automaticamente como falta todos os alunos da turma
+    que não foram marcados como presentes na chamada.
+    
+    Args:
+        chamada: Objeto FrequenciaTurma
+    """
+        
+    # Buscar todos os alunos da turma
+    alunos_turma = Aluno.objects.filter(turma=chamada.turma)
+    
+    # Alunos que já têm registro nesta chamada
+    alunos_com_registro = FrequenciaAluno.objects.filter(
+        chamada=chamada
+    ).values_list('aluno_id', flat=True)
+    
+    # Alunos sem registro = faltaram
+    alunos_sem_registro = alunos_turma.exclude(id__in=alunos_com_registro)
+    
+    # Registrar as faltas
+    faltas_criadas = 0
+    for aluno in alunos_sem_registro:
+        FrequenciaAluno.objects.create(
+            chamada=chamada,
+            aluno=aluno,
+            presente=False
+        )
+        faltas_criadas += 1
+    
+    return faltas_criadas
+
+def finalizar_chamada(request, chamada_id):
+    chamada = FrequenciaTurma.objects.get(id=chamada_id)
+    
+    # Registrar faltas automaticamente
+    faltas_criadas = registrar_faltas_automaticas(chamada)
+    
+    messages.success(request, f"Chamada finalizada! {faltas_criadas} faltas registradas automaticamente.")
+    return redirect(request, 'AppLSD/home_relatorios.html')

@@ -1,9 +1,10 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
+{% load frequencia_filters %}
 {% block title %}Relatório - {{ turma.nome }}{% endblock %}
 {% block content %}
 
-<h3>Chamada da Turma: {{ turma.professor }} — Data: {{ data }}</h3>
+<h3>Chamada da Turma: {{ turma.educadora.first_name }} — Data: {{ data }}</h3>
 <form method="get" class="mb-3">
     <label for="data" class="form-label">Escolher Data:</label>
     <input type="date" id="data" name="data" value="{{ request.GET.data }}">
@@ -15,18 +16,38 @@
         <tr>
             <th>Aluno</th>
             <th>Situação</th>
+            <th>Motivo da Falta</th>
         </tr>
     </thead>
     <tbody>
-    {% for chamada in chamadas %}
+    {% for aluno in alunos %}
     <tr>
-        <td>{{ chamada.aluno.name }}</td>
-        <td>{% if chamada.presente %}Presente{% else %}Falta{% endif %}</td>
+        <td>{{ aluno.name }}</td>
+        <td>
+            {% with presenca=presencas_dict|get_item:aluno.id %}
+                {% if presenca %}
+                    {% if presenca.presente %}
+                        Presente
+                    {% else %}
+                        Falta
+                    {% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            {% endwith %}
+        </td>
+        <td>
+            {% if presencas_dict.aluno.id and not presencas_dict.aluno.id.presente %}
+                {{ presencas_dict.aluno.id.motivo_falta|default:"-" }}
+            {% else %}
+                -
+            {% endif %}
+        </td>
     </tr>
     {% endfor %}
 </table>
 <div class="no-print">
-        <a href="{% url 'iniciar_chamada_turma' turma.id %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
+        <a href="{% url 'frequencia_visualizar' turma.id %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
         <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
         <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
