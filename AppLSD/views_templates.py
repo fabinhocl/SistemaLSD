@@ -780,28 +780,39 @@ def iniciar_frequencia_turma(request, turma_id):
     Educadora registra frequência se não existe, senão apenas visualiza.
     """
     turma = get_object_or_404(Turma, id=turma_id)
-    today = timezone.now().date()
+    hoje = timezone.now().date()
 
-    # Verificar se já existe frequência hoje
-    frequencia_existente = FrequenciaTurma.objects.filter(
+    # Busca ou cria a chamada do dia
+    chamada, created = FrequenciaTurma.objects.get_or_create(
         turma=turma,
-        data=today
-    ).first()
-
-    if frequencia_existente:
-        messages.warning(request, 'Já existe uma frequência registrada para hoje!')
-        # Redireciona para VISUALIZAÇÃO da frequência existente
-        return redirect('frequencia_visualizar', frequencia_id=frequencia_existente.id)
-
-    # Criar nova chamada
-    chamada = FrequenciaTurma.objects.create(
-        turma=turma,
-        data=today,
-        criado_por=request.user  # Se você tiver esse campo
+        data=hoje,
+        defaults={'criado_por': request.user}
     )
+    alunos = Aluno.objects.filter(turma=turma)
+    # Verificar se já existe frequência hoje
+    #frequencia_existente = FrequenciaTurma.objects.filter(turma=turma, data=timezone.now().date()).first()
 
-    # Redireciona para REGISTRO da nova frequência (educadora marca presença/falta)
-    return redirect('frequencia_turma_iniciar', turma_id=turma.id)
+    if request.method == "POST":
+        # processamento da presença
+        for aluno in alunos:
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+            
+            # Aqui é o ponto crítico: SEMPRE passar chamada=chamada
+            freq, created = FrequenciaAluno.objects.update_or_create(
+                chamada=chamada,
+                aluno=aluno,
+                defaults={'presente': presente, 'motivo_falta': motivo_falta if not presente else ''}
+            )
+        messages.success(request, 'Frequência registrada com sucesso!')
+        return redirect('frequencia_visualizar', frequencia_id=chamada.id)
+
+    # No GET, renderize o template de registro!
+    return render(request, 'AppLSD/frequencia_turma_iniciar.html', {
+        'turma': turma,
+        'alunos': alunos,
+        'chamada': chamada,
+    })
 
     
     # Redirecionar para página de registro de presença

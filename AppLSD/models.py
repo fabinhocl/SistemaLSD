@@ -367,6 +367,7 @@ def cadastrar_educadora(request):
 class FrequenciaTurma(models.Model):
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, null=True, blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.CASCADE, null=True, blank=True)
+    
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)  # True: presente, False: falta
     criado_por = models.ForeignKey(

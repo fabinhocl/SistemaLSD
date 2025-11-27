@@ -35,7 +35,7 @@
                         {% for aluno in alunos_turma %}
                         {% with presenca=presencas|filter_by_aluno:aluno.id %}
                         <tr>
-                            <td>{{ aluno.inscricao }}</td>
+                            <td>{{ presenca.aluno.family.registration_number }}</td>
                             <td>{{ aluno.name }}</td>
                             <td class="text-center">
                                 <div class="form-check form-check-inline">

@@ -2,11 +2,9 @@
 {% load static %}
 {% block title %}Presença - {{ turma.faixa_etaria }}{% endblock %}
 {% block content %}
-<div class="print-logo" style="text-align:left; margin-bottom:5px;">
-    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="40">
-</div>
 
-<h1>Turma: {{ turma.professor }} - {{ turma.sala }}</h1>
+
+<h1>Turma: {{ turma.educadora }} - {{ turma.faixa_etaria }} - {{ turma.sala }}</h1>
 <p><strong>Turno:</strong> {{ turma.turno }}</p>
 
 <form method="post">
@@ -22,14 +20,16 @@
             </tr>
         </thead>
         <tbody>
-            {% for aluno in turma.alunos.all %}
+            {% for aluno in alunos %}
             <tr>
                 <td>{{ aluno.name }}</td>
                 <td class="text-center">
-                    <input type="checkbox" name="presente_{{ aluno.pk }}" value="1" checked class="form-check-input">
+                    <input type="checkbox" name="presente_{{ aluno.id }}" {% if presencas_dict.aluno.id.presente %}checked{% endif %} value="1" checked class="form-check-input">
                 </td>
                 <td>
-                    <input type="text" name="motivo_{{ aluno.pk }}" class="form-control" placeholder="Motivo da falta (opcional)">
+                    <input type="text" name="motivo_{{ aluno.id }}" class="form-control" 
+                    placeholder="Motivo da falta (opcional)" 
+                    value="{% if presencas_dict.aluno.id and not presencas_dict.aluno.id.presente %}{{ presencas_dict.aluno.id.motivo_falta }}{% endif %}">
                 </td>
             </tr>
             {% empty %}
