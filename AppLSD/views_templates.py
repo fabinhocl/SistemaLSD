@@ -16,12 +16,16 @@ from django.utils import timezone
 from django.http import JsonResponse, HttpResponse 
 from django.db.models import Count, Q, Avg, Value, CharField
 from django.forms.models import inlineformset_factory
+from django.template.loader import render_to_string
 from datetime import date, timedelta
 from .permissoes import require_perfil
 # Concatena e ordena por data
 from itertools import chain
 from operator import itemgetter
 from openpyxl import Workbook
+import os
+os.environ['WEASYPRINT_DLL_DIRECTORIES'] = r"C:\Program Files\GTK3-Runtime Win64\bin"
+from weasyprint import HTML, CSS
 import plotly.graph_objs as go
 import plotly.offline as opy
 import io
@@ -389,6 +393,7 @@ def dashboard_presenca(request):
         #'alunos': alunos,
     })
 
+#Métódos Familia
 @login_required
 def family_detail(request, pk):
     family = get_object_or_404(Family, pk=pk)
@@ -493,6 +498,30 @@ def buscar_family(request):
         'registration_number': f.registration_number
     } for f in families]
     return JsonResponse(results, safe=False)
+
+# Gerar PDF do termo de responsabilidade da família
+def family_term_pdf(request, pk):
+    family = get_object_or_404(Family, pk=pk)
+    today = date.today()
+
+    context = {
+        'family': family,
+        'city': 'Maceió',
+        'today': today,
+        'day': today.day,
+        'month': today.strftime('%B'),   # ou em português manualmente
+        'year': today.year,
+    }
+
+    html_string = render_to_string('terms/family_term.html', context)
+    html = HTML(string=html_string, base_url=request.build_absolute_uri())
+    pdf_file = html.write_pdf()
+
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    # se quiser forçar download, use attachment:
+    response['Content-Disposition'] = f'filename="termo_familia_{family.id}.pdf"'
+
+    return response
 
 @login_required
 def adult_create(request):

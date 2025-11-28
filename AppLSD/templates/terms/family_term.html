@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Termo de Compromisso</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 2.5cm 3cm 2.5cm 3cm;  /* topo, direita, baixo, esquerda */
+    }
+
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 11pt;
+      line-height: 1.3;
+    }
+
+    h1 {
+      font-size: 12pt;
+      text-align: center;
+      margin: 0 0 18px 0;
+      font-weight: bold;
+    }
+
+    p {
+      text-align: justify;
+      margin: 0 0 8px 0;
+    }
+
+    ul {
+      margin: 0 0 0 18px;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 4px;
+      text-align: justify;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .campos-linha {
+      margin-bottom: 8px;
+    }
+
+    .lista-tiques {
+  margin: 0 0 0 16px;
+  padding: 0;
+  list-style: none;          /* remove o marcador padrão */
+}
+
+.lista-tiques li {
+  margin-bottom: 4px;
+  text-align: justify;
+}
+
+.lista-tiques li::before {
+  content: "✓";
+  margin-right: 6px;
+}
+
+.lista-bolinhas {
+  margin: 0 0 0 16px;
+  padding: 0;
+  list-style-type: disc;     /* bolinha padrão */
+}
+
+.lista-bolinhas li {
+  margin-bottom: 4px;
+  text-align: justify;
+}
+
+.cidade-data {
+  text-align: right;     /* como no termo original */
+  margin: 24px 60px 60px 0;  /* ajuste a gosto */
+}
+
+.assinatura {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.linha-assinatura {
+  border-top: 1px solid #000;
+  width: 60%;
+  margin: 0 auto 4px auto;
+}
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" style="height:60px;">
+  </div>
+
+
+  <h1 class="center">TERMO DE AUTORIZAÇÃO E COMPROMISSO JUNTO AO LAR SÃO DOMINGOS</h1>
+
+  <p class="campos-linha">
+    Eu, {{ family.responsible_name }}, residente na {{ family.address }}, nº {{ family.number }},
+    bairro {{ family.neighborhood }}, portador do CPF {{ family.cpf }}, telefone {{ family.telephone }},
+    declaro concordar com as regras e normas do Lar São Domingos para fazer parte da Instituição
+    e me comprometo a assumir os compromissos aqui elencados, ficando ciente, caso não as cumpra,
+    do meu desligamento pela referida casa:
+  </p>
+    <ul>
+<li class="lista-bolinhas"> Responsabilizar-me por danos causados ao patrimônio da Instituição devendo arcar com as responsabilidades financeiras e morais pertinentes ao caso;</li>
+<li class="lista-bolinhas"> Autorizar o uso de imagem da família, da criança e/ou do adolescente para fins de divulgação, apresentação de relatório das ações e atividades do Lar São Domingos, ficando concedida a título gratuito, abrangendo o uso da imagem acima mencionada em todo o território nacional e no exterior, sob qualquer  forma e meios de comunicação, sejam eles impresso, ou digitais e em toda e qualquer mídia; (     ) SIM   (     ) NÃO </li>
+<li class="lista-bolinhas"> Participar efetivamente das atividades ofertadas pela Instituição do Lar São Domingos, como: </li>
+<ul class="lista-tiques">
+<li class="lista-tiques"> As Reuniões gerais com as famílias;</li>
+<li class="lista-tiques"> As Palestras Informativas;</li>
+<li class="lista-tiques"> As Campanhas de Prevenção e Orientação;</li>
+<li class="lista-tiques"> Os Encontros do Terceiro Sábado; </li>
+<li class="lista-tiques"> Os Grupos de Convivência (mulheres e idosos);</li>
+<li class="lista-tiques"> Comparecer junto a Coordenação Pedagógica e ao Serviço Social quando chamado; </li>
+</ul>
+<li class="lista-bolinhas"> Comunicar de imediato qualquer mudança de endereço, telefone e/ou alteração no contexto  familiar junto ao Serviço Social do Lar São Domingos;</li>
+<li class="lista-bolinhas"> Autorizar o(s) filho(s) a participar das atividades que o Lar São Domingos desenvolver, como: </li>
+
+<ul class="lista-tiques">
+<li class="lista-tiques"> Atividades Sócioeducativas; </li>
+<li class="lista-tiques"> Atividades e Apresentações Culturais (coral, grupo de flauta, banda de musica, pastoril, danças juninas, entre outros);</li>
+<li class="lista-tiques"> Atividades  e Eventos Esportivos (aula de educação fisica, futebol, capoeira e kung fu);</li>
+<li class="lista-tiques"> Atividades de Lazer e Eventos Comemorativos; </li>
+<li class="lista-tiques"> Campanhas de Promoção a Saúde e Prevenção a Doenças;</li>
+<li class="lista-tiques"> Acompanhamento psicológico;</li>
+<li class="lista-tiques"> Cursos de qualificação profissional para os adolescentes.</li>
+</ul>
+<li class="lista-bolinhas"> Garantir a presença da criança e/ou do adolescente na Instituição, justificando as faltas que por ventura possam ocorrer com atestado médico ou comparecendo à Coordenação Pedagógica do Lar São Domingos até 48 horas após o ocorrido. </li>
+<li class="lista-bolinhas"> A criança ou adolescente com mais de três faltas sem justificativa no mesmo mês, terá sua inscrição suspensa até a regularização junto à Coordenação Pedagógica;</li>
+<li class="lista-bolinhas"> Cumprir com o horário de chegada da criança e/ou do adolescente, das 7h00 até 7h30 no período da manhã e, das 13h00 até 13h30 no período da tarde. Após esse tempo a criança ou o adolescente não mais poderá fazer sua refeição, em virtude do funcionamento do refeitório.</li>
+<li class="lista-bolinhas"> Ler atenciosamente os comunicados, informativos e outras correspondências encaminhadas pela Instituição do Lar São Domingos;</li>
+<li class="lista-bolinhas"> Orientar e contribuir para a sensibilização da criança e/ou do adolescente no cumprimento de suas responsabilidades e normas estabelecidas pela Instituição;</li>
+<li class="lista-bolinhas"> Acompanhar e incentivar a higiene pessoal da criança e/ou do adolescente em todos os momentos;</li>
+<li class="lista-bolinhas"> Zelar pelo fardamento completo da criança e/ou do adolescente, que deverá ser utilizado diariamente nas atividades do Lar São Domingos;</li>
+<li class="lista-bolinhas"> Manter o cartão de vacina sempre atualizado, incluindo as doses das campanhas de vacinação;</li>
+<li class="lista-bolinhas"> Cumprir com o horário designado de encerramento das atividades, às 11h00 no turno da manhã e às 16h00 no turno da tarde, para buscar a criança na Instituição ou designar quem possa fazê-lo portando o cartão de inscrição do Lar São Domingos, comunicando com antecedencia a Coordenação pedagógica sobre a situação;</li>
+
+Em caso de descumprimento das normas acima estabelecidas, o Serviço Social do Lar São Domingos aplicará as seguintes medidas: 
+
+<ul class="lista-tiques">
+<li class="lista-tiques"> Advertência por escrito.</li>
+<li class="lista-tiques"> Suspensão temporária das atividades do Lar São Domingos, conforme dias a serem estabelecidos a depender da gravidade da situação.</li>
+<li class="lista-tiques"> Desligamento da família em caso de reincidência.</li>
+</ul>
+
+
+  <p style="text-align: justify; margin-top: 16px;">
+  Sendo assim, declaro concordar com o conteúdo aqui exposto e assino o presente
+  documento em duas vias de igual teor e forma.
+</p>
+
+<p class="cidade-data">
+  {{ city }}, {{ day }} de {{ month }} de {{ year }}.
+</p>
+
+<div class="assinatura">
+  <div class="linha-assinatura"></div>
+  <div>Responsável familiar</div>
+</div>
+</body>
+</html>

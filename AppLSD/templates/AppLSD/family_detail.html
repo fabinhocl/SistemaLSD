@@ -140,6 +140,7 @@
     <div class="mt-3 no-print">
         <a href="{% url 'family_edit' family.pk %}" class="btn btn-primary">Editar</a>
         <a href="{% url 'family_delete_confirm' family.pk %}" class="btn btn-danger">Excluir</a>
+        <a href="{% url 'family_term_pdf' family.id %}" class="btn btn-success" target="_blank">Imprimir Termo de Compromisso</a>
         <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
         <a href="{% url 'family_list' %}" class="btn btn-secondary">Voltar</a>
     </div>

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import FamilyViewSet, AlunoViewSet, TurmaViewSet, ActivityViewSet, FamilyAutocomplete  
+from AppLSD.views import FamilyViewSet, AlunoViewSet, TurmaViewSet, ActivityViewSet, FamilyAutocomplete 
 from .import views_templates # importa as views para templates
 from .import views
 from django.contrib.auth import views as auth_views
@@ -36,6 +36,7 @@ urlpatterns = [
     path('families/<int:pk>/', views_templates.family_detail, name='family_detail'),
     path('families/<int:pk>/delete/', views_templates.family_delete_confirm, name='family_delete_confirm'),
     path('families/buscar_family/', views_templates.buscar_family, name='buscar_family'),
+    path('families/<int:pk>/termo/', views_templates.family_term_pdf, name='family_term_pdf'),
     
     #Adultos
     path('adult/new/', views_templates.adult_create, name='adult_create'),
