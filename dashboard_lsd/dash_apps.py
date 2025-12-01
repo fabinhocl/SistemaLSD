@@ -1,41 +1,49 @@
 import dash
 from django_plotly_dash import DjangoDash
 from dash import dcc, html, dash, dash_table
-from AppLSD.models import Family
+from dash.dependencies import Input, Output
+from datetime import date
+
 import plotly.express as px
 import pandas as pd
-from datetime import date
-from dash.dependencies import Input, Output
+
+from AppLSD.models import Family
 
 
 # Query Family table and convert to DataFrame
-qs = Family.objects.all()
-df_family = pd.DataFrame(list(qs.values(
-    'id', 'registration_number', 'responsible_name', 'sex', 'birth_date',
-    'marital_status', 'education', 'income_types', 'salary_range',
-    'num_residents', 'has_pcd', 'has_adult', 'has_elderly', 'has_child',
-    'status'
-)))
-salary_map = {
-    "1_sm": "1 Salário Mínimo",
-    "2_sm": "2 Salários Mínimos",
-    # ...adicione outros conforme necessário
-}
-df_family['salary_range_legenda'] = df_family['salary_range'].map(salary_map)
+def get_family_dataframe():
+    qs = Family.objects.all()
+    df = pd.DataFrame(list(qs.values(
+        'id', 'registration_number', 'responsible_name', 'sex', 'birth_date',
+        'marital_status', 'education', 'income_types', 'salary_range',
+        'num_residents', 'has_pcd', 'has_adult', 'has_elderly', 'has_child',
+        'status'
+    )))
+    salary_map = {
+        "1_sm": "1 Salário Mínimo",
+        "2_sm": "2 Salários Mínimos",
+        # ...adicione outros conforme necessário
+    }
+    df['salary_range_legenda'] = df['salary_range'].map(salary_map)
+    return df
 
 # Defina o objeto figure
-figure = px.bar(
-    df_family,
-    x='salary_range_legenda',
-    color='salary_range_legenda',
-    title='Faixa Salarial'
-)
+def create_family_figure():
+    df_family = get_family_dataframe()
+    figure = px.bar(
+        df_family,
+        x='salary_range_legenda',
+        color='salary_range_legenda',
+        title='Faixa Salarial'
+    )
+
 
 # Atualize layout dos eixos
-figure.update_layout(
-    xaxis_title="Faixa Salarial",
-    yaxis_title="Quantidade de Famílias"
-)
+    figure.update_layout(
+        xaxis_title="Faixa Salarial",
+        yaxis_title="Quantidade de Famílias"
+    )
+    return figure
 
 def get_family_data():
     # Troque este exemplo pela consulta do seu banco ou API
@@ -47,6 +55,9 @@ def get_family_data():
         {"status": "ativo"}
     ])
     return df_family
+df_family = get_family_dataframe()
+figure = create_family_figure()
+
 def calcula_idade(nascimento):
     if pd.isnull(nascimento):
         return None
