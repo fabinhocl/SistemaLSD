@@ -6,6 +6,7 @@ from django.forms.models import inlineformset_factory
 from django.contrib.auth.models import User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column
+from .validators import cpf_validator
 import re
 
 
@@ -189,19 +190,12 @@ class FamilyForm(forms.ModelForm):
             # Adicione widgets para outros campos conforme necessidade
         }
 
-    def clean_responsible_name(self):
-        name = self.cleaned_data.get("responsible_name")
-        if not name or not name.strip():
-            raise forms.ValidationError("Preencha o nome do responsável.")
-        return name
-
-    def clean_cpf(self):
-        cpf = self.cleaned_data.get('cpf')
-        cpf_formatado = format_cpf(cpf)
-        pattern = r'^\d{3}\.\d{3}\.\d{3}-\d{2}$'
-        if not re.match(pattern, cpf_formatado):
-            raise forms.ValidationError('CPF deve estar no padrão xxx.xxx.xxx-xx')
-        return cpf_formatado
+   
+    def clean_responsible_cpf(self):
+        value = self.cleaned_data["responsible_cpf"]
+        digits = ''.join(filter(str.isdigit, value or ''))
+        # já foi validado pelo validator; aqui você só normaliza
+        return cpf_validator.mask(digits)  # se quiser salvar sempre formatado
     
     def clean_nis(self):
         nis = self.cleaned_data.get('nis')
@@ -309,10 +303,11 @@ class AdultForm(forms.ModelForm):
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Adult
-        fields = ['family', 'name', 'social_name', 'sex', 'parentesco', 'birth_date', 'idade', 'education', 'ocupacao', 'renda', 'status', 'telephone']
+        fields = ['family', 'name', 'cpf', 'social_name', 'sex', 'parentesco', 'birth_date', 'idade', 'education', 'ocupacao', 'renda', 'status', 'telephone']
         labels = {
             'family': 'Família',
             'name': 'Nome',
+            'cpf': 'CPF',
             'social_name': 'Nome Social',
             'sex': 'Sexo',
             'parentesco': 'Parentesco',
@@ -328,6 +323,11 @@ class AdultForm(forms.ModelForm):
             'family': forms.HiddenInput(),
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
         }
+
+    def clean_cpf(self):
+        value = self.cleaned_data["cpf"]
+        digits = ''.join(filter(str.isdigit, value or ''))
+        return cpf_validator.mask(digits)
 
 class AlunoForm(forms.ModelForm):
     health_problem = forms.ChoiceField(
@@ -357,6 +357,7 @@ class AlunoForm(forms.ModelForm):
         labels = {
             'family': 'Família',
             'name': 'Nome do Aluno',
+            'cpf': 'CPF',
             'sex': 'Sexo',
             'parentesco': 'Parentesco',
             'birth_date': 'Data de Nascimento',
@@ -453,6 +454,11 @@ class AlunoForm(forms.ModelForm):
             cleaned_data["faixa_etaria"] = calcular_faixa_etaria(idade)
 
         return cleaned_data
+    
+    def clean_cpf(self):
+        value = self.cleaned_data["cpf"]
+        digits = ''.join(filter(str.isdigit, value or ''))
+        return cpf_validator.mask(digits)
 
 
 AlunoInlineFormSet = forms.inlineformset_factory(
@@ -507,7 +513,7 @@ class ActivityForm(forms.ModelForm):
         labels = {'facilitador': 'Nome Facilitador(a)','atividade': 'Nome da Atividade', 'tipo': 'Tipo', 'dia_semana': 'Dias da Semana', 'turno': 'Turno'}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['facilitador'].queryset = User.objects.filter(perfis__tipo='facilitador')
+        self.fields['facilitador'].queryset = User.objects.filter(perfis__tipo_perfil='facilitador')
 
 class AddAlunosToTurmaForm(forms.Form):
     alunos = forms.ModelMultipleChoiceField(

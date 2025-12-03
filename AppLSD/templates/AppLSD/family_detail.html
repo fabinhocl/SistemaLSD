@@ -90,10 +90,11 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
+        <thead><tr><th>CPF</th><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
         <tbody>
             {% for aluno in family.alunos.all %}
                 <tr>
+                    <td>{{ aluno.cpf }}</td>
                     <td>{{ aluno.name }}</td>
                     <td>{{ aluno.idade }}</td>
                     <td>{% if aluno.turma %}{{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>

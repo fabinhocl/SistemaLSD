@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import date
+from AppLSD.validators import validate_cpf
 
 #from localflavor.br.forms import BRCPFField
 import re
@@ -22,7 +23,7 @@ class Family(models.Model):
     social_name = models.CharField(max_length=255, default='')
     nis = models.CharField(max_length=20, default='', blank=True, null=True)
     rg = models.CharField(max_length=20, default='', blank=True, null=True)
-    cpf = models.CharField(max_length=14, default='', unique=True, blank=True, null=True)
+    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], unique=True, blank=True, null=True)
     birth_date = models.DateField(default='', blank=True, null=True)
     ESCOLHA_SEXO = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
@@ -157,6 +158,7 @@ class Family(models.Model):
     """
 class Adult(models.Model):
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
+    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
     name = models.CharField(max_length=100)
     social_name = models.CharField(max_length=255, default='')
     ESCOLHA_SEXO = [
@@ -197,6 +199,7 @@ class Adult(models.Model):
 class Aluno(models.Model):
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
+    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], unique=True, blank=True, null=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
     ESCOLHA_SEXO = [
