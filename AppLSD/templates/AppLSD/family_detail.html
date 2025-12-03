@@ -90,7 +90,7 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr><th>CPF</th><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
+        <thead><tr class="text-center"><th>CPF</th><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
         <tbody>
             {% for aluno in family.alunos.all %}
                 <tr>
@@ -115,7 +115,7 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
+        <thead><tr class="text-center"><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
         <tbody>
             {% for adulto in family.adults.all %}
                 <tr>

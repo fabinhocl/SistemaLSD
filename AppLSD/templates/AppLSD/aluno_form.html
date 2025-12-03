@@ -13,7 +13,7 @@
             <form method="post" class="mb-4">
                 {% csrf_token %}
                 
-
+                <div class="row mb-3">
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
                 {% if family %}
                     <p><strong>Família:</strong> ({{ family.registration_number }} {{ family.responsible_name }} - {{ family.cpf }})</p>
@@ -22,12 +22,16 @@
                     <label>Buscar por Inscrição, Nome ou CPF</label>
                     <input type="text" name="family" id="busca_familia" value="" class="form-control" placeholder="Digite inscrição, nome ou CPF" autocomplete="off" onkeyup="buscarFamilia()">
                     <div id="resultados_busca" class="list-group"></div>
-                    {{ form.family|as_crispy_field }}
+                   <div class="col-md-8">{{ form.family|as_crispy_field }}</div>
                 {% endif %}
 
-                {{ form.parentesco|as_crispy_field }}
-                {{ form.name|as_crispy_field }}
+               <div class="col-md-4"> {{ form.parentesco|as_crispy_field }}</div>
+                </div>
                 
+                <div class="row mb-3">
+                    <div class="col-md-9">{{ form.name|as_crispy_field }}</div>
+                    <div class="col-md-3">{{ form.cpf|as_crispy_field }}</div>
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
