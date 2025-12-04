@@ -109,6 +109,7 @@ class FamilyForm(forms.ModelForm):
             'birth_date',
             'idade',
             'sex',
+            'mae_solo',
             'cep',
             'address',
             'number',
@@ -140,6 +141,7 @@ class FamilyForm(forms.ModelForm):
             'has_pregnant',
             'file_info',
             'status',
+            'motivo_desligamento',
         ]
         labels = {
             'registration_number': 'Inscrição',
@@ -151,6 +153,7 @@ class FamilyForm(forms.ModelForm):
             'birth_date': 'Data de Nascimento',
             'idade': 'Idade',
             'sex': 'Sexo',
+            'mae_solo': 'Mãe Solo',
             'cep': 'CEP',
             'address': 'Endereço',
             'number': 'Nº',
@@ -180,6 +183,7 @@ class FamilyForm(forms.ModelForm):
             'has_pregnant': 'Gestante',
             'file_info': 'Arquivo',
             'status': 'Situação',
+            'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
         }
         widgets = {
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
@@ -325,8 +329,12 @@ class AdultForm(forms.ModelForm):
         }
 
     def clean_cpf(self):
-        value = self.cleaned_data["cpf"]
+        value = self.cleaned_data.get("cpf")
         digits = ''.join(filter(str.isdigit, value or ''))
+        if not digits:
+            return ''          # aceita vazio, se for sua regra
+        if not cpf_validator.validate(digits):
+            raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
 
 class AlunoForm(forms.ModelForm):
@@ -456,8 +464,12 @@ class AlunoForm(forms.ModelForm):
         return cleaned_data
     
     def clean_cpf(self):
-        value = self.cleaned_data["cpf"]
+        value = self.cleaned_data.get("cpf")
         digits = ''.join(filter(str.isdigit, value or ''))
+        if not digits:
+            return ''
+        if not cpf_validator.validate(digits):
+            raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
 
 

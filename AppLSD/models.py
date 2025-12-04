@@ -31,6 +31,12 @@ class Family(models.Model):
     ('Feminino', 'Feminino')
     ]
     sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
+    SIM_NAO_CHOICES = [
+    ('sim', 'Sim'),
+    ('não', 'Não')
+]
+    # Programas sociais (checkbox múltiplo)
+    mae_solo = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
     cep = models.CharField("CEP", max_length=9, blank=False, null=True)
     address = models.CharField(max_length=300, blank=False, null=True)
     number = models.CharField(max_length=10, default="S/N", blank=True, null=True)
@@ -133,12 +139,24 @@ class Family(models.Model):
     has_pregnant = models.IntegerField(default=0)
     file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
     STATUS_CHOICES = [
-        ('ativo', 'Ativo'), ('inativo', 'Inativo')
+        ('ativo', 'Ativo'), ('inativo', 'Inativo'), ('desligado', 'Desligado'),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, blank=True, null=True)
+    motivo_desligamento = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
     
     #aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, related_name='families')
-
+    @property
+    def idade(self):
+        if not self.birth_date:
+            return ""
+        today = date.today()
+        return today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
 
     def save(self, *args, **kwargs):
         """

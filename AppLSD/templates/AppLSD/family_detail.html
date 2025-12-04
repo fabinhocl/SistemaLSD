@@ -22,9 +22,10 @@
                     <div class="col-md-4"><strong>CPF:</strong> <div>{{ family.cpf }}</div></div>
                 </div>             
                 <div class="row mb-3">
-                    <div class="col-md-4"><strong>Data de Nascimento:</strong> <div>{{ family.birth_date|date:'d/m/Y' }}</div></div>
-                    <div class="col-md-4"><strong>Idade:</strong> <div>{{ family.idade }}</div></div>
-                    <div class="col-md-4"><strong>Sexo:</strong> <div>{{ family.get_sex_display }}</div></div>
+                    <div class="col-md-3"><strong>Data de Nascimento:</strong> <div>{{ family.birth_date|date:'d/m/Y' }}</div></div>
+                    <div class="col-md-3"><strong>Idade:</strong> <div>{{ family.idade }}</div></div>
+                    <div class="col-md-3"><strong>Sexo:</strong> <div>{{ family.get_sex_display }}</div></div>
+                    <div class="col-md-3"><strong>Mãe Solo:</strong> <div>{{ family.get_mae_solo_display }}</div></div>
                 </div>  
                 <div class="row mb-3">
                     <div class="col-md-2"><strong>CEP:</strong> <div>{{ family.cep }}</div></div>
@@ -76,8 +77,9 @@
                         
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-6"><strong>Documentação:</strong> <div>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</div></div>
-                    <div class="col-md-6"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                    <div class="col-md-3"><strong>Documentação:</strong> <div>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</div></div>
+                    <div class="col-md-3"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                    <div class="col-md-6"><strong>Motivo desligamento:</strong> <div>{{ family.motivo_desligamento }}</div></div>
                 </div>
     
             </div>
@@ -93,7 +95,7 @@
         <thead><tr class="text-center"><th>CPF</th><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
         <tbody>
             {% for aluno in family.alunos.all %}
-                <tr>
+                <tr class="text-center">
                     <td>{{ aluno.cpf }}</td>
                     <td>{{ aluno.name }}</td>
                     <td>{{ aluno.idade }}</td>
@@ -115,10 +117,11 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr class="text-center"><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
+        <thead><tr class="text-center"><th>CPF</th><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
         <tbody>
             {% for adulto in family.adults.all %}
-                <tr>
+                <tr class="text-center">
+                    <td>{{ adulto.cpf }}</td>
                     <td>{{ adulto.name }}</td>
                     <td>{{ adulto.social_name }}</td>
                     <td>{{ adulto.parentesco }}</td>

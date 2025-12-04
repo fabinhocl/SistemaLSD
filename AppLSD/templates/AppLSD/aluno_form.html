@@ -232,4 +232,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 </script>
+<script>
+$(document).ready(function(){
+  $("#cpf").inputmask("999.999.999-99", {
+    clearIncomplete: true,
+    showMaskOnHover: false,
+    showMaskOnFocus: true
+  });
+});
+</script>
 {% endblock %}

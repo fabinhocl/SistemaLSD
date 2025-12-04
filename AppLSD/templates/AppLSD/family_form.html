@@ -31,9 +31,10 @@
             </div>
                 <!-- Linha 3 -->
             <div class="row mb-3">
-                <div class="col-md-4">{{ form.birth_date|as_crispy_field }}</div>
-                <div class="col-md-4">{{ form.idade|as_crispy_field }}</div>
-                <div class="col-md-4">{{ form.sex|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.birth_date|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.sex|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.mae_solo|as_crispy_field }}</div>
             </div>
             
                 <!-- Linha 4 -->
@@ -148,6 +149,9 @@
                 <!-- Linha 15 -->
                 <div class="row mb-3">
                     <div class="col-md-3">{{ form.status|as_crispy_field }}</div>
+                    <div class="col-md-9" id="motivo-desligamento-group">
+                                                 {{ form.motivo_desligamento|as_crispy_field }}
+                    </div>
                 </div>
                 <!-- Campos customizados com lógica JS -->
                
@@ -364,6 +368,23 @@ $(document).ready(function(){
     showMaskOnHover: false,
     showMaskOnFocus: true
   });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusField = document.getElementById('id_status');
+    const motivoGroup = document.getElementById('motivo-desligamento-group');
+
+    function toggleMotivo() {
+        if (statusField.value === 'desligado') {
+            motivoGroup.style.display = 'block';
+        } else {
+            motivoGroup.style.display = 'none';
+        }
+    }
+
+    statusField.addEventListener('change', toggleMotivo);
+    toggleMotivo();  // aplica ao carregar para edição
 });
 </script>
 {% endblock %}
