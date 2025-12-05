@@ -5,9 +5,37 @@ from .models import Family, Aluno, Turma, Activity, PerfilUsuario, FrequenciaTur
 
 class FamilyAdmin(admin.ModelAdmin):
     list_per_page = 300  # Define 300 famílias por página no admin
+    list_display = ['responsible_name', 'registration_number', 'status']
+    search_fields = ['responsible_name', 'social_name']
+    
 class AlunoAdmin(admin.ModelAdmin):
     list_per_page = 300  # Define 300 alunos por página no admin
     search_fields = ['name', 'family__responsible_name']
+    list_display = ['name', 'get_frequencia_display', 'birth_date']
+    list_filter = ['frequencia_tipo', 'status_lsd']
+    
+    
+    def get_frequencia_display(self, obj):
+        if obj.frequencia_tipo == 'diaria':
+            return 'Diariamente'
+        elif obj.dias_semana:
+            dias = ', '.join(obj.dias_semana)
+            return f"Dias específicos: {dias}"
+        return 'Não definido'
+    get_frequencia_display.short_description = 'Frequência'
+    
+    fieldsets = (
+        ('Dados básicos', {
+            'fields': ('nome', 'data_nascimento', 'frequencia_tipo')
+        }),
+        ('Frequência', {
+            'fields': ('dias_semana',),
+            'classes': ('collapse',)
+        }),
+        ('Saúde', {
+            'fields': ('health_problem', 'special_need'),
+        }),
+    )
 class TurmaAdmin(admin.ModelAdmin):
     list_per_page = 300  # Define 300 turmas por página no admin
     search_fields = ['name', 'responsible_name']

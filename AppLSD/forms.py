@@ -358,6 +358,20 @@ class AlunoForm(forms.ModelForm):
     )
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
 
+    DIAS_SEMANA = (
+        ('segunda', 'Segunda-feira'),
+        ('terca', 'Terça-feira'),
+        ('quarta', 'Quarta-feira'),
+        ('quinta', 'Quinta-feira'),
+        ('sexta', 'Sexta-feira'),
+    )
+    
+    dias_semana = forms.MultipleChoiceField(
+        choices=DIAS_SEMANA,
+        required=False,
+        widget=forms.CheckboxSelectMultiple
+    )
+
     class Meta:
         model = Aluno
         fields = '__all__'
@@ -378,6 +392,8 @@ class AlunoForm(forms.ModelForm):
             'special_need': 'Qual problema de Saúde?',
             'uso_medicacao': 'Faz uso de Medicação',
             'qual_medicacao': 'Qual Medicação?',
+            'frequencia_tipo': 'Tipo de Frequência',
+            'dias_semana': 'Dias da Semana',
             'status_lsd': 'Situação Atual no Lar',
             # adicione outros labels se necessário
         }
@@ -450,17 +466,26 @@ class AlunoForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        
+        # Validação existente (problema de saúde)
         health_problem = cleaned_data.get('health_problem')
         special_need = cleaned_data.get('special_need')
-
-        # Validação condicional
         if health_problem == 'sim' and not special_need:
             self.add_error('special_need', 'Este campo é obrigatório quando há problema de saúde.')
+        
+        # NOVA validação: frequência
+        frequencia_tipo = cleaned_data.get('frequencia_tipo')
+        dias_semana = cleaned_data.get('dias_semana', [])
+        
+        if frequencia_tipo == 'especificos' and not dias_semana:
+            self.add_error('dias_semana', 'Selecione pelo menos um dia da semana.')
+        
+        # Cálculo de idade existente
         birth_date = cleaned_data.get("birth_date")
         if birth_date:
             idade = calcular_idade(birth_date)
             cleaned_data["faixa_etaria"] = calcular_faixa_etaria(idade)
-
+        
         return cleaned_data
     
     def clean_cpf(self):
@@ -471,6 +496,14 @@ class AlunoForm(forms.ModelForm):
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        dias_semana = self.cleaned_data.get('dias_semana', [])
+        instance.dias_semana = dias_semana  # Salva lista no JSONField
+        if commit:
+            instance.save()
+        return instance
 
 
 AlunoInlineFormSet = forms.inlineformset_factory(

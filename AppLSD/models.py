@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -11,6 +11,7 @@ from AppLSD.validators import validate_cpf
 #from localflavor.br.forms import BRCPFField
 import re
 import ast
+import json
 
 
 class Family(models.Model):
@@ -18,7 +19,12 @@ class Family(models.Model):
     Representa uma família no sistema, com dados cadastrais e sociais.
     """
     # Dados básicos
-    registration_number = models.CharField(max_length=100, default='')
+    registration_number = models.CharField(
+    max_length=10,  # YYYYNN (ex: 202601)
+    unique=True,
+    blank=True,  # Permite vazio durante criação
+    #editable=False  # Impede edição manual 
+    )
     responsible_name = models.CharField(max_length=255, default='')
     social_name = models.CharField(max_length=255, default='')
     nis = models.CharField(max_length=20, default='', blank=True, null=True)
@@ -171,6 +177,25 @@ class Family(models.Model):
     def __str__(self):
         return f"{self.responsible_name} - {self.cpf}"
     
+    #Procedimento para gerar número de registro automático
+    """
+    def save(self, *args, **kwargs):
+        if self._state.adding and not self.registration_number:  # Novo registro sem número
+            current_year = timezone.now().year
+            with transaction.atomic():
+                # Conta registros do ano atual + 1
+                next_seq = Family.objects.filter(
+                    registration_number__startswith=f"{current_year}"
+                ).count() + 1
+                self.registration_number = f"{current_year}{next_seq:02d}"
+                
+                # Verifica unicidade (defesa contra concorrência)
+                if Family.objects.filter(registration_number=self.registration_number).exists():
+                    raise ValidationError(f"Número {self.registration_number} já existe")
+        
+        super().save(*args, **kwargs)
+    """
+
     """
     Representa o adulto cadastrado em família.
     """
@@ -253,6 +278,24 @@ class Aluno(models.Model):
     ]
     uso_medicacao = models.CharField(max_length=10, choices=MEDICATION_CHOICES, default='', blank=True)
     qual_medicacao = models.CharField(max_length=200, default='', blank=True)
+
+    FREQUENCIA_OPCOES = (
+        ('diaria', 'Diariamente'),
+        ('especificos', 'Dias específicos'),
+    )
+    
+    frequencia_tipo = models.CharField(
+        max_length=20,
+        choices=FREQUENCIA_OPCOES,
+        default='diaria',
+        verbose_name='Tipo de frequência'
+    )
+    
+    dias_semana = models.JSONField(
+        default=list,  # [] vazio por padrão
+        blank=True,
+        verbose_name='Dias da semana'
+    )
     
     STATUS_CHOICES = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio

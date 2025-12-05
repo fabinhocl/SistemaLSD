@@ -84,8 +84,27 @@
                         <input type="text" id="qual_medicacao" name="qual_medicacao" class="form-control" disabled>
                     </div>
                 </div>
+                <div class="form-row d-flex align-items-start">
+                <div class="form-group col-md-4">
+                    {{ form.frequencia_tipo|as_crispy_field }}
+                </div>
+
+                <div class="form-group col-md-8" id="dias-semana-wrapper">
+                    <label>Dias da semana</label>
+                    <div class="d-flex flex-wrap">
+                        {% for checkbox in form.dias_semana %}
+                            <div class="form-check form-check-inline mr-3">
+                                {{ checkbox.tag }}
+                                <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                    {{ checkbox.choice_label }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
                 <div class="mb-3">
-                    {{ form.status_lsd|as_crispy_field }}
+                  <div class="col-md-4">{{ form.status_lsd|as_crispy_field }}</div>
                 </div>
 
                 
@@ -241,4 +260,27 @@ $(document).ready(function(){
   });
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tipoSelect = document.getElementById('id_frequencia_tipo');
+    const diasWrapper = document.getElementById('dias-semana-wrapper');
+
+    function toggleDiasSemana() {
+        if (tipoSelect.value === 'especificos') {
+            diasWrapper.style.display = 'block';
+        } else {
+            diasWrapper.style.display = 'none';
+            // desmarca todos quando volta para "Diariamente"
+            diasWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+    }
+
+    // inicial
+    toggleDiasSemana();
+
+    // quando mudar
+    tipoSelect.addEventListener('change', toggleDiasSemana);
+});
+</script>
+
 {% endblock %}

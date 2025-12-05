@@ -39,6 +39,10 @@
                 <div class="col-md-6"><strong>Medicamento:</strong> <div>{{ aluno.qual_medicacao }}</div></div>
             </div>
             <div class="row mb-3">    
+                <div class="col-md-6"><strong>Tipo de Frequência:</strong> <div>{{ aluno.get_frequencia_tipo_display }}</div></div>
+                <div class="col-md-6"><strong>Dias da semana:</strong> <div>{{ aluno.dias_semana }}</div></div>
+            </div>
+            <div class="row mb-3">    
                 <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.status_lsd }}</div></div>
             </div>
         </div> 
