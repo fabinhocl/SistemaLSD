@@ -2,6 +2,8 @@
 Funções auxiliares e decorators para controle de permissões
 """
 from django.core.exceptions import PermissionDenied
+from django.contrib.contenttypes.models import ContentType
+from AppLSD.models import AppLog
 from functools import wraps
 
 
@@ -78,3 +80,13 @@ def educadora_ou_coordenacao_required(function):
         else:
             raise PermissionDenied("Acesso permitido apenas para educadoras e coordenação.")
     return wrap
+
+def registrar_log(user, objeto, acao, descricao):
+    AppLog.objects.create(
+        content_type=ContentType.objects.get_for_model(objeto.__class__),
+        object_id=objeto.pk,
+        objeto=objeto,
+        acao=acao,
+        descricao=descricao,
+        criado_por=user,
+    )

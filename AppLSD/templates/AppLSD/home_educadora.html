@@ -6,14 +6,14 @@
 {% block content %}
 
 
-<h2 class="justify-content-center">Turmas da Educadora {{ user.get_full_name }}</h2>
+<h2 class="text-center">Turmas da Educadora {{ user.get_full_name }}</h2>
 
 <div class="row">
     {% for turma in turmas %}
     <div class="col-md-6 mb-3 justify-content-center">
         <div class="card">
             <div class="card-header justify-content-center" style="background-color: #f8f9fa;">
-                <h5 class="justify-content-center">{{ turma.faixa_etaria }} - {{ turma.turno }}</h5>
+                <h5 class="text-center">{{ turma.faixa_etaria }} - {{ turma.turno }}</h5>
             </div>
             <div class="card-body">
                 <p><strong>Total de alunos:</strong> {{ turma.alunos.count }}</p>
@@ -24,6 +24,34 @@
     {% empty %}
     <p>Nenhuma turma atribuída a você.</p>
     {% endfor %}
+</div>
+
+<h2>Atividades de Hoje dos seus alunos</h2>
+
+<div class="row">
+    {% if atividades_do_dia %}
+        {% for atividade in atividades_do_dia %}
+    
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="text-center">{{ atividade.atividade }}</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Tipo:</strong> {{ atividade.get_tipo_display }}</p>
+                <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
+                <p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
+                <a href="{% url 'frequencia_activity_iniciar' atividade.pk %}" class="btn btn-success">
+            Fazer Frequência
+          </a>
+                <a href="{% url 'activity_detail' atividade.pk %}" class="btn btn-info">Ver Detalhes</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>Nenhuma atividade hoje com alunos das suas turmas.</p>
+  {% endif %}
 </div>
 
 <div class="mt-4 no-print">

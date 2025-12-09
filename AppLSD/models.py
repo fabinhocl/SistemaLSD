@@ -1,7 +1,9 @@
 from django.db import models, transaction
-from django.utils import timezone
+from django.utils import timezone, dateformat
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -13,8 +15,70 @@ import re
 import ast
 import json
 
+#sistema de **auditoria/logs completo**
+class AuditModel(models.Model):
+    """
+    Modelo abstrato para adicionar campos de auditoria em todos os modelos
+    """
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_criado',
+        verbose_name='Criado por'
+    )
+    criado_em = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Criado em'
+    )
+    editado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_editado',
+        verbose_name='Editado por'
+    )
+    editado_em = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Editado em'
+    )
+    excluido = models.BooleanField(default=False, verbose_name='Excluído')
+    excluido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_excluido',
+        verbose_name='Excluído por'
+    )
+    excluido_em = models.DateTimeField(null=True, blank=True, verbose_name='Excluído em')
+    
+    class Meta:
+        abstract = True  # Importante: modelo abstrato não cria tabela
+    
+    def soft_delete(self, user):
+        self.excluido = True
+        self.excluido_por = user
+        self.excluido_em = timezone.now()
+        self.save()
 
-class Family(models.Model):
+class AppLog(AuditModel):
+    # Referência genérica para qualquer modelo (Aluno, Family, Adult, Activity, Movimentacao...)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    objeto = GenericForeignKey('content_type', 'object_id')
+
+    acao = models.CharField(max_length=100)        # ex: 'aluno_criado', 'aluno_movido'
+    descricao = models.TextField()
+
+    class Meta:
+        verbose_name = 'Log do Sistema'
+        verbose_name_plural = 'Logs do Sistema'
+        ordering = ['-criado_em']
+
+class Family(AuditModel):
     """
     Representa uma família no sistema, com dados cadastrais e sociais.
     """
@@ -199,13 +263,13 @@ class Family(models.Model):
     """
     Representa o adulto cadastrado em família.
     """
-class Adult(models.Model):
+class Adult(AuditModel):
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
     cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
     name = models.CharField(max_length=100)
     social_name = models.CharField(max_length=255, default='')
     ESCOLHA_SEXO = [
-    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazios
     ('Masculino', 'Masculino'),
     ('Feminino', 'Feminino')
     ]
@@ -239,7 +303,7 @@ class Adult(models.Model):
     """
     Representa um aluno, pertencente a uma família, turma e atividades.
     """
-class Aluno(models.Model):
+class Aluno(AuditModel):
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
     cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], unique=True, blank=True, null=True)
@@ -320,12 +384,12 @@ class Aluno(models.Model):
         return today.year - self.birth_date.year - (
             (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
         )
-    
-    
+
+   
     """
     Representa uma turma de assistidos.
     """
-class Turma(models.Model):
+class Turma(AuditModel):
     educadora = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
     FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('10-12 anos', '10 a 12 anos'),('13-17 anos', '13 a 17 anos')]
     faixa_etaria = models.CharField(max_length=15, choices=FAIXAS_ETARIAS, verbose_name="Faixa Etária", default="Selecione a faixa  etária")
@@ -337,19 +401,25 @@ class Turma(models.Model):
     ]
     turno = models.CharField(max_length=20, choices=ESCOLHA_TURNO, default='', blank=True)
     ano_letivo = models.IntegerField(default=timezone.now().year)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-
 
     def __str__(self):
         return f"{self.sala} - Educadora: {self.educadora.get_full_name() if self.educadora else 'Sem Educadora'}"
 
+
+
+class TurmaLog(AuditModel):
+    turma = models.ForeignKey('Turma', on_delete=models.CASCADE, related_name='logs')
+    acao = models.CharField(max_length=100)          # ex: 'frequencia_criada'
+    descricao = models.TextField()                   # texto humano: "Frequência de hoje registrada pela educadora Ana"
+    
+    class Meta:
+        verbose_name = 'Log de Turma'
+        verbose_name_plural = 'Logs de Turmas'
+
 """
     Representa uma atividade (cultural, esportiva, etc) com alunos associados.
     """
-
-class Activity(models.Model):
+class Activity(AuditModel):
     atividade = models.CharField(max_length=200, default='', blank=True)
     facilitador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='atividades')
     TIPO_CHOICES = (
@@ -428,19 +498,13 @@ def cadastrar_educadora(request):
 
 
 
-class FrequenciaTurma(models.Model):
+class FrequenciaTurma(AuditModel):
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, null=True, blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.CASCADE, null=True, blank=True)
     
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)  # True: presente, False: falta
-    criado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        related_name='frequencias_turma_criadas')
-
+    
     def __str__(self):
         return f"{self.aluno} - {self.turma} - {self.data} - {'Presente' if self.presente else 'Falta'}"
 
@@ -531,4 +595,4 @@ def validar_cpf(value):
     if not (int(cpf[9]) == digito1 and int(cpf[10]) == digito2):
         raise ValidationError("CPF inválido.")
 
- 
+

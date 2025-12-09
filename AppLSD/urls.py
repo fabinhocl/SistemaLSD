@@ -67,9 +67,7 @@ urlpatterns = [
     path('activities/new/', views_templates.activity_create, name='activity_create'),
     path('activities/edit/<int:pk>/', views_templates.activity_edit, name='activity_edit'),
     path('activities/delete/<int:pk>/', views_templates.activity_delete, name='activity_delete'),
-    #path('activities/<int:pk>/', views_templates.activity_detail, name='atividade_detail'),
     path('activities/<int:activity_id>/', views_templates.activity_detail, name='activity_detail'),
-    path('activities/<int:activity_id>/chamada/', views_templates.iniciar_chamada_activity, name='iniciar_chamada_activity'),
     path('activities/<int:activity_id>/adicionar-alunos/', views_templates.activity_add_alunos, name='activity_add_alunos'),
     path('activities/<int:activity_id>/relatorio-presenca/', views_templates.relatorio_presenca_activity, name='relatorio_presenca_activity'),
     
@@ -93,6 +91,9 @@ urlpatterns = [
     path('frequencia/turma/<int:turma_id>/', views_templates.iniciar_frequencia_turma, name='frequencia_turma_iniciar'),
     path('frequencia/<int:frequencia_id>/editar/', views_templates.editar_frequencia_turma, name='frequencia_editar'),
     path('frequencia/<int:frequencia_id>/visualizar/', views_templates.visualizar_frequencia_turma, name='frequencia_visualizar'),
+    path('frequencia/activity/<int:activity_id>/', views_templates.iniciar_frequencia_activity, name='frequencia_activity_iniciar'),
+    path('frequencia/activity/<int:activity_id>/editar/', views_templates.editar_frequencia_activity, name='frequencia_activity_editar'),
+    path('frequencia/activity/<int:activity_id>/visualizar/', views_templates.visualizar_frequencia_activity, name='frequencia_activity_visualizar'),
     
     #Relatórios
     path('relatorios/', views_templates.dashboard_completo, name='home_relatorios'),

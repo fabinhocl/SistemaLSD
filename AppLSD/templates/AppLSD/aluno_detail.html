@@ -5,159 +5,257 @@
 
 {% block content %}
 
+<h2 class="row justify-content-center">Detalhes do Assistido</h2>
 
-<h2 class="row justify-content-center"> Detalhes do Assistido</h2>
-<div class="container mt-4">
-    <div class="row justify-content-center">
+{# ABAS #}
+<ul class="nav nav-tabs mt-3" id="alunoTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active"
+            id="tab-resumo"
+            data-bs-toggle="tab"
+            data-bs-target="#pane-resumo"
+            type="button" role="tab"
+            aria-controls="pane-resumo"
+            aria-selected="true">
+      Resumo
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link"
+            id="tab-historico"
+            data-bs-toggle="tab"
+            data-bs-target="#pane-historico"
+            type="button" role="tab"
+            aria-controls="pane-historico"
+            aria-selected="false">
+      Histórico
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content mt-3" id="alunoTabsContent">
+
+  {# ABA RESUMO #}
+  <div class="tab-pane fade show active" id="pane-resumo" role="tabpanel" aria-labelledby="tab-resumo">
+
+    <div class="container mt-2">
+      <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
-            <div class="row mb-3">
-                <div class="col-md-4"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
-                <div class="col-md-8"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+          <div class="row mb-3">
+            <div class="col-md-4"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
+            <div class="col-md-8"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
+            <div class="col-md-4"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
+            <div class="col-md-4"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4"><strong>Responsável:</strong> <div>{{ aluno.family.responsible_name }}</div></div>
+            <div class="col-md-4"><strong>Telefone responsável:</strong> <div>{{ aluno.family.telephone }}</div></div>
+            <div class="col-md-4"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
+            <div class="col-md-3"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display }}</div></div>
+            <div class="col-md-3"><strong>Série:</strong> <div>{{ aluno.serie }}</div></div>
+            <div class="col-md-2"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6"><strong>Problema de Saúde:</strong> <div>{{ aluno.get_health_problem_display }}</div></div>
+            <div class="col-md-6"><strong>Qual Problema de Saúde:</strong> <div>{{ aluno.special_need }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6"><strong>Faz uso de Medicamento:</strong> <div>{{ aluno.uso_medicacao }}</div></div>
+            <div class="col-md-6"><strong>Medicamento:</strong> <div>{{ aluno.qual_medicacao }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6"><strong>Tipo de Frequência:</strong> <div>{{ aluno.get_frequencia_tipo_display }}</div></div>
+            <div class="col-md-6"><strong>Dias da semana:</strong> <div>{{ aluno.dias_semana }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.status_lsd }}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="text-center">Turma Inserida</h4>
+    <table class="table table-bordered">
+      <thead>
+        <tr class="text-center">
+          <th>Educadora</th>
+          <th>Turma</th>
+          <th>Sala</th>
+          <th>Turno</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if aluno.turma %}
+          <tr class="text-center">
+            <td>{{ aluno.turma.educadora }}</td>
+            <td>{{ aluno.turma.faixa_etaria }}</td>
+            <td>{{ aluno.turma.sala }}</td>
+            <td>{{ aluno.turma.turno }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4" class="text-center">Nenhuma turma matriculada.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <h4 class="text-center">Atividades Inseridas</h4>
+    <table class="table table-bordered">
+      <thead>
+        <tr class="text-center">
+          <th>Atividade</th>
+          <th>Turno</th>
+          <th>Facilitador(a)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for activity in aluno.atividades.all %}
+          <tr class="text-center">
+            <td>{{ activity.atividade }}</td>
+            <td>{{ activity.turno|default:"-" }}</td>
+            <td>{{ activity.facilitador }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3" class="text-center">Nenhuma atividade matriculada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h4 class="text-center">Histórico de Turmas</h4>
+    <table class="table table-bordered">
+      <thead>
+        <tr class="text-center">
+          <th>Data</th>
+          <th>Turma de Origem</th>
+          <th>Turma Atual</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mov in aluno.historico_turmas.all %}
+          <tr class="text-center">
+            <td>{{ mov.data_movimentacao|date:"d/m/Y" }}</td>
+            <td>{% if mov.turma_origem %}{{ mov.turma_origem.faixa_etaria }}{% else %}-{% endif %}</td>
+            <td>{{ mov.turma_destino.faixa_etaria }}</td>
+            <td>{{ mov.motivo }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-center">Nenhuma movimentação registrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h4 class="text-center">Ocorrências</h4>
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr class="text-center">
+          <th>Data</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th>Responsável</th>
+          <th>Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ocorrencia in aluno.ocorrencias.all %}
+          <tr>
+            <td>{{ ocorrencia.data|date:"d/m/Y" }}</td>
+            <td>{{ ocorrencia.tipo }}</td>
+            <td>{{ ocorrencia.descricao }}</td>
+            <td>{{ ocorrencia.responsavel }}</td>
+            <td>{{ ocorrencia.observacoes }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="text-center">Nenhuma ocorrência registrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <a href="{% url 'adicionar_ocorrencia' aluno.pk %}" class="btn btn-success btn-sm">Registrar Ocorrência</a>
+
+    <div class="container mt-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-4 mx-auto">
+          <div class="card">
+            <div class="card-header text-center">
+              <h5>Informações de Auditoria</h5>
             </div>
-            <div class="row mb-3">    
-                <div class="col-md-4"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
-                <div class="col-md-4"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
-                <div class="col-md-4"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
+            <div class="card-body">
+              <p>
+                <strong>Criado por:</strong>
+                {{ aluno.criado_por.username|default:"Sistema" }}
+                em {{ aluno.criado_em|date:"d/m/Y H:i" }}
+              </p>
+              {% if aluno.editado_por %}
+                <p>
+                  <strong>Última edição:</strong>
+                  {{ aluno.editado_por.username }}
+                  em {{ aluno.editado_em|date:"d/m/Y H:i" }}
+                </p>
+              {% endif %}
+              {% if aluno.excluido %}
+                <p class="text-danger">
+                  <strong>Excluído por:</strong>
+                  {{ aluno.excluido_por.username }}
+                  em {{ aluno.excluido_em|date:"d/m/Y H:i" }}
+                </p>
+              {% endif %}
             </div>
-            <div class="row mb-3">
-                <div class="col-md-4"><strong>Responsável:</strong> <div>{{ aluno.family.responsible_name }}</div></div>
-                <div class="col-md-4"><strong>Telefone responsável:</strong> <div>{{ aluno.family.telephone }}</div></div>
-                <div class="col-md-4"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-4"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
-                <div class="col-md-3"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display }}</div></div>
-                <div class="col-md-3"><strong>Série:</strong> <div>{{ aluno.serie }}</div></div>
-                <div class="col-md-2"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6"><strong>Problema de Saúde:</strong> <div>{{ aluno.get_health_problem_display }}</div></div>
-                <div class="col-md-6"><strong>Qual Problema de Saúde:</strong> <div>{{ aluno.special_need }}</div></div>
-            </div>
-            <div class="row mb-3">    
-                <div class="col-md-6"><strong>Faz uso de Medicamento:</strong> <div>{{ aluno.uso_medicacao }}</div></div>
-                <div class="col-md-6"><strong>Medicamento:</strong> <div>{{ aluno.qual_medicacao }}</div></div>
-            </div>
-            <div class="row mb-3">    
-                <div class="col-md-6"><strong>Tipo de Frequência:</strong> <div>{{ aluno.get_frequencia_tipo_display }}</div></div>
-                <div class="col-md-6"><strong>Dias da semana:</strong> <div>{{ aluno.dias_semana }}</div></div>
-            </div>
-            <div class="row mb-3">    
-                <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.status_lsd }}</div></div>
-            </div>
-        </div> 
-    </div>    
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> {# fim aba Resumo #}
+
+  {# ABA HISTÓRICO (AppLog) #}
+  <div class="tab-pane fade" id="pane-historico" role="tabpanel" aria-labelledby="tab-historico">
+    <h4 class="mt-3 text-center">Histórico de Ações do Aluno</h4>
+    <table class="table table-bordered">
+      <thead>
+        <tr class="text-center">
+          <th>Data / Hora</th>
+          <th>Usuário</th>
+          <th>Ação</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {% for log in logs %}
+          <tr class="text-center">
+            <td>{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ log.criado_por.username|default:"Sistema" }}</td>
+            <td>{{ log.acao }}</td>
+            <td>{{ log.descricao }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4" class="text-center">Nenhuma ação registrada para este aluno.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div> {# fim tab-content #}
+
+<div class="mt-3 no-print">
+  <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-primary">Editar</a>
+  <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+  <a href="{% url 'aluno_delete_confirm' aluno.pk %}" class="btn btn-danger">Excluir</a>
+  <a href="{% url 'aluno_list' %}" class="btn btn-secondary">Voltar</a>
 </div>
 
-<table class="table table-bordered">
-    <h4>Turma Inserida</h4>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Educadora</th>
-            <th>Turma</th>
-            <th>Sala</th>
-            <th>Turno</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% if aluno.turma %}
-            <tr>
-                <td>{{ aluno.turma.educadora }}</td>
-                <td>{{ aluno.turma.faixa_etaria }}</td>
-                <td>{{ aluno.turma.sala }}</td>
-                <td>{{ aluno.turma.turno }}</td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="2" class="text-center">Nenhuma turma matriculada.</td>
-            </tr>
-        {% endif %}
-    </tbody>
-</table>
-    <h4>Atividades Inseridas</h4>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Atividade</th>
-            <th>Turno</th>
-            <th>Facilitador(a)</th>
-            
-        </tr>
-    </thead>
-    <tbody>
-        {% for activity in aluno.atividades.all %}
-            <tr>
-                <td>{{ activity.atividade }}</td>
-                <td>
-                    {% if activity.turno %}
-                        {{ activity.turno }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-                <td>{{ activity.facilitador }}</td>
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan="2" class="text-center">Nenhuma atividade matriculada.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
-    <h4>Histórico de Turmas</h4>
-<table class="table table-bordered">
-    <thead><tr>
-            <th>Data</th>
-            <th>Turma de Origem</th>
-            <th>Turma Atual</th>
-            <th>Motivo</th>
-        </tr></thead>
-    <tbody>
-        {% for mov in aluno.historico_turmas.all %}
-            <tr>
-                <td>{{ mov.data_movimentacao|date:"d/m/Y" }}</td>
-                <td>{% if mov.turma_origem %}{{ mov.turma_origem.faixa_etaria }}{% else %}-{% endif %}</td>
-                <td>{{ mov.turma_destino.faixa_etaria }}</td>
-                <td>{{ mov.motivo }}</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="4">Nenhuma movimentação registrada.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
-<h4>Ocorrências</h4>
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Descrição</th>
-            <th>Responsável</th>
-            <th>Observações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for ocorrencia in aluno.ocorrencias.all %}
-            <tr>
-                <td>{{ ocorrencia.data|date:"d/m/Y" }}</td>
-                <td>{{ ocorrencia.tipo }}</td>
-                <td>{{ ocorrencia.descricao }}</td>
-                <td>{{ ocorrencia.responsavel }}</td>
-                <td>{{ ocorrencia.observacoes }}</td>
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan="5" class="text-center">Nenhuma ocorrência registrada.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<a href="{% url 'adicionar_ocorrencia' aluno.pk %}" class="btn btn-success btn-sm">Registrar Ocorrência</a>
-<div class="mt-3 no-print">
-    <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-primary">Editar</a>
-    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
-    <a href="{% url 'aluno_delete_confirm' aluno.pk %}" class="btn btn-danger">Excluir</a>
-    <a href="{% url 'aluno_list' %}" class="btn btn-secondary">Voltar</a>
-</div>
 {% endblock %}

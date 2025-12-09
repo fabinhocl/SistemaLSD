@@ -1,12 +1,12 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
-{% block title %}Frequência - {{ turma.Educadora }}{% endblock %}
+{% block title %}Frequência - {{ atividade.atividade }}{% endblock %}
 {% block content %}
 
 
-<h1>Turma: {{ turma.educadora.first_name }} - {{ turma.faixa_etaria }} - {{ turma.sala }}</h1>
-<p><strong>Turno:</strong> {{ turma.turno }}</p>
-
+<h1>Atividade: {{ atividade.atividade }} </h1>
+<h2>Facilitador(a): {{ atividade.facilitador }}</h2>
+<p><strong>Turno:</strong> {{ atividade.turno }}</p>
 <form method="post">
     {% csrf_token %}
     <label for="data">Data:</label>
@@ -15,16 +15,17 @@
         <thead>
             <tr class="text-center">
                 <th>Inscrição</th>
-                <th>Aluno</th>
+                <th>Nome do Aluno</th>
+                <th>Turma</th>
                 <th>Presente</th>
-                <th>Motivo da Falta</th>
-            </tr>
+                <th>Motivo Falta</th>
         </thead>
         <tbody>
             {% for aluno in alunos %}
             <tr class="text-center">
                 <td>{{ aluno.family.registration_number }}</td>
                 <td>{{ aluno.name }}</td>
+                <td>{{ aluno.turma.educadora.first_name }}</td>
                 <td class="text-center">
                     <input type="checkbox" name="presente_{{ aluno.id }}" {% if presencas_dict.aluno.id.presente %}checked{% endif %} value="1" checked class="form-check-input">
                 </td>
@@ -45,7 +46,7 @@
     </div>
     <div class="no-print">
         <button type="submit" class="btn btn-success">Salvar Chamada</button>
-        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
+        <a href="{% url 'activity_list' %}" class="btn btn-secondary">Voltar</a>
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
     </div>
 </form>

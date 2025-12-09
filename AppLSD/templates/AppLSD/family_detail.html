@@ -8,7 +8,31 @@
 <div class="container mt-4">
     
 <h2 class="row justify-content-center"> Detalhes da Família</h2>
-    <div class="container mt-4">
+
+<ul class="nav nav-tabs mt-3" id="familyTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-resumo" data-bs-toggle="tab"
+              data-bs-target="#pane-resumo" type="button" role="tab"
+              aria-controls="pane-resumo" aria-selected="true">
+        Resumo
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-historico" data-bs-toggle="tab"
+              data-bs-target="#pane-historico" type="button" role="tab"
+              aria-controls="pane-historico" aria-selected="false">
+        Histórico
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3" id="familyTabsContent">
+
+    {# ABA RESUMO #}
+    <div class="tab-pane fade show active" id="pane-resumo" role="tabpanel"
+         aria-labelledby="tab-resumo">
+
+<div class="container mt-2">
         <div class="row justify-content-center">
             <div class="col-lg-8 mx-auto">
                 <div class="row mb-3">
@@ -129,6 +153,7 @@
                     <td>{{ adulto.telephone }}</td>
                     <td>
                         <a href="{% url 'adult_edit' pk=adulto.pk %}" class="btn btn-primary btn-sm">Editar</a>
+                        <a href="{% url 'adult_detail' pk=adulto.pk %}" class="btn btn-danger btn-sm">Visualizar</a>
                         <a href="{% url 'adult_delete_confirm' pk=adulto.pk %}" class="btn btn-danger btn-sm">Excluir</a>
                     
                 </tr>
@@ -141,6 +166,74 @@
                     
         </tbody>
     </table>
+
+<!-- Card de auditoria -->
+    <div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 mx-auto">
+      <div class="card">
+        <div class="card-header">
+          <h5>Informações de Auditoria</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            <strong>Criado por:</strong>
+            {{ family.criado_por.username|default:"Sistema" }}
+            em {{ family.criado_em|date:"d/m/Y H:i" }}
+          </p>
+
+          {% if family.editado_por %}
+            <p>
+              <strong>Última edição:</strong>
+              {{ family.editado_por.username }}
+              em {{ family.editado_em|date:"d/m/Y H:i" }}
+            </p>
+          {% endif %}
+
+          {% if family.excluido %}
+            <p class="text-danger">
+              <strong>Excluído por:</strong>
+              {{ family.excluido_por.username }}
+              em {{ family.excluido_em|date:"d/m/Y H:i" }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>{# fim aba Resumo #}
+
+{# ABA HISTÓRICO #}
+<div class="tab-pane fade" id="pane-historico" role="tabpanel"
+         aria-labelledby="tab-historico">
+      <h4 class="mt-3">Histórico de Ações da Família</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Data / Hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ log.criado_por.username|default:"Sistema" }}</td>
+            <td>{{ log.acao }}</td>
+            <td>{{ log.descricao }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center">Nenhuma ação registrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+</div> {# fim tab-content #}
+
     <div class="mt-3 no-print">
         <a href="{% url 'family_edit' family.pk %}" class="btn btn-primary">Editar</a>
         <a href="{% url 'family_delete_confirm' family.pk %}" class="btn btn-danger">Excluir</a>

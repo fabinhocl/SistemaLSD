@@ -2,92 +2,186 @@
 {% load static %}
 
 {% block title %}
-Detalhes da Turma - {{ turma.nome }}
+Detalhes da Turma - {{ turma.sala }}
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
-    <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
-    <p><strong>Turno:</strong> {{ turma.turno }}</p>
+  <h1>Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
+  <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
+  <p><strong>Turno:</strong> {{ turma.turno }}</p>
 
-    <!-- DEBUG: Mostrar informações de permissão -->
-    {% if user.is_superuser %}
-    <div class="alert alert-warning">
-        <strong>DEBUG INFO:</strong><br>
-        Usuário: {{ user.username }}<br>
-        É coordenação: {{ is_coordenacao }}<br>
-        É educadora: {{ is_educadora }}<br>
-        Pode editar: {{ pode_editar }}<br>
-        Pode visualizar: {{ pode_visualizar }}<br>
-        Pode iniciar: {{ pode_iniciar }}<br>
-        Já tem frequência: {{ ja_tem_frequencia }}
-    </div>
-    {% endif %}
+  <!-- DEBUG: Mostrar informações de permissão -->
+  {% if user.is_superuser %}
+  <div class="alert alert-warning">
+    <strong>DEBUG INFO:</strong><br>
+    Usuário: {{ user.username }}<br>
+    É coordenação: {{ is_coordenacao }}<br>
+    É educadora: {{ is_educadora }}<br>
+    Pode editar: {{ pode_editar }}<br>
+    Pode visualizar: {{ pode_visualizar }}<br>
+    Pode iniciar: {{ pode_iniciar }}<br>
+    Já tem frequência: {{ ja_tem_frequencia }}
+  </div>
+  {% endif %}
 
-    <h2 class="text-center mt-4">Alunos da Turma</h2>
-    <table class="table table-striped">
+  {# ABAS #}
+  <ul class="nav nav-tabs mt-3" id="turmaTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-resumo" data-bs-toggle="tab"
+              data-bs-target="#pane-resumo" type="button" role="tab"
+              aria-controls="pane-resumo" aria-selected="true">
+        Resumo
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-historico" data-bs-toggle="tab"
+              data-bs-target="#pane-historico" type="button" role="tab"
+              aria-controls="pane-historico" aria-selected="false">
+        Histórico
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3" id="turmaTabsContent">
+
+    {# ABA RESUMO #}
+    <div class="tab-pane fade show active" id="pane-resumo" role="tabpanel"
+         aria-labelledby="tab-resumo">
+
+      <h2 class="text-center mt-4">Alunos da Turma</h2>
+      <table class="table table-striped">
         <thead>
-            <tr>
-                <th>Inscrição</th>
-                <th>Nome</th>
-                <th>Data de nascimento</th>
-                <th>Ações</th>
-            </tr>
+          <tr>
+            <th>Inscrição</th>
+            <th>Nome</th>
+            <th>Data de nascimento</th>
+            <th>Idade</th>
+            <th>Ações</th>
+          </tr>
         </thead>
         <tbody>
-            {% for aluno in turma.alunos.all %}
-            <tr>
-                <td>{{ aluno.family.registration_number }}</td>
-                <td>{{ aluno.name }}</td>
-                <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
-                <td>
-                    <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-sm btn-primary">Editar</a>
-                    <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
-                    <a href="{% url 'mover_aluno' aluno.pk %}" class="btn btn-warning btn-sm">Mover aluno</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3" class="text-center">Nenhum aluno vinculado a esta turma.</td>
-            </tr>
-            {% endfor %}
+          {% for aluno in turma.alunos.all %}
+          <tr>
+            <td>{{ aluno.family.registration_number }}</td>
+            <td>{{ aluno.name }}</td>
+            <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
+            <td>{{ aluno.idade }}</td>
+            <td>
+              <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-sm btn-primary">Editar</a>
+              <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
+              <a href="{% url 'mover_aluno' aluno.pk %}" class="btn btn-warning btn-sm">Mover aluno</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center">Nenhum aluno vinculado a esta turma.</td>
+          </tr>
+          {% endfor %}
         </tbody>
-    </table>
+      </table>
+
       <!-- BOTÕES DE FREQUÊNCIA -->
-    <div class="mt-4">
+      <div class="mt-4">
         {% if ja_tem_frequencia %}
-            <!-- Já existe frequência hoje -->
-            <div class="alert alert-info">
-                Frequência de hoje já foi iniciada.
-            </div>
-            
-            {% if pode_editar %}
-                <!-- Coordenação pode editar -->
-                <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
-                    <i class="fas fa-edit"></i> Editar Frequência de Hoje
-                </a>
-            {% endif %}
-            
-            {% if pode_visualizar %}
-                <!-- Educadora e Coordenação podem visualizar -->
-                <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
-                    <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
-                </a>
-            {% endif %}
-            
+          <div class="alert alert-info">
+            Frequência de hoje já foi iniciada.
+          </div>
+
+          {% if pode_editar %}
+          <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
+            <i class="fas fa-edit"></i> Editar Frequência de Hoje
+          </a>
+          {% endif %}
+
+          {% if pode_visualizar %}
+          <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
+            <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
+          </a>
+          {% endif %}
+
         {% else %}
-            <!-- Não existe frequência hoje - pode iniciar -->
-            {% if pode_iniciar %}
-            <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
-                <i class="fas fa-play"></i> Iniciar Frequência
-            </a>
-            {% endif %}
+          {% if pode_iniciar %}
+          <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
+            <i class="fas fa-play"></i> Iniciar Frequência
+          </a>
+          {% endif %}
         {% endif %}
-        
-        <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
-        <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
-        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar à lista de turmas</a>
+      </div>
+
+      <!-- CARD DE AUDITORIA DA TURMA -->
+      <div class="container mt-4">
+        <div class="row justify-content-center">
+          <div class="col-lg-4 mx-auto">
+            <div class="card">
+              <div class="card-header">
+                <h5>Informações de Auditoria</h5>
+              </div>
+              <div class="card-body">
+                <p>
+                  <strong>Criado por:</strong>
+                  {{ turma.criado_por.username|default:"Sistema" }}
+                  em {{ turma.criado_em|date:"d/m/Y H:i" }}
+                </p>
+                {% if turma.editado_por %}
+                <p>
+                  <strong>Última edição:</strong>
+                  {{ turma.editado_por.username }}
+                  em {{ turma.editado_em|date:"d/m/Y H:i" }}
+                </p>
+                {% endif %}
+                {% if turma.excluido %}
+                <p class="text-danger">
+                  <strong>Excluído por:</strong>
+                  {{ turma.excluido_por.username }}
+                  em {{ turma.excluido_em|date:"d/m/Y H:i" }}
+                </p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> {# fim aba Resumo #}
+
+    {# ABA HISTÓRICO (logs / AppLog) #}
+    <div class="tab-pane fade" id="pane-historico" role="tabpanel"
+         aria-labelledby="tab-historico">
+      <h4 class="mt-3">Histórico de Ações da Turma</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Data / Hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ log.criado_por.username|default:"Sistema" }}</td>
+            <td>{{ log.acao }}</td>
+            <td>{{ log.descricao }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center">Nenhuma ação registrada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+  </div> {# fim tab-content #}
+
+  <div class="mt-4">
+    <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
+    <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
+    <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar à lista de turmas</a>
+  </div>
+
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 from pyexpat.errors import messages
 from dal import autocomplete
-from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario
-from .utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil # ✅ Importar as funções
+from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario, AppLog
+from .utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
 from django import forms
@@ -12,9 +12,10 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse 
-from django.db.models import Count, Q, Avg, Value, CharField
+from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
 from datetime import date, timedelta
@@ -230,9 +231,41 @@ def remove_accents(text):
 
 @login_required
 def home_educadora(request):
-    educadora_turmas = Turma.objects.filter(educadora=request.user)
-    return render(request, 'AppLSD/home_educadora.html', {'turmas': educadora_turmas})
+    educadora = request.user
+    hoje = timezone.now().date()
+    weekday = hoje.weekday()  # 0=segunda, 6=domingo
 
+     # alunos da educadora
+    alunos_da_educadora = Aluno.objects.filter(turma__educadora=educadora)
+    
+    # atividades que têm pelo menos um desses alunos
+    atividades_com_alunos_da_educadora = Activity.objects.filter(
+        Exists(
+            alunos_da_educadora.filter(atividades=OuterRef('pk'))
+        )
+    )
+    # se você tem campo de dia da semana na Activity, aplique o filtro do dia aqui:
+    # por exemplo, se get_dia_semana_display usa choices com 'SEG', 'TER'...:
+    mapa_weekday = {
+        0: 'segunda',
+        1: 'terca',
+        2: 'quarta',
+        3: 'quinta',
+        4: 'sexta',
+    }
+
+    valor_dia = mapa_weekday.get(weekday)
+    if valor_dia:
+        # se dia_semana guarda vários dias em uma string, usa contains
+        atividades_com_alunos_da_educadora = atividades_com_alunos_da_educadora.filter(dia_semana__icontains=valor_dia)
+
+    context = {
+        'turmas': Turma.objects.filter(educadora=educadora),
+        'atividades_do_dia': atividades_com_alunos_da_educadora,
+        # outros dados que você já manda hoje (turmas do dia, etc.)
+    }
+    return render(request, 'AppLSD/home_educadora.html', context)
+    
 @login_required
 def home_facilitador(request):
     facilitador_atividades = Activity.objects.filter(facilitador=request.user)
@@ -397,7 +430,16 @@ def dashboard_presenca(request):
 @login_required
 def family_detail(request, pk):
     family = get_object_or_404(Family, pk=pk)
-    return render(request, 'AppLSD/family_detail.html', {'family': family})
+
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(Family)
+    logs = AppLog.objects.filter(content_type=ct, object_id=family.pk)
+
+    context = {
+        'family': family,
+        'logs': logs,
+    }
+    return render(request, 'AppLSD/family_detail.html', context)
 
 @login_required
 def family_delete_confirm(request, pk):
@@ -452,7 +494,15 @@ def family_edit(request, pk):
     if request.method == 'POST':
         form = FamilyForm(request.POST, request.FILES, instance=family)
         if form.is_valid():
-            form.save()
+            family = form.save(commit=False)
+            family.editado_por = request.user           # auditoria
+            family.save()
+            registrar_log(
+                request.user,
+                family,
+                'familia_editada',
+                f'Família {family.responsible_name} atualizada.'
+            )
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
@@ -463,22 +513,33 @@ def family_create(request):
         form = FamilyForm(request.POST, request.FILES)
         formset = AlunoInlineFormSet(request.POST, request.FILES)
         if form.is_valid() and formset.is_valid():
-            family = form.save()
+            family = form.save(commit=False)
+            family.criado_por = request.user            # auditoria
+            family.save()
             formset.instance = family
             formset.save()
+            registrar_log(
+                request.user,
+                family,
+                'familia_criada',
+                f'Família {family.responsible_name} cadastrada.'
+            )
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm()
         formset = AlunoInlineFormSet()
     return render(request, 'AppLSD/family_form.html', {'form': form, 'formset': formset})
 
+@login_required
 def family_update(request, pk):
     family = get_object_or_404(Family, pk=pk)
     if request.method == 'POST':
         form = FamilyForm(request.POST, request.FILES, instance=family)
         formset = AlunoInlineFormSet(request.POST, request.FILES, instance=family)
         if form.is_valid() and formset.is_valid():
-            form.save()
+            family = form.save(commit=False)
+            family.editado_por = request.user           # auditoria
+            family.save()
             formset.save()
             return redirect('family_detail', pk=family.pk)
     else:
@@ -537,26 +598,50 @@ def adult_create(request):
         if form.is_valid():
             adult = form.save(commit=False)
             adult.family = family
+            adult.criado_por = request.user             # auditoria
             adult.save()
+            registrar_log(
+                request.user,
+                adult,
+                'adulto_criado',
+                f'Adulto {adult.name} incluído na família {adult.family.responsible_name}.'
+            )
             return redirect('family_detail', pk=family.pk)
     else:
         form = AdultForm()
-        if family:
-            form.fields['family'].initial = family.pk  # mantém selecionado
-            form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
+        form.fields['family'].initial = family.pk  # mantém selecionado
+        form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
     return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': family})
 
 @login_required
 def adult_detail(request, pk):
     adult = get_object_or_404(Adult, pk=pk)
-    return render(request, 'AppLSD/adult_detail.html', {'adult': adult})
 
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(Adult)
+    logs = AppLog.objects.filter(content_type=ct, object_id=adult.pk)
+    
+    context = {
+        'adult': adult,
+        'logs': logs,
+    }
+    return render(request, 'AppLSD/adult_detail.html', context)
+
+@login_required
 def adult_edit(request, pk):
     adult = get_object_or_404(Adult, pk=pk)
     if request.method == 'POST':
         form = AdultForm(request.POST, instance=adult)
         if form.is_valid():
-            form.save()
+            adult = form.save(commit=False)
+            adult.editado_por = request.user            # auditoria
+            adult.save()
+            registrar_log(
+                request.user,
+                adult,
+                'adulto_editado',
+                f'Dados do adulto {adult.name} atualizados.'
+            )
             return redirect('family_detail', pk=adult.family.pk)
     else:
         form = AdultForm(instance=adult)
@@ -593,7 +678,6 @@ def family_autocomplete(request):
 
 def aluno_list(request):
     alunos_list = Aluno.objects.select_related('family').all().order_by('name')
-
     paginator = Paginator(alunos_list, 100)  # paginar 100 por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -613,10 +697,17 @@ def aluno_create(request):
         form = AlunoForm(request.POST)
         if form.is_valid():
             aluno = form.save(commit=False)
+            aluno.criado_por = request.user # registra quem criou
             # Associa família caso venha selecionada/fixa
             if family:
                 aluno.family = family
             aluno.save()
+            registrar_log(
+                request.user,
+                aluno,
+                'aluno_criado',
+                f'Aluno {aluno.name} criado e vinculado à família {aluno.family.responsible_name}.'
+            )
             return redirect('aluno_list')  # Ou outro local desejado
             #return redirect('family_detail', pk=family.pk)
     else:
@@ -632,15 +723,27 @@ def aluno_create(request):
 @login_required
 def aluno_detail(request, pk):
     aluno = get_object_or_404(Aluno, pk=pk)
-    return render(request, 'AppLSD/aluno_detail.html', {'aluno': aluno})
 
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(Aluno)
+    logs = AppLog.objects.filter(content_type=ct, object_id=aluno.pk)
+
+    context = {
+        'aluno': aluno,
+        'logs': logs,
+    }
+    return render(request, 'AppLSD/aluno_detail.html', context)
+
+@login_required
 def aluno_edit(request, pk):
     aluno = get_object_or_404(Aluno, pk=pk)
     if request.method == 'POST':
         form = AlunoForm(request.POST, instance=aluno)
         if form.is_valid():
-            form.save()
-            return redirect('aluno_list')
+            aluno = form.save(commit=False)
+            aluno.editado_por = request.user             # auditoria
+            aluno.save()
+            return redirect('aluno_detail', pk=aluno.pk)
     else:
         form = AlunoForm(instance=aluno)
     return render(request, 'AppLSD/aluno_form.html', {'form': form})
@@ -655,6 +758,9 @@ def aluno_delete_confirm(request, pk):
         usuario = request.user
         user_autenticado = authenticate(username=usuario.username, password=senha)
         if user_autenticado is not None:
+            # se quiser manter delete “real”, só delete()
+            # se quiser já usar auditoria no futuro: trocar por soft_delete
+            # aluno.soft_delete(request.user)
             aluno.delete()
             return redirect('aluno_list')
         else:
@@ -724,9 +830,12 @@ def turma_detail(request, turma_id):
         else:
             # Não existe frequência - qualquer um pode iniciar
             pode_iniciar = True
-    
+
+    ct = ContentType.objects.get_for_model(Turma)
+    logs = AppLog.objects.filter(content_type=ct, object_id=turma.id).order_by('-criado_em')
     context = {
         'turma': turma,
+        'logs': logs,
         'alunos': alunos,
         'frequencia_hoje': frequencia_hoje,
         'ja_tem_frequencia': frequencia_hoje is not None,
@@ -774,30 +883,50 @@ def turma_list(request):
     page_obj = paginator.get_page(page_number)
     return render(request, 'AppLSD/turma_list.html', {'page_obj': page_obj})
 
+@login_required
 def turma_create(request):
     if request.method == 'POST':
         form = TurmaForm(request.POST)
         if form.is_valid():
+            turma = form.save(commit=False)
+            turma.criado_por = request.user              # auditoria
             form.save()
+            registrar_log(
+                request.user,
+                turma,
+                'turma_criada',
+                f'Turma {turma.sala} criada para o turno {turma.turno}.'
+            )
             return redirect('turma_list')
     else:
         form = TurmaForm()
     return render(request, 'AppLSD/turma_form.html', {'form': form})
 
+@login_required
 def turma_edit(request, pk):
     turma = get_object_or_404(Turma, pk=pk)
     if request.method == 'POST':
         form = TurmaForm(request.POST, instance=turma)
         if form.is_valid():
+            turma = form.save(commit=False)
+            turma.editado_por = request.user            # auditoria
             form.save()
+            registrar_log(
+                request.user,
+                turma,
+                'turma_editada',
+                f'Turma {turma.sala} editada para o turno {turma.turno}.'
+            )
             return redirect('turma_list')
     else:
         form = TurmaForm(instance=turma)
     return render(request, 'AppLSD/turma_form.html', {'form': form})
 
+@login_required
 def turma_delete(request, pk):
     turma = get_object_or_404(Turma, pk=pk)
     if request.method == 'POST':
+        #turma.soft_delete(request.user)               # Se quiser deletar turma usar soft delte
         turma.delete()
         return redirect('turma_list')
     return render(request, 'AppLSD/turma_confirm_delete.html', {'turma': turma})
@@ -810,14 +939,17 @@ def iniciar_frequencia_turma(request, turma_id):
     """
     turma = get_object_or_404(Turma, id=turma_id)
     hoje = timezone.now().date()
-
-    # Busca ou cria a chamada do dia
+    alunos = Aluno.objects.filter(turma=turma) #inclui essa na criação da auditoria
+    # se quiser impedir duplicada no mesmo dia:
     chamada, created = FrequenciaTurma.objects.get_or_create(
         turma=turma,
         data=hoje,
-        defaults={'criado_por': request.user}
+        defaults={
+            'presente': True,          # valor padrão na chamada
+            'criado_por': request.user
+        }
     )
-    alunos = Aluno.objects.filter(turma=turma)
+    #alunos = Aluno.objects.filter(turma=turma)
     # Verificar se já existe frequência hoje
     #frequencia_existente = FrequenciaTurma.objects.filter(turma=turma, data=timezone.now().date()).first()
 
@@ -828,12 +960,20 @@ def iniciar_frequencia_turma(request, turma_id):
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
             
             # Aqui é o ponto crítico: SEMPRE passar chamada=chamada
-            freq, created = FrequenciaAluno.objects.update_or_create(
+            FrequenciaAluno.objects.update_or_create(
                 chamada=chamada,
                 aluno=aluno,
                 defaults={'presente': presente, 'motivo_falta': motivo_falta if not presente else ''}
             )
         messages.success(request, 'Frequência registrada com sucesso!')
+
+        # depois de criar/obter chamada e salvar presenças, antes do redirect
+        registrar_log(
+            request.user,
+            turma,
+            'frequencia_criada',
+            f'Frequência do dia {hoje.strftime("%d/%m/%Y")} registrada pela educadora {request.user.get_full_name() or request.user.username}.',
+        )
         return redirect('frequencia_visualizar', frequencia_id=chamada.id)
 
     # No GET, renderize o template de registro!
@@ -884,14 +1024,16 @@ def editar_frequencia_turma(request, frequencia_id):
     alunos_turma = Aluno.objects.filter(turma=chamada.turma)
     
     if request.method == 'POST':
+        chamada.editado_por = request.user             # auditoria
+        chamada.save()
         # Processar alterações
         for aluno in alunos_turma:
-            # Radio button: 'presente' ou 'falta'
-            presenca_status = request.POST.get(f'presenca_{aluno.id}')
-            presente = (presenca_status == 'presente')
-            motivo_falta = request.POST.get(f'motivo_falta_{aluno.id}', '')
+           # Mesmo padrão da view de iniciar: checkbox marcado = presente
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
             
             # Atualizar ou criar registro
+            """ 
             try:
         # Buscar registro existente
                 freq_aluno = FrequenciaAluno.objects.get(chamada=chamada, aluno=aluno)
@@ -899,20 +1041,28 @@ def editar_frequencia_turma(request, frequencia_id):
                 freq_aluno.motivo_falta = motivo_falta if not presente else ''
                 freq_aluno.save()
             except FrequenciaAluno.DoesNotExist:
+            """
                 # Se não existe, cria novo registro
-                FrequenciaAluno.objects.create(
-                    chamada=chamada,
-                    aluno=aluno,
-                    presente=presente,
-                    motivo_falta=motivo_falta if not presente else ''
-                )
+            FrequenciaAluno.objects.update_or_create(
+                chamada=chamada,
+                aluno=aluno,
+                defaults={
+                    'presente': presente,
+                    'motivo_falta': motivo_falta if not presente else ''
+                }
+            )
         messages.success(request, 'Frequência atualizada com sucesso!')
+
+        registrar_log(
+            request.user,
+            chamada.turma,
+            'frequencia_editada',
+            f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela coordenadora ({request.user.get_full_name() or request.user.username}).',
+        )
         return redirect('turma_detail', turma_id=chamada.turma.id)
             
     # Criar dicionário de presenças para facilitar no template
     presencas_dict = {p.aluno.id: p for p in presencas}
-    
-    
     context = {
         'chamada': chamada,
         'presencas': presencas_dict,
@@ -924,9 +1074,26 @@ def editar_frequencia_turma(request, frequencia_id):
 
 @login_required
 def activity_detail(request, activity_id):
-    atividade = Activity.objects.get(id=activity_id)
-    contexto = {'atividade': atividade}
-    return render(request, 'AppLSD/activity_detail.html', contexto)
+    atividade = get_object_or_404(Activity, id=activity_id)
+    
+    hoje = timezone.now().date()
+    tem_frequencia_hoje = FrequenciaAtividade.objects.filter(
+        atividade=atividade,
+        data=hoje,
+    ).exists()
+
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(Activity)
+    logs = AppLog.objects.filter(content_type=ct, object_id=atividade.pk)
+
+    context = {
+        'atividade': atividade,
+        'tem_frequencia_hoje': tem_frequencia_hoje,
+        # se tiver controle de permissão, algo como:
+        'is_coordenacao': request.user.groups.filter(name='Coordenacao').exists(),
+        'logs': logs,
+    }
+    return render(request, 'AppLSD/activity_detail.html', context)
     
 
 def activity_list(request):
@@ -936,11 +1103,21 @@ def activity_list(request):
     page_obj = paginator.get_page(page_number)
     return render(request, 'AppLSD/activity_list.html', {'page_obj': page_obj})
 
+@login_required
 def activity_create(request):
     if request.method == 'POST':
         form = ActivityForm(request.POST)
         if form.is_valid():
-            form.save()
+            activity = form.save(commit=False)
+            activity.criado_por = request.user          # auditoria
+            activity.save()
+            registrar_log(
+                request.user,
+                activity,
+                'atividade_criada',
+                f'Atividade {activity.atividade} criada para o turno {activity.turno}.'
+            )
+            form.save_m2m()
             return redirect('activity_list')
     else:
         form = ActivityForm()
@@ -951,7 +1128,16 @@ def activity_edit(request, pk):
     if request.method == 'POST':
         form = ActivityForm(request.POST, instance=atividade)
         if form.is_valid():
-            form.save()
+            atividade = form.save(commit=False)
+            atividade.editado_por = request.user        # auditoria
+            atividade.save()
+            registrar_log(
+                request.user,
+                atividade,
+                'atividade_editada',
+                f'Atividade {atividade.atividade} editada.'
+            )
+            form.save_m2m()
             return redirect('activity_list')
     else:
         form = ActivityForm(instance=atividade)
@@ -960,31 +1146,174 @@ def activity_edit(request, pk):
 def activity_delete(request, pk):
     activity = get_object_or_404(Activity, pk=pk)
     if request.method == 'POST':
+        #activity.soft_delete(request.user)              # se quiser soft delete
+        # ou activity.delete() se ainda preferir exclusão real
         activity.delete()
         return redirect('activity_list')
     return render(request, 'AppLSD/activity_confirm_delete.html', {'activity': activity})
 
 @login_required
-def iniciar_chamada_activity(request, activity_id):
-    atividade = Activity.objects.get(id=activity_id)
-    alunos = Aluno.objects.filter(atividades=atividade)
-    data_chamada = request.POST.get('data', date.today())
+def iniciar_frequencia_activity(request, activity_id):
+    """
+    Inicia ou registra a frequência de uma atividade.
+    Educadoras registram a presença dos alunos vinculados à atividade.
+    """
+    atividade = get_object_or_404(Activity, id=activity_id)
+    if request.user.is_superuser or request.user.groups.filter(name='Coordenacao').exists():
+        # coordenação pode ver todos os alunos da atividade
+        alunos = Aluno.objects.filter(atividades=atividade)
+    else:
+        # educadora vê só alunos de turmas dela
+        alunos = Aluno.objects.filter(
+            atividades=atividade,
+            turma__educadora=request.user,
+        )
+    # Data da chamada: se vier no POST usa, senão hoje
+    if request.method == 'POST' and request.POST.get('data'):
+        data_chamada = date.fromisoformat(request.POST['data'])
+    else:
+        data_chamada = timezone.now().date()
 
     if request.method == 'POST':
-        for aluno in alunos:
-            presente = bool(request.POST.get(f'presente_{aluno.id}'))
-            freq, created = FrequenciaAtividade.objects.update_or_create(
-                aluno=aluno, atividade=atividade, data=data_chamada,
-                defaults={'presente': presente}
-            )
-        return render(request, 'AppLSD/sucesso_activity.html', {'atividade': atividade, 'data': data_chamada})
 
-    return render(request, 'AppLSD/activity_presenca.html', {
+        # verifica se já existia frequência para essa atividade e data
+        ja_existia = FrequenciaAtividade.objects.filter(
+            atividade=atividade,
+            data=data_chamada,
+        ).exists()
+
+        # Processamento da presença
+        for aluno in alunos:
+            # Checkbox marcado = presente
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+            FrequenciaAtividade.objects.update_or_create(
+                atividade=atividade,
+                aluno=aluno,
+                data=data_chamada,
+                defaults={
+                    'presente': presente,
+                    'motivo_falta': motivo_falta if not presente else '',
+                    #'editado_por': request.user,
+                    'criado_por': request.user,
+                }
+            )
+
+        messages.success(request, 'Frequência da atividade registrada com sucesso!')
+
+        # Log na atividade
+        registrar_log(
+            request.user,
+            atividade,
+            'frequencia_atividade_criada' if not ja_existia else 'frequencia_atividade_editada',
+            (
+                f'Frequência da atividade "{atividade.atividade}" em '
+                f'{data_chamada.strftime("%d/%m/%Y")} registrada pela educadora '
+                f'{request.user.get_full_name() or request.user.username}.'
+            ),
+        )
+
+        return redirect('frequencia_activity_visualizar', activity_id=atividade.id)
+
+    # GET: renderiza formulário de presença
+    return render(request, 'AppLSD/frequencia_activity_iniciar.html', {
         'atividade': atividade,
         'alunos': alunos,
-        'data': request.POST.get('data') or date.today().isoformat()
+        'data': data_chamada,
     })
 
+
+@login_required
+def visualizar_frequencia_activity(request, activity_id):
+    atividade = get_object_or_404(Activity, id=activity_id)
+    data = request.GET.get('data')  # ou outra forma de escolher o dia
+    if data:
+        data_chamada = date.fromisoformat(data)
+    else:
+        data_chamada = timezone.now().date()
+
+    # pega a "cabeça" da chamada (se você usa o mesmo model) apenas como referência
+    chamada = FrequenciaAtividade.objects.filter(
+        atividade=atividade,
+        data=data_chamada,
+    ).order_by('id').first()
+
+    # lista de presenças por aluno (pode ser o mesmo queryset)
+    presencas = FrequenciaAtividade.objects.filter(
+        atividade=atividade,
+        data=data_chamada,
+    ).select_related('aluno').order_by('aluno__name')
+
+    context = {
+        'atividade': atividade,
+        'data_chamada': data_chamada,
+        'chamada': chamada,
+        'presencas': presencas,
+    }
+    return render(request, 'AppLSD/frequencia_activity_visualizar.html', context)
+
+
+@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
+def editar_frequencia_activity(request, frequencia_id):
+    """
+    Edita a frequência - apenas coordenadoras
+    """
+    atividade = get_object_or_404(Activity, id=activity_id)
+    alunos_atividade = Aluno.objects.filter(atividade=atividade)
+    
+    if request.method == 'POST' and request.POST.get('data'):
+        data_chamada = date.fromisoformat(request.POST['data'])
+    else:
+        data_chamada = timezone.now().date()
+
+    presencas = FrequenciaAtividade.objects.filter(
+        atividade=atividade,
+        data=data_chamada
+    ).select_related('aluno')
+
+        # Processar alterações
+    if request.method == 'POST':
+        for aluno in alunos_atividade:
+           # Mesmo padrão da view de iniciar: checkbox marcado = presente
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+            
+            
+            # Se não existe, cria novo registro
+            FrequenciaAtividade.objects.update_or_create(
+                atividade=atividade,
+                aluno=aluno,
+                data=data_chamada,
+                defaults={
+                    'presente': presente,
+                    'motivo_falta': motivo_falta if not presente else '',
+                    'editado_por': request.user,
+                }
+            )
+        messages.success(request, 'Frequência atualizada com sucesso!')
+
+        registrar_log(
+            request.user,
+            atividade,
+            'frequencia_atividade_editada',
+            f'Frequência da atividade "{atividade.atividade}" em '
+            f'{data_chamada.strftime("%d/%m/%Y")} editada pela coordenadora' 
+            f' ({request.user.get_full_name() or request.user.username}).',
+        )
+        return redirect('activity_detail', atividade.id)
+            
+    # Criar dicionário de presenças para facilitar no template
+    presencas_dict = {p.aluno.id: p for p in presencas}
+    context = {
+        'atividade': atividade,
+        'data_chamada': data_chamada,
+        'presencas': presencas_dict,
+        'alunos_atividade': alunos_atividade,
+        'modo_edicao': True,
+    }
+    
+    return render(request, 'AppLSD/frequencia_activity_editar.html', context)
     
 
 def turma_add_alunos(request, turma_id):
@@ -1041,6 +1370,12 @@ def mover_aluno(request, aluno_id):
                 turma_origem=turma_antiga,
                 turma_destino=turma_nova,
                 motivo=motivo
+            )
+            registrar_log(
+                request.user,
+                aluno,
+                'aluno_movido',
+                f'Aluno {aluno.name} movido da turma {turma_antiga} para {turma_nova}. Motivo: {motivo}'
             )
             return redirect('aluno_detail', pk=aluno.pk)
     else:

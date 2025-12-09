@@ -6,7 +6,7 @@
 
 <h2>Atividade: {{ atividade.atividade }} </h2>
 <h2>Professor: {{ atividade.facilitador.get_full_name }}</h2>
-<p><strong>Data:</strong> {{ hoje|date:"d/m/Y" }} </p>>
+<p><strong>Data:</strong> {{ data|date:"d/m/Y" }} </p>>
 
 <form method="post">
     {% csrf_token %}
@@ -14,21 +14,26 @@
     <input type="date" name="data" id="data" value="{{ data }}">
     <table class="table table-bordered">
         <thead>
-            <tr>
+            <tr class="text-center">
+                <th>Inscrição</th>
                 <th>Aluno</th>
+                <th>Turma</th>
                 <th>Presente</th>
                 <th>Motivo da Falta</th>
+                
             </tr>
         </thead>
         <tbody>
             {% for aluno in atividade.alunos.all %}
-            <tr>
+            <tr class="text-center">
+                <td>{{ aluno.family.registration_number }}</td>
                 <td>{{ aluno.name }}</td>
+                <td>{{ aluno.turma.educadora }}</td>
                 <td class="text-center">
-                    <input type="checkbox" name="presente_{{ aluno.pk }}" value="1" checked class="form-check-input">
+                    <input type="checkbox" name="presente_{{ aluno.id }}" value="1" checked class="form-check-input">
                 </td>
                 <td>
-                    <input type="text" name="motivo_{{ aluno.pk }}" class="form-control" placeholder="Motivo da falta (opcional)">
+                    <input type="text" name="motivo_{{ aluno.id }}" class="form-control" placeholder="Motivo da falta (opcional)">
                 </td>
             </tr>
             {% empty %}

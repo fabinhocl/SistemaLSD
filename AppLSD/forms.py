@@ -549,7 +549,6 @@ class ActivityForm(forms.ModelForm):
         ('quarta', 'Quarta-feira'),
         ('quinta', 'Quinta-feira'),
         ('sexta', 'Sexta-feira'),
-        ('sabado', 'Sábado'),
     )
     dia_semana = forms.MultipleChoiceField(choices=DIAS_SEMANAS_CHOICES, widget=forms.CheckboxSelectMultiple, label='Dias da Semana')
     class Meta:
