@@ -1,0 +1,125 @@
+{# templates/events/event_detail.html #}
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+
+{% block title %}Detalhes do Evento{% endblock %}
+s
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h3 class="mb-0">{{ event.title }}</h3>
+      
+      <!-- Botões de ação -->
+      <div class="btn-group" role="group">
+        <!-- Botão Editar (visível para todos autorizados) -->
+        <a href="{% url 'events:event_update' event.pk %}" class="btn btn-primary btn-sm">
+          <i class="bi bi-pencil"></i>
+          Editar
+        </a>
+        
+        <!-- Botão Excluir (apenas para administradores) -->
+        {% if user.is_superuser or user.perfis.filter.tipo_perfil='admin' %}
+          <a href="{% url 'events:event_delete' event.pk %}" 
+             class="btn btn-danger btn-sm">
+            <i class="bi bi-trash"></i>
+            Excluir
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>{{ event.title }}</strong>
+    </div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-md-4">
+          <strong>Data:</strong> {{ event.date }}
+        </div>
+        <div class="col-md-4">
+          <strong>Tipo:</strong> {{ event.get_event_type_display }}
+        </div>
+        <div class="col-md-4">
+          <strong>Local:</strong> {{ event.location|default:"-" }}
+        </div>
+      </div>
+      <div class="mb-2">
+        <strong>Descrição:</strong><br>
+        {{ event.description|default:"(sem descrição)" }}
+      </div>
+      <div>
+        <strong>Observações:</strong><br>
+        {{ event.notes|default:"(sem observações)" }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <strong>Participantes</strong>
+    </div>
+    <div class="card-body">
+      {% if event.participants.all %}
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Papel</th>
+                <th>Situação</th>
+                <th>Grupo</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ep in event.participants.all %}
+                <tr>
+                  <td>{{ ep.person.full_name }}</td>
+                  <td>{{ ep.get_role_display }}</td>
+                  <td>{{ ep.get_attendance_status_display }}</td>
+                  <td>{{ ep.group_label|default:"-" }}</td>
+                  <td>{{ ep.notes|default:"-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="mb-0">Nenhum participante cadastrado.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const deleteForm = document.getElementById('delete-event-form');
+  
+  if (deleteForm) {
+    deleteForm.addEventListener('submit', function(e) {
+      const passwordInput = document.getElementById('password-confirm');
+      
+      if (!passwordInput.value) {
+        e.preventDefault();
+        alert('Por favor, digite sua senha para confirmar a exclusão.');
+        passwordInput.focus();
+        return false;
+      }
+      
+      // Confirmação adicional
+      const confirmacao = confirm('Tem certeza absoluta que deseja excluir este evento?');
+      if (!confirmacao) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

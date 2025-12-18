@@ -1,0 +1,30 @@
+{% extends "AppLSD/base.html" %}
+
+{% block title %}Relatório de presença de responsáveis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Presença de responsáveis - {{ ano }}</h2>
+
+  {% if presencas %}
+    <table class="table table-sm table-striped mt-3">
+      <thead>
+        <tr>
+          <th>Responsável</th>
+          <th>Qtd. presenças</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in presencas %}
+          <tr>
+            <td>{{ p.person__full_name }}</td>
+            <td>{{ p.qtd_presencas }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nenhum registro de presença encontrado para {{ ano }}.</p>
+  {% endif %}
+</div>
+{% endblock %}

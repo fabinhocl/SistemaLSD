@@ -1,0 +1,498 @@
+{% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">{% if object %}Editar{% else %}Novo{% endif %} evento</h2>
+  
+  <form method="post" id="event-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    
+    <div class="row mb-3">
+      <div class="col-md-8">{{ form.title|as_crispy_field }}</div>
+      <div class="col-md-4">{{ form.date|as_crispy_field }}</div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-8">{{ form.location|as_crispy_field }}</div>
+      <div class="col-md-2">{{ form.start_time|as_crispy_field }}</div>
+      <div class="col-md-2">{{ form.end_time|as_crispy_field }}</div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-4">{{ form.setor_responsible|as_crispy_field }}</div>
+      <div class="col-md-4">{{ form.partner_organization|as_crispy_field }}</div>
+      <div class="col-md-4">{{ form.event_type|as_crispy_field }}</div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-4">{{ form.area_atuacao|as_crispy_field }}</div>
+      <div class="col-md-8">{{ form.description|as_crispy_field }}</div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        Participantes
+      </div>
+      <div class="card-body">
+        {{ participants_formset.management_form }}
+        
+        <!-- Exibir erros gerais do formset -->
+        {% if participants_formset.non_form_errors %}
+          <div class="alert alert-danger">
+            {{ participants_formset.non_form_errors }}
+          </div>
+        {% endif %}
+
+        <div class="mb-2 text-end">
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1 btn-novo-participante">
+            Novo cadastro
+          </button>
+          <button type="button" id="btn-add-participant" class="btn btn-outline-primary">
+            + Adicionar participante
+          </button>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" id="participants-table">
+            <thead>
+              <tr>
+                <th>Pessoa</th>
+                <th>Papel</th>
+                <th>Situação</th>
+                <th>Grupo</th>
+                <th>Remover</th>
+              </tr>
+            </thead>
+            <tbody id="participants-tbody">
+              {% for f in participants_formset %}
+                <tr class="participant-form">
+                  <td class="align-top">
+                    <!-- Exibir erros do formulário -->
+                    {% if f.errors %}
+                      <div class="text-danger small mb-1">
+                        {{ f.errors }}
+                      </div>
+                    {% endif %}
+                    
+                    <div class="mb-1">
+                      <input type="text"
+                             class="form-control form-control-sm busca-pessoa"
+                             placeholder="Digite para buscar pessoa"
+                             value="{% if f.instance.person %}{{ f.instance.person.full_name }}{% endif %}"
+                             autocomplete="off">
+                    </div>
+                    <div class="resultados-pessoa list-group list-group-flush"></div>
+                    
+                    <!-- Campo select hidden - CORREÇÃO AQUI -->
+                    <div style="display: none;">
+                      {{ f.person.errors }}
+                      <select name="{{ f.person.html_name }}" 
+                              id="{{ f.person.id_for_label }}"
+                              class="d-none select-pessoa"
+                              {% if f.instance.person %}value="{{ f.instance.person.id }}"{% endif %}>
+                        {% if f.instance.person %}
+                          <option value="{{ f.instance.person.id }}" selected>
+                            {{ f.instance.person.full_name }}
+                          </option>
+                        {% else %}
+                          <option value="">---------</option>
+                        {% endif %}
+                      </select>
+                    </div>
+                    
+                    <!-- Campo ID (se existir) -->
+                    {% if f.id %}
+                      {{ f.id }}
+                    {% endif %}
+                  </td>
+                  <td class="align-middle campo-sem-label">
+                    {{ f.role }}
+                  </td>
+                  <td class="align-middle campo-sem-label">
+                    {{ f.attendance_status }}
+                  </td>
+                  <td class="align-middle campo-sem-label">
+                    {{ f.group_label }}
+                  </td>
+                  <td class="align-middle campo-sem-label">
+                    {% if f.instance.pk %}
+                      <label class="form-check">
+                        {{ f.DELETE }}
+                        <span class="ms-1">Excluir</span>
+                      </label>
+                    {% else %}
+                      <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+                        Remover
+                      </button>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        
+        <p class="text-muted small mb-0">
+          Para adicionar mais participantes, salve o evento e edite novamente (podemos melhorar isso depois).
+        </p>
+      </div>
+    </div>
+
+    <!-- Template oculto para novas linhas -->
+    <table class="d-none">
+      <tbody>
+        <tr id="empty-form" class="participant-form">
+          <td class="align-middle">
+            <div class="mb-1">
+              <input type="text"
+                     class="form-control form-control-sm busca-pessoa"
+                     placeholder="Digite para buscar pessoa"
+                     autocomplete="off">
+            </div>
+            <div class="resultados-pessoa list-group list-group-flush"></div>
+            
+            <!-- Select hidden do empty_form -->
+            <div style="display: none;">
+              <select name="participants-__prefix__-person" 
+                      id="id_participants-__prefix__-person"
+                      class="d-none select-pessoa">
+                <option value="">---------</option>
+              </select>
+            </div>
+          </td>
+          <td class="align-middle">
+            {{ participants_formset.empty_form.role }}
+          </td>
+          <td class="align-middle">
+            {{ participants_formset.empty_form.attendance_status }}
+          </td>
+          <td class="align-middle">
+            {{ participants_formset.empty_form.group_label }}
+          </td>
+          <td class="align-middle">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+              Remover
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary">
+      {% if form.instance.pk %}Salvar alterações{% else %}Salvar{% endif %}
+    </button>
+    <a href="{% url 'events:event_list' %}" class="btn btn-secondary ms-2">Voltar para lista de eventos</a>
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">Home</a>
+  </form>
+</div>
+
+<!-- Modal para criar nova pessoa -->
+<div class="modal" tabindex="-1" id="personQuickModal" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Novo participante</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <iframe id="personQuickFrame"
+                src="{% url 'events:person_quick_create' %}"
+                style="width:100%;height:350px;border:0;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const urlBusca = "{% url 'events:person_search' %}";
+  const table = document.getElementById('participants-table');
+  const tbody = document.getElementById('participants-tbody');
+  const btnAdd = document.getElementById('btn-add-participant');
+  const totalFormsInput = document.getElementById('id_participants-TOTAL_FORMS');
+  const emptyForm = document.getElementById('empty-form');
+  
+  console.log('=== INICIALIZANDO FORMULÁRIO DE EVENTOS ===');
+  console.log('Tabela encontrada:', !!table);
+  console.log('Total de formulários:', totalFormsInput ? totalFormsInput.value : 'não encontrado');
+  
+  if (!table) {
+    console.error('Tabela de participantes não encontrada');
+    return;
+  }
+
+  // ============================================
+  // 1. BUSCA DE PESSOAS (AUTOCOMPLETE)
+  // ============================================
+  
+  // Prevenir Enter de submeter o formulário
+  table.addEventListener('keydown', function (e) {
+    if (e.target.classList.contains('busca-pessoa') && e.key === 'Enter') {
+      e.preventDefault();
+      console.log('Enter bloqueado no campo de busca');
+    }
+  });
+
+  // Buscar pessoas ao digitar
+  table.addEventListener('input', function (e) {
+    if (!e.target.classList.contains('busca-pessoa')) return;
+
+    const input = e.target;
+    const term = input.value.trim();
+    const row = input.closest('tr');
+    const resultsDiv = row.querySelector('.resultados-pessoa');
+    const selectPessoa = row.querySelector('.select-pessoa');
+
+    console.log('Digitando:', term, 'Select encontrado:', !!selectPessoa);
+
+    if (!resultsDiv || !selectPessoa) {
+      console.error('Elementos não encontrados na linha');
+      return;
+    }
+
+    // Limpar resultados se termo muito curto
+    if (term.length < 3) {
+      resultsDiv.innerHTML = '';
+      selectPessoa.value = ''; // Limpa o select
+      console.log('Termo muito curto, limpando select');
+      return;
+    }
+
+    // Fazer busca via AJAX
+    console.log('Buscando pessoas com termo:', term);
+    fetch(urlBusca + "?query=" + encodeURIComponent(term))
+      .then(response => {
+        console.log('Status da resposta:', response.status);
+        if (!response.ok) {
+          throw new Error('Erro na requisição: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Pessoas encontradas:', data.length);
+        let html = '';
+        
+        if (data.length === 0) {
+          html = '<div class="list-group-item text-muted">Nenhuma pessoa encontrada</div>';
+        } else {
+          data.forEach(item => {
+            html += `
+              <button type="button"
+                      class="list-group-item list-group-item-action opcao-pessoa"
+                      data-id="${item.id}"
+                      data-nome="${item.nome}">
+                ${item.nome}
+              </button>`;
+          });
+        }
+        
+        resultsDiv.innerHTML = html;
+      })
+      .catch(err => {
+        console.error('Erro na busca de pessoas:', err);
+        resultsDiv.innerHTML = '<div class="list-group-item text-danger">Erro ao buscar pessoas</div>';
+      });
+  });
+
+  // Selecionar pessoa ao clicar
+  table.addEventListener('click', function (e) {
+    if (!e.target.classList.contains('opcao-pessoa')) return;
+
+    const btn = e.target;
+    const row = btn.closest('tr');
+    const selectPessoa = row.querySelector('.select-pessoa');
+    const inputBusca = row.querySelector('.busca-pessoa');
+    const resultsDiv = row.querySelector('.resultados-pessoa');
+
+    if (!selectPessoa || !inputBusca || !resultsDiv) {
+      console.error('Elementos não encontrados ao selecionar pessoa');
+      return;
+    }
+
+    const id = btn.dataset.id;
+    const nome = btn.dataset.nome;
+
+    console.log('Selecionando pessoa:', id, nome);
+    console.log('Select name:', selectPessoa.name, 'ID:', selectPessoa.id);
+
+    // Verificar se a opção já existe no select
+    let opt = Array.from(selectPessoa.options).find(o => o.value === id);
+    if (!opt) {
+      // Criar nova opção se não existir
+      opt = new Option(nome, id, true, true);
+      selectPessoa.add(opt);
+      console.log('Nova opção criada no select');
+    } else {
+      console.log('Opção já existia, apenas selecionando');
+    }
+    
+    // Selecionar a opção
+    selectPessoa.value = id;
+
+    // Atualizar campo de texto e limpar resultados
+    inputBusca.value = nome;
+    resultsDiv.innerHTML = '';
+    
+    console.log('Pessoa selecionada com sucesso. Valor do select:', selectPessoa.value);
+  });
+
+  // ============================================
+  // 2. ADICIONAR NOVA LINHA DE PARTICIPANTE
+  // ============================================
+  
+  if (btnAdd && emptyForm && totalFormsInput && tbody) {
+    btnAdd.addEventListener('click', function () {
+      const total = parseInt(totalFormsInput.value, 10);
+      
+      console.log('Adicionando nova linha. Total atual:', total);
+      
+      // Clonar o template e substituir __prefix__
+      const html = emptyForm.innerHTML.replace(/__prefix__/g, total);
+      
+      // Criar nova linha
+      const newRow = document.createElement('tr');
+      newRow.classList.add('participant-form');
+      newRow.innerHTML = html;
+      
+      // Adicionar à tabela
+      tbody.appendChild(newRow);
+      
+      // Atualizar contador de formulários
+      totalFormsInput.value = total + 1;
+      
+      console.log('Nova linha adicionada. Total de formulários agora:', total + 1);
+    });
+  } else {
+    console.error('Elementos necessários para adicionar participante não encontrados');
+    console.log('btnAdd:', !!btnAdd, 'emptyForm:', !!emptyForm, 
+                'totalFormsInput:', !!totalFormsInput, 'tbody:', !!tbody);
+  }
+
+  // ============================================
+  // 3. REMOVER LINHA DE PARTICIPANTE
+  // ============================================
+  
+  table.addEventListener('click', function (e) {
+    if (!e.target.classList.contains('remove-row')) return;
+    
+    const row = e.target.closest('tr');
+    if (row) {
+      console.log('Removendo linha');
+      row.remove();
+      
+      // Atualizar contador (decrementar)
+      const total = parseInt(totalFormsInput.value, 10);
+      totalFormsInput.value = total - 1;
+      
+      console.log('Linha removida. Total de formulários:', total - 1);
+    }
+  });
+
+  // ============================================
+  // 4. VALIDAÇÃO ANTES DE SUBMETER
+  // ============================================
+  
+  const form = document.getElementById('event-form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      console.log('=== VALIDANDO FORMULÁRIO ===');
+      
+      const rows = tbody.querySelectorAll('tr.participant-form');
+      let temErro = false;
+      
+      rows.forEach((row, index) => {
+        const selectPessoa = row.querySelector('.select-pessoa');
+        const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+        
+        // Pula se for marcado para deletar
+        if (deleteCheckbox && deleteCheckbox.checked) {
+          console.log(`Linha ${index}: marcada para deletar, pulando validação`);
+          return;
+        }
+        
+        if (selectPessoa) {
+          console.log(`Linha ${index}:`, {
+            name: selectPessoa.name,
+            value: selectPessoa.value,
+            hasValue: !!selectPessoa.value
+          });
+          
+          if (!selectPessoa.value || selectPessoa.value === '') {
+            console.error(`Linha ${index}: Pessoa não selecionada!`);
+            temErro = true;
+            
+            // Destacar o campo com erro
+            const inputBusca = row.querySelector('.busca-pessoa');
+            if (inputBusca) {
+              inputBusca.classList.add('is-invalid');
+              inputBusca.style.borderColor = 'red';
+            }
+          }
+        }
+      });
+      
+      if (temErro) {
+        e.preventDefault();
+        alert('Por favor, selecione uma pessoa para cada participante ou remova as linhas vazias.');
+        console.log('Formulário NÃO será enviado devido a erros');
+        return false;
+      }
+      
+      console.log('Formulário válido, prosseguindo com envio');
+    });
+  }
+
+  // ============================================
+  // 5. MODAL DE NOVO CADASTRO
+  // ============================================
+  
+  const modalEl = document.getElementById('personQuickModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+
+    document.querySelectorAll('.btn-novo-participante').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        modal.show();
+      });
+    });
+  }
+});
+
+// ============================================
+// 6. FUNÇÃO GLOBAL PARA ADICIONAR PESSOA DO MODAL
+// ============================================
+
+function adicionarPessoaNoSelect(id, nome) {
+  console.log('adicionarPessoaNoSelect chamada:', id, nome);
+  
+  // Pega o último select de pessoa (linha mais recente)
+  const selects = document.querySelectorAll('.select-pessoa');
+  if (!selects.length) {
+    console.error('Nenhum select de pessoa encontrado');
+    return;
+  }
+  
+  const select = selects[selects.length - 1];
+  const inputBusca = select.closest('td').querySelector('.busca-pessoa');
+
+  // Adicionar nova opção
+  const opt = new Option(nome, id, true, true);
+  select.add(opt);
+  
+  // Atualizar campo de busca
+  if (inputBusca) {
+    inputBusca.value = nome;
+  }
+
+  // Fechar modal
+  const modalEl = document.getElementById('personQuickModal');
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) {
+    modal.hide();
+  }
+  
+  console.log('Pessoa adicionada do modal com sucesso');
+}
+</script>
+{% endblock %}

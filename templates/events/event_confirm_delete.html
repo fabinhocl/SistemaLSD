@@ -1,0 +1,150 @@
+{% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Confirmar Exclusão de Evento
+          </h4>
+        </div>
+        <div class="card-body">
+          <!-- Alerta de aviso -->
+          <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-circle"></i>
+            <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+          </div>
+
+          <!-- Informações do evento -->
+          <div class="mb-4">
+            <h5 class="mb-3">Você tem certeza que deseja excluir este evento?</h5>
+            
+            <div class="bg-light p-3 rounded">
+              <dl class="row mb-0">
+                <dt class="col-sm-4">Evento:</dt>
+                <dd class="col-sm-8"><strong>{{ event.title }}</strong></dd>
+                
+                <dt class="col-sm-4">Data:</dt>
+                <dd class="col-sm-8">{{ event.date|date:"d/m/Y" }}</dd>
+                
+                <dt class="col-sm-4">Local:</dt>
+                <dd class="col-sm-8">{{ event.location|default:"Não informado" }}</dd>
+                
+                <dt class="col-sm-4">Horário:</dt>
+                <dd class="col-sm-8">
+                  {% if event.start_time %}
+                    {{ event.start_time|time:"H:i" }}
+                    {% if event.end_time %}
+                      - {{ event.end_time|time:"H:i" }}
+                    {% endif %}
+                  {% else %}
+                    Não informado
+                  {% endif %}
+                </dd>
+                
+                <dt class="col-sm-4">Participantes:</dt>
+                <dd class="col-sm-8">
+                  {{ event.participants.count }} pessoa{{ event.participants.count|pluralize }}
+                </dd>
+              </dl>
+            </div>
+          </div>
+
+          <!-- Formulário de confirmação com senha -->
+          <form method="post">
+            {% csrf_token %}
+            
+            <!-- Exibir erro se houver -->
+            {% if error %}
+              <div class="alert alert-danger" role="alert">
+                <i class="bi bi-x-circle"></i>
+                {{ error }}
+              </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label for="senha" class="form-label">
+                <strong>Digite sua senha para confirmar a exclusão:</strong>
+              </label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="senha" 
+                name="senha" 
+                required
+                placeholder="Sua senha"
+                autocomplete="current-password"
+                autofocus
+              >
+              <div class="form-text">
+                Esta é uma medida de segurança para garantir que você realmente deseja excluir este evento.
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="{% url 'events:event_detail' event.pk %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Cancelar
+              </a>
+              
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i>
+                Confirmar Exclusão
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Link adicional -->
+      <div class="text-center mt-3">
+        <a href="{% url 'events:event_list' %}" class="text-muted">
+          <i class="bi bi-list"></i>
+          Voltar para lista de eventos
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Foco automático no campo de senha
+  const senhaInput = document.getElementById('senha');
+  if (senhaInput) {
+    senhaInput.focus();
+  }
+  
+  // Confirmação adicional antes de submeter
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const senha = document.getElementById('senha').value;
+      
+      if (!senha.trim()) {
+        e.preventDefault();
+        alert('Por favor, digite sua senha para confirmar a exclusão.');
+        return false;
+      }
+      
+      // Confirmação extra
+      const confirmacao = confirm(
+        'Tem certeza absoluta que deseja excluir este evento?\n\n' +
+        'Esta ação é PERMANENTE e não pode ser desfeita!'
+      );
+      
+      if (!confirmacao) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
