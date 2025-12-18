@@ -339,24 +339,22 @@ class AdultForm(forms.ModelForm):
 
 class AlunoForm(forms.ModelForm):
     health_problem = forms.ChoiceField(
-            choices=[('sim', 'Sim'), ('não', 'Não')],
-            widget=forms.RadioSelect,
-            label="Tem problema de Saúde?"
-        )
-    special_need = forms.CharField(
-        required=False,
-        label="Qual função?"
+        choices=[('sim', 'Sim'), ('não', 'Não')],
+        widget=forms.RadioSelect,
+        label="Tem problema de Saúde?"
     )
+    special_need = forms.CharField(required=False, label="Qual função?")
     uso_medicacao = forms.ChoiceField(
-            choices=[('sim', 'Sim'), ('não', 'Não')],
-            widget=forms.RadioSelect,
-            label="Tem problema de Saúde?"
-        )
-    qual_medicacao = forms.CharField(
-        required=False,
-        label="Qual função?"
+        choices=[('sim', 'Sim'), ('não', 'Não')],
+        widget=forms.RadioSelect,
+        label="Faz uso de Medicação?"
     )
-    idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
+    qual_medicacao = forms.CharField(required=False, label="Qual medicação?")
+    idade = forms.CharField(
+        label='Idade',
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': 'readonly'})
+    )
 
     DIAS_SEMANA = (
         ('segunda', 'Segunda-feira'),
@@ -365,7 +363,7 @@ class AlunoForm(forms.ModelForm):
         ('quinta', 'Quinta-feira'),
         ('sexta', 'Sexta-feira'),
     )
-    
+
     dias_semana = forms.MultipleChoiceField(
         choices=DIAS_SEMANA,
         required=False,
@@ -395,22 +393,19 @@ class AlunoForm(forms.ModelForm):
             'frequencia_tipo': 'Tipo de Frequência',
             'dias_semana': 'Dias da Semana',
             'status_lsd': 'Situação Atual no Lar',
-            # adicione outros labels se necessário
         }
         widgets = {
-            #'family': forms.HiddenInput(),
             'family': forms.Select(attrs={'class': 'form-select'}),
             'birth_date': forms.DateInput(attrs={'type': 'date'}),
             'ensino': forms.Select(attrs={'class': 'form-select', 'id': 'ensino'}),
             'serie': forms.Select(attrs={'class': 'form-select', 'id': 'serie'}),
-            'health_problem': forms.RadioSelect(),  # Aqui sim, apenas o widget
-            'uso_medicacao': forms.RadioSelect(),   # Aqui sim, apenas o widget
-            # Se não usa seleção automática de família nesse form, pode remover 'family' aqui
+            'health_problem': forms.RadioSelect(),
+            'uso_medicacao': forms.RadioSelect(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.helper = FormHelper()
         self.helper.template_pack = 'bootstrap5'
         self.helper.layout = Layout(
@@ -432,62 +427,33 @@ class AlunoForm(forms.ModelForm):
             'qual_medicacao',
             'status_lsd',
             'faixa_etaria',
-            # outros campos, se houver
         )
-        # ==========================================
-        # CARREGAR VALORES DA INSTÂNCIA AO EDITAR
-        # ==========================================
-        if self.instance and self.instance.pk:  # Se está editando (instância existe)
-            
-            # health_problem: força valor válido, ou carrega o do banco
-            if self.instance.health_problem in ['sim', 'não']:
-                self.fields['health_problem'].initial = self.instance.health_problem
-            else:
-                self.fields['health_problem'].initial = 'não'
-        
-        # Para garantir que ensino e serie carreguem
-        if hasattr(self.instance, 'ensino') and self.instance.ensino:
-            self.fields['ensino'].initial = self.instance.ensino
 
-        if hasattr(self.instance, 'serie') and self.instance.serie:
-            self.fields['serie'].initial = self.instance.serie
-            
-        # uso_medicacao: mesma lógica
-        if hasattr(self.instance, 'uso_medicacao'):
-            if self.instance.uso_medicacao in ['sim', 'não']:
-                self.fields['uso_medicacao'].initial = self.instance.uso_medicacao
-            else:
-                self.fields['uso_medicacao'].initial = 'não'
-        
-        # Para os outros campos (familia, ensino, serie), o ModelForm já carrega automaticamente
-        # pois não foram redefinidos no form. Só os campos redefinidos (como ChoiceField)
-        # precisam de inicialização manual.
-
+        # se quiser garantir valor default para radios ao criar:
+        if not self.instance.pk:
+            self.fields['health_problem'].initial = 'não'
+            self.fields['uso_medicacao'].initial = 'não'
 
     def clean(self):
         cleaned_data = super().clean()
-        
-        # Validação existente (problema de saúde)
+
         health_problem = cleaned_data.get('health_problem')
         special_need = cleaned_data.get('special_need')
         if health_problem == 'sim' and not special_need:
             self.add_error('special_need', 'Este campo é obrigatório quando há problema de saúde.')
-        
-        # NOVA validação: frequência
+
         frequencia_tipo = cleaned_data.get('frequencia_tipo')
         dias_semana = cleaned_data.get('dias_semana', [])
-        
         if frequencia_tipo == 'especificos' and not dias_semana:
             self.add_error('dias_semana', 'Selecione pelo menos um dia da semana.')
-        
-        # Cálculo de idade existente
+
         birth_date = cleaned_data.get("birth_date")
         if birth_date:
             idade = calcular_idade(birth_date)
             cleaned_data["faixa_etaria"] = calcular_faixa_etaria(idade)
-        
+
         return cleaned_data
-    
+
     def clean_cpf(self):
         value = self.cleaned_data.get("cpf")
         digits = ''.join(filter(str.isdigit, value or ''))
@@ -496,11 +462,11 @@ class AlunoForm(forms.ModelForm):
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
-    
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         dias_semana = self.cleaned_data.get('dias_semana', [])
-        instance.dias_semana = dias_semana  # Salva lista no JSONField
+        instance.dias_semana = dias_semana
         if commit:
             instance.save()
         return instance

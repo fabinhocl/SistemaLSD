@@ -1,4 +1,5 @@
 from django.urls import path, include
+from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from AppLSD.views import FamilyViewSet, AlunoViewSet, TurmaViewSet, ActivityViewSet, FamilyAutocomplete 
 from .import views_templates # importa as views para templates
@@ -7,26 +8,31 @@ from django.contrib.auth import views as auth_views
 from django.contrib import admin
 from dal import autocomplete
 from django.conf import settings
-from django.conf.urls.static import static
 from django.views.static import serve
 from . import views
+
 
 router = DefaultRouter()
 router.register(r'families', FamilyViewSet)
 router.register(r'aluno', AlunoViewSet)
 router.register(r'turmas', TurmaViewSet)
 router.register(r'activities', ActivityViewSet)
-
+#AppLSD/urls.py
 urlpatterns = [
         
     # rotas para views com templates (front-end simples)
     path('', views_templates.root_redirect, name='root_redirect'),
+    path('admin/', admin.site.urls),
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('home/', views_templates.home, name='home'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
-    path('dashboard/', include('dashboard_lsd.urls')),
-    #path('home_facilitador/', views_templates.home_facilitador, name='home_facilitador'),
-    #path('home_educadora/', views_templates.home_educadora, name='home_educadora'),
+    path('dashboard/', include('dashboard_lsd.urls')), # dashboard integrado
+    path('events/', include('events.urls', namespace='events')),
+    path('assistencia/', views_templates.home_assist, name='home_assist'),
+    path('escola/', views_templates.home_escola, name='home_escola'),
+    path('diretoria/', views_templates.home_diretoria, name='home_diretoria'),
+    path('administracao/', views_templates.home_adm, name='home_adm'),
+    #path('events/', views.EventListView.as_view(), name='event_list'),    
     
     #Famílias
     path('families/', views_templates.family_list, name='family_list'),
@@ -39,6 +45,7 @@ urlpatterns = [
     path('families/<int:pk>/termo/', views_templates.family_term_pdf, name='family_term_pdf'),
     
     #Adultos
+    path('adults/', views_templates.adult_list, name='adult_list'),
     path('adult/new/', views_templates.adult_create, name='adult_create'),
     path('adult/edit/<int:pk>/', views_templates.adult_edit, name='adult_edit'),
     path('adult/delete/<int:pk>/', views_templates.adult_delete_confirm, name='adult_delete_confirm'),
@@ -108,9 +115,8 @@ urlpatterns = [
 
 
     # se desejar, adicione outras rotas para Child, Turma e Activity em views_templates.py aqui
-    path('admin/', admin.site.urls),
+    
     path('api/', include(router.urls)),  # rotas da API REST prefixadas com api/
-    path('dashboard/', include('dashboard_lsd.urls')),  # dashboard integrado
     path('django_plotly_dash/', include('django_plotly_dash.urls')),   # necessário para Dash funcionar
     #path('', include('AppLSD.urls')),
     

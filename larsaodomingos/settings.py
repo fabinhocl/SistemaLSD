@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'AppLSD',
     'dashboard_lsd',
+    'core',
+    'events',
     'dal',
     'dal_select2',
     'crispy_forms',

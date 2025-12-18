@@ -78,6 +78,58 @@ class AppLog(AuditModel):
         verbose_name_plural = 'Logs do Sistema'
         ordering = ['-criado_em']
 
+
+class Person(models.Model):
+    family = models.ForeignKey(
+        'Family', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='members'
+    )
+    full_name = models.CharField(max_length=255)
+    birth_date = models.DateField()
+    GENDER_CHOICES = (
+        ('F', 'Feminino'),
+        ('M', 'Masculino'),
+    )
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    cpf = models.CharField(max_length=14, blank=True, null=True, unique=False)
+    rg = models.CharField(max_length=20, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    neighborhood = models.CharField(max_length=120, blank=True, null=True)
+    cep = models.CharField(max_length=10, blank=True, null=True)
+    reference_point = models.CharField(max_length=255, blank=True, null=True)
+
+    # campos sociais e de saúde podem seguir o modelo da ficha do idoso
+    schooling = models.CharField(max_length=50, blank=True, null=True)
+    occupation = models.CharField(max_length=120, blank=True, null=True)
+    income_type = models.CharField(max_length=50, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    profission = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return self.full_name
+
+    @property
+    def age(self):
+        from datetime import date
+        today = date.today()
+        return (
+            today.year
+            - self.birth_date.year
+            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        )
+
+    @property
+    def age_group(self):
+        if self.age < 12:
+            return 'Crianca'
+        elif self.age < 19:
+            return 'Adolescente'
+        elif self.age < 60:
+            return 'Adulto'
+        return 'Idoso'
+
+
 class Family(AuditModel):
     """
     Representa uma família no sistema, com dados cadastrais e sociais.
@@ -89,6 +141,7 @@ class Family(AuditModel):
     blank=True,  # Permite vazio durante criação
     #editable=False  # Impede edição manual 
     )
+    responsible = models.ForeignKey('Person', on_delete=models.CASCADE, related_name='families_responsible', blank=True, null=True)
     responsible_name = models.CharField(max_length=255, default='')
     social_name = models.CharField(max_length=255, default='')
     nis = models.CharField(max_length=20, default='', blank=True, null=True)
@@ -263,7 +316,15 @@ class Family(AuditModel):
     """
     Representa o adulto cadastrado em família.
     """
+
+
 class Adult(AuditModel):
+    person = models.OneToOneField(
+        Person,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,   # importante
+    )
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
     cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
     name = models.CharField(max_length=100)
@@ -304,9 +365,15 @@ class Adult(AuditModel):
     Representa um aluno, pertencente a uma família, turma e atividades.
     """
 class Aluno(AuditModel):
+    person = models.OneToOneField(
+        Person,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
-    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], unique=True, blank=True, null=True)
+    cpf = models.CharField(max_length=14, default='', unique=True, blank=True, null=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
     ESCOLHA_SEXO = [
@@ -386,9 +453,13 @@ class Aluno(AuditModel):
         )
 
    
-    """
+  
+
+
+"""
     Representa uma turma de assistidos.
-    """
+"""
+
 class Turma(AuditModel):
     educadora = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
     FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('10-12 anos', '10 a 12 anos'),('13-17 anos', '13 a 17 anos')]
@@ -508,7 +579,7 @@ class FrequenciaTurma(AuditModel):
     def __str__(self):
         return f"{self.aluno} - {self.turma} - {self.data} - {'Presente' if self.presente else 'Falta'}"
 
-class FrequenciaAtividade(models.Model):
+class FrequenciaAtividade(AuditModel):
     """
     Frequência individual de aluno para uma chamada de atividade.
     """
@@ -516,12 +587,9 @@ class FrequenciaAtividade(models.Model):
     atividade = models.ForeignKey('Activity', on_delete=models.CASCADE, null=True, blank=True)
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)
-    criado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        related_name='frequencias_atividade_criadas')
+        
+    class Meta:
+        unique_together = ('atividade', 'aluno', 'data')
 
     def __str__(self):
         return f"{self.aluno} - {self.atividade} - {self.data} - {'Presente' if self.presente else 'Falta'}"

@@ -3,7 +3,10 @@ from dal import autocomplete
 from .models import Family, Aluno, Turma, Activity
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
+#from django.views.generic import TemplateView
 from .serializers import FamilySerializer, AlunoSerializer, TurmaSerializer, ActivitySerializer
+
+
 
 class FamilyViewSet(viewsets.ModelViewSet):
     queryset = Family.objects.all()

@@ -271,6 +271,21 @@ def home_facilitador(request):
     facilitador_atividades = Activity.objects.filter(facilitador=request.user)
     return render(request, 'AppLSD/home_facilitador.html', {'atividades': facilitador_atividades})
 
+@login_required
+def home_assist(request):
+    return render(request, 'AppLSD/home_assist.html')
+
+@login_required
+def home_escola(request):
+    return render(request, 'AppLSD/home_escola.html')
+
+@login_required
+def home_diretoria(request):
+    return render(request, 'AppLSD/home_diretoria.html')
+@login_required
+def home_adm(request):
+    return render(request, 'AppLSD/home_adm.html')
+
 #Mesclagem das views de dashboard de presença e relatórios
 @login_required
 def dashboard_completo(request):
@@ -585,6 +600,15 @@ def family_term_pdf(request, pk):
     return response
 
 @login_required
+def adult_list(request):
+    adults_list = Adult.objects.select_related('family').all().order_by('name')
+    paginator = Paginator(adults_list, 100)  # paginar 100 por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'AppLSD/adult_list.html', {'page_obj': page_obj})
+
+@login_required
 def adult_create(request):
     family_id = request.GET.get('family_id')
     if not family_id:
@@ -676,6 +700,8 @@ def family_autocomplete(request):
     return JsonResponse({"results": results})
 
 
+
+@login_required
 def aluno_list(request):
     alunos_list = Aluno.objects.select_related('family').all().order_by('name')
     paginator = Paginator(alunos_list, 100)  # paginar 100 por página
