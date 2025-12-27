@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column
 from .validators import cpf_validator
+from datetime import date
 import re
 
 
@@ -57,7 +58,7 @@ class FamilyForm(forms.ModelForm):
     )
 
     is_benefits = forms.ChoiceField(
-        choices=[('sim', 'Sim'), ('não', 'Não')],
+        choices=[('Sim', 'Sim'), ('Não', 'Não')],
         widget=forms.RadioSelect,
         label="Beneficiário de Programas Sociais?"
     )
@@ -68,7 +69,7 @@ class FamilyForm(forms.ModelForm):
         label="Qual Programa?"
     )   
     has_proven_income = forms.ChoiceField(
-        choices=[('sim', 'Sim'), ('não', 'Não')],
+        choices=[('Sim', 'Sim'), ('Não', 'Não')],
         widget=forms.RadioSelect,
         label="Possui renda comprovada?"
     )
@@ -79,7 +80,7 @@ class FamilyForm(forms.ModelForm):
         label="Tipo de renda comprovada"
     )
     others_contribute = forms.ChoiceField(
-    choices=[('sim', 'Sim'), ('não', 'Não')],
+    choices=[('Sim', 'Sim'), ('Não', 'Não')],
     widget=forms.RadioSelect,
     label="Outras pessoas contribuem?"
     )
@@ -88,7 +89,7 @@ class FamilyForm(forms.ModelForm):
         label="Quem contribui?"
     )
     is_working = forms.ChoiceField(
-        choices=[('sim', 'Sim'), ('não', 'Não')],
+        choices=[('Sim', 'Sim'), ('Não', 'Não')],
         widget=forms.RadioSelect,
         label="Trabalhando no momento?"
     )
@@ -225,16 +226,7 @@ class FamilyForm(forms.ModelForm):
         return cleaned_data
 
 
-    def calcular_faixa_etaria(idade):
-        if 6 <= idade <= 7:
-            return '06 a 07 anos'
-        if 8 <= idade <= 9:
-            return '08 a 09 anos'
-        if 10 <= idade <= 12:
-            return '10 a 12 anos'
-        if 13 <= idade <= 17:
-            return '13 a 17 anos'
-        return None
+    
 
     def calcular_idade(birth_date):
         from datetime import date
@@ -306,6 +298,12 @@ class AdultForm(forms.ModelForm):
         )]
         
     )
+    cpf = forms.CharField(
+        label='CPF',
+        required=True,
+        max_length=14,
+        widget=forms.TextInput(attrs={'id': 'cpf', 'placeholder': 'xxx.xxx.xxx-xx'}),
+    )
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     class Meta:
         model = Adult
@@ -371,7 +369,12 @@ class AlunoForm(forms.ModelForm):
         required=False,
         widget=forms.CheckboxSelectMultiple
     )
-
+    cpf = forms.CharField(
+        label='CPF',
+        required=True,
+        max_length=14,
+        widget=forms.TextInput(attrs={'id': 'cpf', 'placeholder': 'xxx.xxx.xxx-xx'}),
+    )
     class Meta:
         model = Aluno
         fields = '__all__'
@@ -395,6 +398,7 @@ class AlunoForm(forms.ModelForm):
             'frequencia_tipo': 'Tipo de Frequência',
             'dias_semana': 'Dias da Semana',
             'status_lsd': 'Situação Atual no Lar',
+            'faixa_etaria': 'Faixa Etária',
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-select'}),
@@ -436,6 +440,27 @@ class AlunoForm(forms.ModelForm):
             self.fields['health_problem'].initial = 'não'
             self.fields['uso_medicacao'].initial = 'não'
 
+    def calcular_idade(self, birth_date):
+        if not birth_date:
+            return None
+        hoje = date.today()
+        return hoje.year - birth_date.year - (
+            (hoje.month, hoje.day) < (birth_date.month, birth_date.day)
+        )
+    
+    def calcular_faixa_etaria(self, idade):
+        if idade is None:
+            return None
+        if 6 <= idade <= 7:
+            return '06 a 07 anos'
+        if 8 <= idade <= 9:
+            return '08 a 09 anos'
+        if 10 <= idade <= 12:
+            return '10 a 12 anos'
+        if 13 <= idade <= 17:
+            return '13 a 17 anos'
+        return None
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -451,8 +476,8 @@ class AlunoForm(forms.ModelForm):
 
         birth_date = cleaned_data.get("birth_date")
         if birth_date:
-            idade = calcular_idade(birth_date)
-            cleaned_data["faixa_etaria"] = calcular_faixa_etaria(idade)
+            idade = self.calcular_idade(birth_date)
+            cleaned_data["faixa_etaria"] = self.calcular_faixa_etaria(idade)
 
         return cleaned_data
 

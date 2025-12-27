@@ -244,7 +244,7 @@ class Family(AuditModel):
     #min_salary_2 = models.BooleanField(default=False)
 
     # Outras pessoas contribuem
-    others_contribute = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
+    others_contribute = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
     who_contributes = models.CharField(max_length=100, blank=True, null=True)
 
      # Informações sobre o domicílio
@@ -374,7 +374,7 @@ class Aluno(AuditModel):
     )
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
-    cpf = models.CharField(max_length=14, default='', unique=True, blank=True, null=True)
+    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
     ESCOLHA_SEXO = [

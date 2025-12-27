@@ -107,13 +107,13 @@ if not df_ignorados.empty:
 print(f"\nTotal de registros a importar depois de remover duplicados: {len(df_insert)}")
 
 # 6. Inserir no SQLite
-    engine = create_engine(
+engine = create_engine(
         "postgresql+psycopg2://lsd_user:Sys.Admin!@#098@localhost:5432/lsd"
     )
 
-    df_insert.to_sql('AppLSD_family', engine, if_exists='append', index=False)
+df_insert.to_sql('AppLSD_family', engine, if_exists='append', index=False)
     
-    print(f"\n✓ {len(df_insert)} cadastros importados com sucesso para AppLSD_family!")
+print(f"\n✓ {len(df_insert)} cadastros importados com sucesso para AppLSD_family!")
 except Exception as e:
     print(f"\n✗ Erro ao importar: {e}")
     print("\nVerifique se há duplicatas em registration_number ou cpf.")

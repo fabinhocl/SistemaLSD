@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function toggleBenefitsPrograms() {
         var selected = Array.from(beneficioRadios).find(r => r.checked);
-        if (selected && selected.value === "sim") {
+        if (selected && selected.value === "Sim") {
             benefitsProgramsDiv.style.display = '';
             // Habilitar campo interno, se necessário
             var sb = document.getElementById('id_social_benefits');
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var quemField = document.getElementById('id_who_contributes');
     function toggleQuemContribui() {
         var selected = Array.from(contribuiRadios).find(r => r.checked);
-        if (selected && selected.value === "sim") {
+        if (selected && selected.value === "Sim") {
             quemGroup.style.display = '';
             quemField.disabled = false;
         } else {
