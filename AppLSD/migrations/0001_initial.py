@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
                 ('working_location', models.CharField(blank=True, max_length=100, null=True)),
                 ('has_proven_income', models.BooleanField(default=False)),
                 ('income_types', models.JSONField(blank=True, default=list)),
-                ('salary_range', models.CharField(blank=True, choices=[('1_sm', '1 Salário Mínimo'), ('2_sm', '2 Salários Mínimos')], max_length=10, null=True)),
+                ('salary_range', models.CharField(blank=True, choices=[('1_sm', '1 Salário Mínimo'), ('2_sm', '2 Salários Mínimos')], max_length=30, null=True)),
                 ('others_contribute', models.BooleanField(default=False)),
                 ('who_contributes', models.CharField(blank=True, max_length=100, null=True)),
                 ('domicile_type', models.CharField(blank=True, choices=[('proprio', 'Próprio'), ('alugado', 'Alugado'), ('cedido', 'Cedido')], max_length=10, null=True)),

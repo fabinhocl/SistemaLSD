@@ -244,21 +244,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // Trabalhando no momento? (função)
-    var trabalhoRadios = document.getElementsByName('is_working');
-    var funcaoField = document.getElementById('id_function');
-    function toggleFuncaoField() {
-        var selected = Array.from(trabalhoRadios).find(r => r.checked);
-        if (selected && selected.value === "sim") {
-            funcaoField.disabled = false;
-            funcaoField.classList.remove('bg-light');
-        } else {
-            funcaoField.value = '';
-            funcaoField.disabled = true;
-            funcaoField.classList.add('bg-light');
-        }
+    // radios de "Trabalhando no momento?"
+    const workingRadios = document.querySelectorAll('input[name="is_working"]');
+    const functionInput = document.querySelector('input[name="function"]');
+
+    function toggleFunctionField() {
+        if (!functionInput) return;
+
+        let isWorkingYes = false;
+        workingRadios.forEach(r => {
+            if (r.checked && r.value.toLowerCase() === 'sim') {
+                isWorkingYes = true;
+            }
+        });
+
+        functionInput.disabled = !isWorkingYes;
     }
-    trabalhoRadios.forEach(r => r.addEventListener('change', toggleFuncaoField));
-    toggleFuncaoField();
+
+    if (workingRadios.length && functionInput) {
+        // estado inicial ao carregar a página
+        toggleFunctionField();
+        // reagir às mudanças
+        workingRadios.forEach(r => {
+            r.addEventListener('change', toggleFunctionField);
+        });
+    }
 
     // Renda comprovada (tipos)
     var rendaRadios = document.getElementsByName('has_proven_income');

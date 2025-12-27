@@ -482,13 +482,18 @@ def family_list(request):
 
     if search_query:
         search_query_norm = remove_accents(search_query.lower())
-        families_list = [
-            f for f in families_all
-            if search_query_norm in remove_accents(f.responsible_name.lower())
-            or search_query_norm in remove_accents(f.registration_number.lower())
-            or search_query_norm in remove_accents(f.cpf.lower())
+        families_list = []
+        for f in families_all:
+            resp = (f.responsible_name or '').lower()
+            reg  = (f.registration_number or '').lower()
+            cpf  = (f.cpf or '').lower()
             # Adicione outros campos se quiser
-        ]
+            if (
+                search_query_norm in remove_accents(resp)
+                or search_query_norm in remove_accents(reg)
+                or search_query_norm in remove_accents(cpf)
+            ):
+                families_list.append(f)
     else:
         families_list = list(families_all)
 
@@ -521,6 +526,11 @@ def family_edit(request, pk):
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
+    
+    context = {
+        'form': form,
+        'family': family,
+    }
     return render(request, 'AppLSD/family_form.html', {'form': form, 'family': family})
 
 def family_create(request):

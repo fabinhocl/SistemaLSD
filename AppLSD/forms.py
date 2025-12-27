@@ -3,6 +3,7 @@ from .models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult
 from dal import autocomplete
 from django.core.validators import RegexValidator
 from django.forms.models import inlineformset_factory
+from django.forms import DateInput
 from django.contrib.auth.models import User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column
@@ -186,17 +187,17 @@ class FamilyForm(forms.ModelForm):
             'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
         }
         widgets = {
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
-            'estado_civil': forms.RadioSelect,
-            'escolaridade': forms.RadioSelect,
-            'raca': forms.RadioSelect,
-            'religiao': forms.RadioSelect,
+            'birth_date': DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            #'marital_status': forms.RadioSelect,
+            #'education': forms.RadioSelect,
+            #'race': forms.RadioSelect,
+            #'religion': forms.RadioSelect,
             # Adicione widgets para outros campos conforme necessidade
         }
 
    
-    def clean_responsible_cpf(self):
-        value = self.cleaned_data["responsible_cpf"]
+    def clean_cpf(self):
+        value = self.cleaned_data["cpf"]
         digits = ''.join(filter(str.isdigit, value or ''))
         # já foi validado pelo validator; aqui você só normaliza
         return cpf_validator.mask(digits)  # se quiser salvar sempre formatado
@@ -224,73 +225,74 @@ class FamilyForm(forms.ModelForm):
         return cleaned_data
 
 
-def calcular_faixa_etaria(idade):
-    if 6 <= idade <= 7:
-        return '06 a 07 anos'
-    if 8 <= idade <= 9:
-        return '08 a 09 anos'
-    if 10 <= idade <= 12:
-        return '10 a 12 anos'
-    if 13 <= idade <= 17:
-        return '13 a 17 anos'
-    return None
+    def calcular_faixa_etaria(idade):
+        if 6 <= idade <= 7:
+            return '06 a 07 anos'
+        if 8 <= idade <= 9:
+            return '08 a 09 anos'
+        if 10 <= idade <= 12:
+            return '10 a 12 anos'
+        if 13 <= idade <= 17:
+            return '13 a 17 anos'
+        return None
 
-def calcular_idade(birth_date):
-    from datetime import date
-    hoje = date.today()
-    idade = hoje.year - birth_date.year - ((hoje.month, hoje.day) < (birth_date.month, birth_date.day))
-    return idade
+    def calcular_idade(birth_date):
+        from datetime import date
+        hoje = date.today()
+        idade = hoje.year - birth_date.year - ((hoje.month, hoje.day) < (birth_date.month, birth_date.day))
+        return idade
 
-def clean(self):
-    cleaned_data = super().clean()
-    total = cleaned_data.get('num_residents')
-    soma = (
-        cleaned_data.get('has_adult', 0) +
-        cleaned_data.get('has_elderly', 0) +
-        cleaned_data.get('has_pcd', 0) +
-        cleaned_data.get('has_adolescent', 0) +
-        cleaned_data.get('has_child', 0) +
-        cleaned_data.get('has_pregnant', 0)
-    )
-    if total is not None and soma != total:
-        raise forms.ValidationError('A soma dos tipos deve ser igual ao total de pessoas no domicílio.')
-    return cleaned_data
-
-def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            # Outras linhas...
-            Row(
-                Column('is_benefits', css_class='col-md-4'),
-                Column('social_benefits', css_class='col-md-4'),
-            ),
-            Row(
-                Column('occupation', css_class='col-md-4'),
-                Column('is_working', css_class='col-md-4'),
-                Column('function', css_class='col-md-4'),
-            ),
-            Row(
-                Column('has_proven_income', css_class='col-md-4'),
-                Column('income_types', css_class='col-md-4'),
-                Column('salary_range', css_class='col-md-4'),
-            ),
-            Row(
-                Column('others_contribute', css_class='col-md-4'),
-                Column('who_contributes', css_class='col-md-4'),
-            ),
-            Row(
-                Column('num_residents', css_class='col-md-4'),
-                # Campos dos tipos em uma linha
-                Column('has_adult', css_class='col-md-2'),
-                Column('has_elderly', css_class='col-md-2'),
-                Column('has_pcd', css_class='col-md-2'),
-                Column('has_adolescent', css_class='col-md-2'),
-                Column('has_child', css_class='col-md-2'),
-                Column('has_preggnant', css_class='col-md-2'),
-            )   
-            # Continue com os demais campos...
+    def clean(self):
+        cleaned_data = super().clean()
+        total = cleaned_data.get('num_residents')
+        soma = (
+            cleaned_data.get('has_adult', 0) +
+            cleaned_data.get('has_elderly', 0) +
+            cleaned_data.get('has_pcd', 0) +
+            cleaned_data.get('has_adolescent', 0) +
+            cleaned_data.get('has_child', 0) +
+            cleaned_data.get('has_pregnant', 0)
         )
+        if total is not None and soma != total:
+            raise forms.ValidationError('A soma dos tipos deve ser igual ao total de pessoas no domicílio.')
+        return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.fields['birth_date'].input_formats = ['%Y-%m-%d']
+            self.helper = FormHelper()
+            self.helper.layout = Layout(
+                # Outras linhas...
+                Row(
+                    Column('is_benefits', css_class='col-md-4'),
+                    Column('social_benefits', css_class='col-md-4'),
+                ),
+                Row(
+                    Column('occupation', css_class='col-md-4'),
+                    Column('is_working', css_class='col-md-4'),
+                    Column('function', css_class='col-md-4'),
+                ),
+                Row(
+                    Column('has_proven_income', css_class='col-md-4'),
+                    Column('income_types', css_class='col-md-4'),
+                    Column('salary_range', css_class='col-md-4'),
+                ),
+                Row(
+                    Column('others_contribute', css_class='col-md-4'),
+                    Column('who_contributes', css_class='col-md-4'),
+                ),
+                Row(
+                    Column('num_residents', css_class='col-md-4'),
+                    # Campos dos tipos em uma linha
+                    Column('has_adult', css_class='col-md-2'),
+                    Column('has_elderly', css_class='col-md-2'),
+                    Column('has_pcd', css_class='col-md-2'),
+                    Column('has_adolescent', css_class='col-md-2'),
+                    Column('has_child', css_class='col-md-2'),
+                    Column('has_pregnant', css_class='col-md-2'),
+                )   
+                # Continue com os demais campos...
+            )
 
 
 class AdultForm(forms.ModelForm):

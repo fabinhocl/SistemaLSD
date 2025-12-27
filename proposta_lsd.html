@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta Sistema LSD - Lar São Domingos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .slide {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+            padding: 50px 60px;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .slide h1 {
+            color: #667eea;
+            font-size: 48px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .slide h2 {
+            color: #764ba2;
+            font-size: 42px;
+            margin-bottom: 40px;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 20px;
+        }
+        
+        .slide h3 {
+            color: #667eea;
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .slide p {
+            color: #333;
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .slide ul {
+            margin-left: 30px;
+            margin-top: 20px;
+        }
+        
+        .slide li {
+            color: #333;
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .slide-number {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            color: #999;
+            font-size: 16px;
+        }
+        
+        .capa {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            justify-content: space-around;
+        }
+        
+        .capa h1 {
+            color: white;
+            font-size: 56px;
+            margin-bottom: 20px;
+        }
+        
+        .capa h2 {
+            color: #e0e7ff;
+            font-size: 32px;
+            border: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+        
+        .capa p {
+            color: #e0e7ff;
+            font-size: 20px;
+        }
+        
+        .info-box {
+            background: #f0f4ff;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        
+        .info-box strong {
+            color: #764ba2;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 16px;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            border-radius: 6px 6px 0 0;
+        }
+        
+        table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        table tr:hover {
+            background: #f0f4ff;
+        }
+        
+        .chart-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .progress-bar {
+            background: #ddd;
+            height: 30px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .highlight strong {
+            color: #856404;
+        }
+        
+        .button-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        .slide-counter {
+            color: #999;
+            font-weight: bold;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #999;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .grid-item {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            border: 2px solid #667eea;
+        }
+        
+        .grid-item h3 {
+            margin-top: 0;
+        }
+        
+        .value {
+            color: #667eea;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .nav-buttons {
+                display: none;
+            }
+            .slide {
+                page-break-after: always;
+                margin-bottom: 0;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- SLIDE 1: CAPA -->
+        <div class="slide capa">
+            <div>
+                <h1>Proposta de Desenvolvimento</h1>
+                <h2>Sistema Integra+ LAR</h2>
+                <p style="font-size: 24px; margin-top: 40px;">Lar São Domingos</p>
+                <p style="margin-top: 60px;">Desenvolvedor Full Stack</p>
+                <p style="font-size: 16px; margin-top: 30px;" id="data"></p>
+            </div>
+        </div>
+        
+        <!-- SLIDE 2: ÍNDICE -->
+        <div class="slide">
+            <h2>Índice da Apresentação</h2>
+            <ul>
+                <li>Introdução e Objetivo</li>
+                <li>Situação Atual do Projeto</li>
+                <li>Próximos Passos</li>
+                <li>Estimativa de Horas e Cronograma</li>
+                <li>Proposta Financeira</li>
+                <li>Plano de Suporte e Manutenção</li>
+                <li>Considerações Finais</li>
+            </ul>
+        </div>
+        
+        <!-- SLIDE 3: INTRODUÇÃO -->
+        <div class="slide">
+            <h2>Introdução e Objetivo</h2>
+            <p>Este documento apresenta a proposta para desenvolvimento do <strong>Integra+ LAR</strong>, uma solução tecnológica e integrada para o <strong>Lar São Domingos</strong>.</p>
+            
+            <h3>Objetivos Principais:</h3>
+            <ul>
+                <li>Oferecer uma solução eficiente, segura e adaptada às necessidades operacionais</li>
+                <li>Garantir escalabilidade para futuras expansões e novos módulos</li>
+                <li>Implementar requisitos não funcionais críticos (segurança, desempenho, usabilidade)</li>
+                <li>Estabelecer um plano sustentável de manutenção e suporte</li>
+            </ul>
+        </div>
+        
+        <!-- SLIDE 4: SITUAÇÃO ATUAL -->
+        <div class="slide">
+            <h2>Situação Atual do Projeto</h2>
+            
+            <h3>Etapas Concluídas:</h3>
+            <ul>
+                <li>✓ Planejamento e definição do escopo mínimo</li>
+                <li>✓ Levantamento de funcionalidades essenciais</li>
+                <li>✓ Priorização de requisitos não funcionais</li>
+                <li>✓ Elaboração de cronograma inicial</li>
+                <li>✓ Modelo de controle de horas por atividade</li>
+            </ul>
+            
+            <div class="info-box">
+                <strong>Total de horas trabalhadas até agora:</strong> 160 horas
+            </div>
+        </div>
+        
+        <!-- SLIDE 5: PRÓXIMOS PASSOS -->
+        <div class="slide">
+            <h2>Próximos Passos Importantes</h2>
+            
+            <h3>Definições Críticas:</h3>
+            <ul>
+                <li><strong>Perfis de Usuários:</strong> Definição detalhada de regras, permissões e acessos específicos</li>
+                <li><strong>Dashboards:</strong> Desenvolvimento de painéis gerenciais para monitoração e análise</li>
+                <li><strong>Gerenciamento de Documentos:</strong> Aplicativo integrado para armazenamento e controle</li>
+                <li><strong>Futuras Expansões:</strong> Preparação para novos módulos conforme demandas</li>
+            </ul>
+            
+            <div class="highlight">
+                <strong>Estes passos serão concluídos nas próximas fases com acompanhamento contínuo e feedback.</strong>
+            </div>
+        </div>
+        
+        <!-- SLIDE 6: ESTIMATIVA DE HORAS -->
+        <div class="slide">
+            <h2>Estimativa de Horas por Atividade</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Atividade</th>
+                        <th>Estimativa (horas)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Planejamento e requisitos</td>
+                        <td>20</td>
+                        <td>✓ Concluído</td>
+                    </tr>
+                    <tr>
+                        <td>Design e prototipagem</td>
+                        <td>40</td>
+                        <td>✓ Concluído</td>
+                    </tr>
+                    <tr>
+                        <td>Arquitetura do projeto</td>
+                        <td>20</td>
+                        <td>✓ Concluído</td>
+                    </tr>
+                    <tr>
+                        <td>Desenvolvimento Back-end</td>
+                        <td>120</td>
+                        <td>✓ Concluído</td>
+                    </tr>
+                    <tr>
+                        <td>Desenvolvimento Front-end</td>
+                        <td>100</td>
+                        <td>✓ Concluído</td>
+                    </tr>
+                    <tr>
+                        <td>Autenticação e Segurança</td>
+                        <td>40</td>
+                        <td>Em andamento</td>
+                    </tr>
+                    <tr>
+                        <td>Testes e correções</td>
+                        <td>60</td>
+                        <td>Em andamento</td>
+                    </tr>
+                    <tr>
+                        <td>Implantação e documentação</td>
+                        <td>30</td>
+                        <td>Pendente</td>
+                    </tr>
+                    <tr style="background: #667eea; color: white; font-weight: bold;">
+                        <td>TOTAL ESTIMADO</td>
+                        <td>430 horas</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- SLIDE 7: CRONOGRAMA -->
+        <div class="slide">
+            <h2>Cronograma de Desenvolvimento</h2>
+            
+            <h3>Timeline de 15 Semanas:</h3>
+            
+            <div class="grid-2">
+                <div class="grid-item">
+                    <h3>Semana 1-2</h3>
+                    <p>Planejamento, levantamento de requisitos e design inicial</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Semana 3-4</h3>
+                    <p>Prototipagem e arquitetura do sistema</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Semana 5-9</h3>
+                    <p>Desenvolvimento de back-end e front-end em paralelo</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Semana 10</h3>
+                    <p>Implementação de autenticação e segurança</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Semana 11-14</h3>
+                    <p>Testes, ajustes e homologação</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Semana 15</h3>
+                    <p>Deploy final e documentação</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SLIDE 8: PROPOSTA FINANCEIRA -->
+        <div class="slide">
+            <h2>Proposta Financeira</h2>
+            
+            <h3>Estrutura de Valores:</h3>
+            
+            <div class="grid-2">
+                <div class="grid-item">
+                    <h3>Tarifa Horária</h3>
+                    <div class="value">R$ 35</div>
+                    <p>Valor compatível com mercado, considerando curva de aprendizado</p>
+                </div>
+                <div class="grid-item">
+                    <h3>Trabalho Realizado</h3>
+                    <div class="value">R$ 4.800 a R$ 11.700</div>
+                    <p>80 a 130 horas já dedicadas ao projeto</p>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 40px;">Investimento Total:</h3>
+            <table style="margin-top: 20px;">
+                <tr>
+                    <td><strong>Valor para conclusão do projeto:</strong></td>
+                    <td style="text-align: right; font-weight: bold; color: #667eea; font-size: 20px;">R$ 21.000 a R$ 42.300</td>
+                </tr>
+                <tr style="background: #f0f4ff;">
+                    <td><strong>Valor total estimado (com trabalho realizado):</strong></td>
+                    <td style="text-align: right; font-weight: bold; color: #764ba2; font-size: 20px;">R$ 25.800 a R$ 54.000</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- SLIDE 9: PLANO DE SUPORTE -->
+        <div class="slide">
+            <h2>Plano de Suporte e Manutenção</h2>
+            
+            <h3>Modelo de Manutenção Mensal:</h3>
+            <p>Recomenda-se implementar um plano de suporte contínuo equivalente a <strong>15% a 20% do valor total do desenvolvimento</strong> ao ano.</p>
+            
+            <h3 style="margin-top: 30px;">O que está incluído:</h3>
+            <ul>
+                <li>✓ Correção de bugs e ajustes</li>
+                <li>✓ Atualizações de segurança e patches</li>
+                <li>✓ Melhorias de desempenho</li>
+                <li>✓ Suporte técnico prioritário</li>
+                <li>✓ Preparação para novas funcionalidades</li>
+                <li>✓ Monitoramento contínuo da disponibilidade</li>
+            </ul>
+            
+            <div class="info-box" style="margin-top: 30px;">
+                <strong>Exemplo prático:</strong> Para um investimento de R$ 40.000, o plano anual seria de aproximadamente <strong>R$ 6.000 a R$ 8.000</strong> (ou R$ 500 a R$ 667 mensais).
+            </div>
+        </div>
+        
+        <!-- SLIDE 10: DIFERENCIAIS -->
+        <div class="slide">
+            <h2>Diferenciais e Compromissos</h2>
+            
+            <h3>Por que investir neste projeto:</h3>
+            <ul>
+                <li><strong>Dedicação Total:</strong> Primeiro sistema desenvolvido com foco total em qualidade e aprendizado contínuo</li>
+                <li><strong>Escalabilidade:</strong> Arquitetura preparada para crescimento futuro e novos módulos</li>
+                <li><strong>Segurança em Primeiro Lugar:</strong> Implementação rigorosa de requisitos de segurança e proteção de dados</li>
+                <li><strong>Flexibilidade:</strong> Disposição para ajustar escopo e condições conforme necessidades</li>
+                <li><strong>Documentação Completa:</strong> Todo o sistema será documentado para facilitar manutenção futura</li>
+                <li><strong>Treinamento:</strong> Suporte inicial para equipe do Lar São Domingos</li>
+            </ul>
+        </div>
+        
+        <!-- SLIDE 11: CONSIDERAÇÕES FINAIS -->
+        <div class="slide">
+            <h2>Considerações Finais</h2>
+            
+            <div class="highlight" style="background: #d4edda; border-left-color: #28a745; margin-bottom: 30px;">
+                <strong style="color: #155724;">✓ Sistema completo e robusto</strong><br>
+                O Sistema LSD será uma solução profissional, escalável e preparada para as necessidades presentes e futuras do Lar São Domingos.
+            </div>
+            
+            <h3>Próximos Passos:</h3>
+            <ul>
+                <li>1. Análise e aprovação da proposta</li>
+                <li>2. Assinatura de contrato de desenvolvimento</li>
+                <li>3. Definição de cronograma com marcos de entrega</li>
+                <li>4. Início do desenvolvimento com reuniões semanais de acompanhamento</li>
+            </ul>
+            
+            <div class="info-box" style="margin-top: 40px;">
+                <strong>Esta proposta está aberta para discussão, ajustes e negociações conforme as necessidades e possibilidades do Lar São Domingos.</strong>
+            </div>
+        </div>
+        
+        <!-- SLIDE 12: CONTATO -->
+        <div class="slide capa">
+            <div>
+                <h1>Obrigado!</h1>
+                <h2 style="color: #e0e7ff; border: none; margin-top: 40px;">Estou à disposição para dúvidas</h2>
+                
+                <div style="margin-top: 60px; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 12px;">
+                    <p style="font-size: 20px; margin: 15px 0;"><strong>Email:</strong> fabiocasadolima@gmail.com</p>
+                    <p style="font-size: 20px; margin: 15px 0;"><strong>Telefone:</strong> (82) 99148-3239</p>
+                    <p style="font-size: 20px; margin: 15px 0;"><strong>Linkedin:</strong> linkedin.com/in/seu-perfil</p>
+                </div>
+                
+                <p style="margin-top: 60px; font-size: 16px;">Lar São Domingos - Proposta de Desenvolvimento Integra+ LAR</p>
+            </div>
+        </div>
+        
+        <!-- NAVEGAÇÃO -->
+        <div class="nav-buttons">
+            <button onclick="previousSlide()">← Anterior</button>
+            <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">12</span></span>
+            <button onclick="nextSlide()">Próximo →</button>
+        </div>
+        
+        <div class="footer">
+            <p>Para imprimir ou exportar para PDF: Use Ctrl+P (Windows) ou Cmd+P (Mac) e selecione "Salvar como PDF"</p>
+        </div>
+    </div>
+    
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+        
+        // Definir data
+        const hoje = new Date();
+        const opções = { year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('data').textContent = hoje.toLocaleDateString('pt-BR', opções);
+        
+        function showSlide(n) {
+            slides.forEach(slide => slide.classList.add('hidden'));
+            if (n >= totalSlides) currentSlide = 0;
+            if (n < 0) currentSlide = totalSlides - 1;
+            slides[currentSlide].classList.remove('hidden');
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
+        
+        function nextSlide() {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+        
+        function previousSlide() {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+        
+        // Navegação por teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') previousSlide();
+        });
+        
+        // Mostrar primeiro slide
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

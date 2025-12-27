@@ -4,7 +4,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Lar São Domingos{% endblock %}</title>
+    <title>{% block title %}INTEGRA+LAR{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap CSS -->
@@ -92,6 +92,61 @@
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             line-height: 24px;
         }
+
+        .form-control,
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        input[type="tel"],
+        select,
+        textarea {
+            border: 1.5px solid #555;
+        }
+
+        .form-control:focus,
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 1px #000;
+        }
+        
+        /* selects (dropdown) */
+    select,
+    .form-select {
+        border: 1.5px solid #555;
+    }
+
+    select:focus,
+    .form-select:focus {
+        border-color: #000;
+        box-shadow: 0 0 0 1px #000;
+    }
+
+   /* radios maiores e sempre com contorno escuro */
+    input[type="radio"].form-check-input,
+    input[type="radio"] {
+        width: 18px !important;
+        height: 18px !important;
+        border: 2px solid #555 !important;
+        border-radius: 50% !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        background-color: #fff !important;
+    }
+
+    input[type="radio"].form-check-input:checked,
+    input[type="radio"]:checked {
+        border-color: #000 !important;
+        background-color: #000 !important;
+    }
+
+    input[type="radio"].form-check-input:focus,
+    input[type="radio"]:focus {
+        outline: 2px solid #000 !important;
+        outline-offset: 2px !important;
+        box-shadow: none !important;
+    }
     </style>
 
     {% block extra_head %}

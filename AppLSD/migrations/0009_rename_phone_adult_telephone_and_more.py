@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='adult',
             name='sex',
-            field=models.CharField(blank=True, choices=[('', '---------'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino')], default='Escolha o sexo', max_length=10, null=True, verbose_name='Sexo'),
+            field=models.CharField(blank=True, choices=[('', '---------'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino')], default='Escolha o sexo', max_length=15, null=True, verbose_name='Sexo'),
         ),
         migrations.AddField(
             model_name='aluno',
@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='aluno',
             name='sex',
-            field=models.CharField(blank=True, choices=[('', '---------'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino')], default='Escolha o sexo', max_length=10, null=True, verbose_name='Sexo'),
+            field=models.CharField(blank=True, choices=[('', '---------'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino')], default='Escolha o sexo', max_length=30, null=True, verbose_name='Sexo'),
         ),
         migrations.AddField(
             model_name='aluno',
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='aluno',
             name='serie',
-            field=models.CharField(blank=True, default='', max_length=10, verbose_name='Série'),
+            field=models.CharField(blank=True, default='', max_length=30, verbose_name='Série'),
         ),
         migrations.AlterField(
             model_name='aluno',
@@ -67,6 +67,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='family',
             name='salary_range',
-            field=models.CharField(blank=True, choices=[('', '---------'), ('1_sm', '1 Salário Mínimo'), ('2_sm', '2 Salários Mínimos')], max_length=10, null=True),
+            field=models.CharField(blank=True, choices=[('', '---------'), ('1_sm', '1 Salário Mínimo'), ('2_sm', '2 Salários Mínimos')], max_length=30, null=True),
         ),
     ]

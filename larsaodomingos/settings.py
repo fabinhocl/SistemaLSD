@@ -92,8 +92,14 @@ ASGI_APPLICATION = 'larsaodomingos.asgi.application'  # ajuste para seu projeto
 DATABASES = {
  
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'lsd',
+        'USER': 'lsd_user',
+        'PASSWORD': 'Sys.Admin!@#098',
+        'HOST': 'localhost',
+        'PORT': '5432', 
+        #'ENGINE': 'django.db.backends.sqlite3',
+        #'NAME': BASE_DIR / 'db.sqlite3',
     }
 }   
 

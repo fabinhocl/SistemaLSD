@@ -153,10 +153,10 @@ class Family(AuditModel):
     ('Masculino', 'Masculino'),
     ('Feminino', 'Feminino')
     ]
-    sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
+    sex = models.CharField(max_length=15, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
     SIM_NAO_CHOICES = [
-    ('sim', 'Sim'),
-    ('não', 'Não')
+    ('Sim', 'Sim'),
+    ('Não', 'Não')
 ]
     # Programas sociais (checkbox múltiplo)
     mae_solo = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
@@ -172,45 +172,46 @@ class Family(AuditModel):
     marital_status = models.CharField(max_length=30, choices=ESTADO_CIVIL_CHOICES, verbose_name="Estado Civil", default= "Escolha o estado civil", blank=True, null=True)
     # Escolaridade
     ESCOLARIDADE_CHOICES = [
-        ('analfabeto', 'Analfabeto'),
-        ('fund_comp', 'Ens. Fund. Comp.'),
-        ('fund_incomp', 'Ens. Fund. Incomp.'),
-        ('med_comp', 'Ens. Med. Comp.'),
-        ('med_incomp', 'Ens. Med. Incomp.'),
-        ('sup_comp', 'Ens. Sup. Comp.'),
-        ('sup_incomp', 'Ens. Sup. Incomp.'),
+        ('Analfabeto', 'Analfabeto'),
+        ('Ens. Fund. Comp.', 'Ens. Fund. Comp.'),
+        ('Ens. Fund. Incomp.', 'Ens. Fund. Incomp.'),
+        ('Ens. Med. Comp.', 'Ens. Med. Comp.'),
+        ('Ens. Med. Incomp.', 'Ens. Med. Incomp.'),
+        ('Ens. Sup. Comp.', 'Ens. Sup. Comp.'),
+        ('Ens. Sup. Incomp.', 'Ens. Sup. Incomp.'),
     ]
     education = models.CharField(max_length=50, choices=ESCOLARIDADE_CHOICES, verbose_name="Escolaridade", default="Escolha a escolaridade", blank=True, null=True)
     # Raça/Cor
     RACA_CHOICES = [
-        ('branco', 'Branco'),
-        ('preto', 'Preto'),
-        ('pardo', 'Pardo'),
-        ('amarelo', 'Amarelo'),
-        ('indigena', 'Indígena'),
+        ('Branco', 'Branco'),
+        ('Preto', 'Preto'),
+        ('Pardo', 'Pardo'),
+        ('Amarelo', 'Amarelo'),
+        ('Indígena', 'Indígena'),
     ]
     race = models.CharField(max_length=30, choices=RACA_CHOICES, verbose_name="Raça", default="Escolha a raça", blank=True, null=True)
     # Religião
     RELIGIAO_CHOICES = [
-        ('catolico', 'Católico'),
-        ('evangelico', 'Evangélico'),
-        ('espirita', 'Espírita'),
-        ('matriz_africana', 'Matriz Africana'),
-        ('nao_possui', 'Não possui religião'),
+        ('Católico', 'Católico'),
+        ('Evangélico', 'Evangélico'),
+        ('Espírita', 'Espírita'),
+        ('Matriz Africana', 'Matriz Africana'),
+        ('Não possui religião', 'Não possui religião'),
     ]
     religion = models.CharField(max_length=30, choices=RELIGIAO_CHOICES, verbose_name="Religião", default="Escolha a religião", blank=True, null=True)
     # Escolhas SIM ou NÂO
     SIM_NAO_CHOICES = [
-    ('sim', 'Sim'),
-    ('não', 'Não')
+    ('Sim', 'Sim'),
+    ('Não', 'Não')
 ]
     # Programas sociais (checkbox múltiplo)
-    is_benefits = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
+    is_benefits = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
     # Qual Programas sociais (checkbox múltiplo)
     PROGRAMAS_SOCIAIS_CHOICES = [
-        ('bolsa_brasil', 'Programa Bolsa Brasil - PBF'),
-        ('bpc', 'Benefício de Prestação Continuada - BPC'),
-        ('cria_alagoana', 'Criança Alagoana - CRIA'),
+        ('Programa Bolsa Família - PBF', 'Programa Bolsa Família - PBF'),
+        ('Auxílio Brasil', 'Auxílio Brasil'),
+        ('Benefício de Prestação Continuada - BPC', 'Benefício de Prestação Continuada - BPC'),
+        ('Criança Alagoana - CRIA', 'Criança Alagoana - CRIA'),
     ]
     social_benefits = models.CharField(max_length=255, choices=PROGRAMAS_SOCIAIS_CHOICES, verbose_name="Programas Sociais", blank=True, null=True)
     
@@ -218,11 +219,11 @@ class Family(AuditModel):
     occupation = models.CharField(max_length=100, blank=True, null=True)
     
     # Trabalhando no momento
-    is_working = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
+    is_working = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
     function = models.CharField(max_length=100, default=False, blank=True, null=False)
 
     # Renda comprovada
-    has_proven_income = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
+    has_proven_income = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
     # Tipos de renda (checkbox múltiplo)
     INCOME_TYPE_CHOICES = [
         ('carteira_assinada', 'Carteira Assinada'),
@@ -238,7 +239,7 @@ class Family(AuditModel):
         ('1_sm', '1 Salário Mínimo'),
         ('2_sm', '2 Salários Mínimos'),
     ]
-    salary_range = models.CharField(max_length=10, choices=SALARIO_CHOICES, blank=True, null=True)
+    salary_range = models.CharField(max_length=30, choices=SALARIO_CHOICES, blank=True, null=True)
     #min_salary_1 = models.BooleanField(default=False)
     #min_salary_2 = models.BooleanField(default=False)
 
@@ -250,7 +251,7 @@ class Family(AuditModel):
     DOMICILE_CHOICES = [
         ('proprio', 'Próprio'), ('alugado', 'Alugado'), ('cedido', 'Cedido')
     ]
-    domicile_type = models.CharField(max_length=10, choices=DOMICILE_CHOICES, blank=True, null=True)
+    domicile_type = models.CharField(max_length=30, choices=DOMICILE_CHOICES, blank=True, null=True)
     
     # Extras
     num_residents = models.IntegerField(default=0)
@@ -390,7 +391,7 @@ class Aluno(AuditModel):
     ('medio', 'Ensino Médio'),
     ]
     ensino = models.CharField(max_length=100, choices=ENSINO_CHOICES, default='', blank=True)
-    serie = models.CharField(max_length=10, verbose_name="Série", default='', blank=True)
+    serie = models.CharField(max_length=30, verbose_name="Série", default='', blank=True)
     ESCOLHA_TURNO = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('Matutino', 'Matutino'),

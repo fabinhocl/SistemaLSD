@@ -1,0 +1,10 @@
+Atividade,Estimativa de Horas,Status,Horas Trabalhadas,Responsável,Observações
+Planejamento e definição de requisitos,20-40,Concluído,80-130,,Inclui escopo e requisitos iniciais
+Design de interface e prototipagem,40-60,Pendente,,,Wireframes e mockups UI
+Configuração inicial e arquitetura do projeto,20-30,Concluído,,,Setup técnico e estrutura
+Desenvolvimento Back-end (APIs, banco de dados),120-160,Pendente,,,Lógica e banco de dados
+Desenvolvimento Front-end (UI, responsividade),100-140,Pendente,,,Interface para usuários
+Autenticação e segurança,40-60,Pendente,,,Configuração de login e permissões
+Testes unitários, integração e correção de bugs,60-80,Pendente,,,Garantia de qualidade
+Implantação, homologação e documentação,30-50,Pendente,,,Entrega e documentação final
+TOTAL,430-600,,,,
