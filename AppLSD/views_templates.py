@@ -18,12 +18,13 @@ from django.http import JsonResponse, HttpResponse
 from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from .permissoes import require_perfil
 # Concatena e ordena por data
 from itertools import chain
 from operator import itemgetter
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 import os
 os.environ['WEASYPRINT_DLL_DIRECTORIES'] = r"C:\Program Files\GTK3-Runtime Win64\bin"
 from weasyprint import HTML, CSS
@@ -37,9 +38,9 @@ import unicodedata
 
 def root_redirect(request):
     if request.user.is_authenticated:
-        return redirect('home')  # nome da sua view home
+        return redirect('/home/')  # URL direta, não por nome
     else:
-        return redirect('login')  # nome padrão da view de login
+        return redirect('/accounts/login/')  # nome padrão da view de login
 """   
 def require_perfil(perfil_tipo):
     def decorator(view_func):
@@ -611,12 +612,39 @@ def family_term_pdf(request, pk):
 
 @login_required
 def adult_list(request):
-    adults_list = Adult.objects.select_related('family').all().order_by('name')
-    paginator = Paginator(adults_list, 100)  # paginar 100 por página
-    page_number = request.GET.get('page')
+    # Captura o termo de busca
+    query = request.GET.get('q', '').strip()
+    
+    # Base queryset - ajuste o nome do modelo conforme seu código
+    adultos = Adult.objects.select_related('family').all()  # ou Person, conforme seu modelo
+    
+    # Aplica filtro se houver busca
+    if query:
+        adultos = adultos.filter(
+            Q(name__icontains=query) |
+            Q(cpf__icontains=query) |
+            Q(family__registration_number__icontains=query) |
+            Q(family__responsible_name__icontains=query)
+        )
+    
+    # Ordena por nome
+    adultos = adultos.order_by('name')
+    
+    # Conta total
+    total = adultos.count()
+    
+    # Paginação
+    paginator = Paginator(adultos, 50)
+    page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-
-    return render(request, 'AppLSD/adult_list.html', {'page_obj': page_obj})
+    
+    context = {
+        'adultos': page_obj,
+        'query': query,
+        'total': total,
+    }
+    
+    return render(request, 'AppLSD/adult_list.html', context)
 
 @login_required
 def adult_create(request):
@@ -711,14 +739,39 @@ def family_autocomplete(request):
 
 
 
+
 @login_required
 def aluno_list(request):
-    alunos_list = Aluno.objects.select_related('family').all().order_by('name')
-    paginator = Paginator(alunos_list, 100)  # paginar 100 por página
-    page_number = request.GET.get('page')
+    # Captura o termo de busca
+    query = request.GET.get('q', '').strip()
+    
+    # Base queryset
+    alunos = Aluno.objects.select_related('family', 'turma').all()
+    # Filtra os alunos
+    if query:
+        alunos = alunos.filter(
+            Q(name__icontains=query) |
+            Q(cpf__icontains=query) |
+            Q(family__registration_number__icontains=query) |
+            Q(family__responsible_name__icontains=query)  # Busca pelo responsável
+        )
+    # Ordena
+    alunos = alunos.order_by('name')
+    # Conta total ANTES da paginação
+    total = alunos.count()
+    
+      # Paginação
+    paginator = Paginator(alunos, 50)
+    page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-
-    return render(request, 'AppLSD/aluno_list.html', {'page_obj': page_obj})
+    
+    context = {
+        'alunos': page_obj,
+        'query': query,
+        'total': total,
+    }
+    
+    return render(request, 'AppLSD/aluno_list.html', context)
 
 @login_required
 def aluno_create(request):
@@ -777,12 +830,22 @@ def aluno_edit(request, pk):
         form = AlunoForm(request.POST, instance=aluno)
         if form.is_valid():
             aluno = form.save(commit=False)
-            aluno.editado_por = request.user             # auditoria
+            aluno.editado_por = request.user  # auditoria
             aluno.save()
             return redirect('aluno_detail', pk=aluno.pk)
     else:
         form = AlunoForm(instance=aluno)
-    return render(request, 'AppLSD/aluno_form.html', {'form': form})
+    
+    # Contexto com valores para carregar nos campos HTML puros
+    context = {
+        'form': form,
+        'aluno': aluno,
+        
+    }
+    # DEBUG - Remova depois
+    print(f"Ensino: {aluno.ensino}, Série: {aluno.serie}")
+    
+    return render(request, 'AppLSD/aluno_form.html', context)
 
 @login_required
 def aluno_delete_confirm(request, pk):
@@ -1291,12 +1354,12 @@ def visualizar_frequencia_activity(request, activity_id):
 
 
 @user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
-def editar_frequencia_activity(request, frequencia_id):
+def editar_frequencia_activity(request, activity_id):
     """
     Edita a frequência - apenas coordenadoras
     """
     atividade = get_object_or_404(Activity, id=activity_id)
-    alunos_atividade = Aluno.objects.filter(atividade=atividade)
+    alunos_atividade = Aluno.objects.filter(atividade=atividade)        
     
     if request.method == 'POST' and request.POST.get('data'):
         data_chamada = date.fromisoformat(request.POST['data'])
@@ -1679,3 +1742,286 @@ def finalizar_chamada(request, chamada_id):
     
     messages.success(request, f"Chamada finalizada! {faltas_criadas} faltas registradas automaticamente.")
     return redirect(request, 'AppLSD/home_relatorios.html')
+
+
+#Exportação em excel das listas Família, Aluno e Adulto
+@login_required
+def export_family_excel(request):
+    campos = request.GET.getlist('campos')
+    
+    # Se nenhum campo selecionado, usa padrão
+    if not campos:
+        campos = ['registration_number', 'responsible_name', 'cpf', 'telephone', 'address', 'neighborhood', 'status']
+    
+    # DEBUG - Ver quais campos foram selecionados
+    print(f"Campos selecionados: {campos}")
+    
+    families = Family.objects.all().order_by('registration_number')
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Famílias"
+    
+    # Dicionário com TODOS os campos possíveis
+    campos_info = {
+        'registration_number': {'label': 'Inscrição', 'field': 'registration_number'},
+        'responsible_name': {'label': 'Responsável', 'field': 'responsible_name'},
+        'cpf': {'label': 'CPF', 'field': 'cpf'},
+        'rg': {'label': 'RG', 'field': 'rg'},
+        'nis': {'label': 'NIS', 'field': 'nis'},
+        'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
+        'sex': {'label': 'Sexo', 'field': 'sex'},
+        'telephone': {'label': 'Telefone', 'field': 'telephone'},
+        'telephone_2': {'label': 'Telefone 2', 'field': 'telephone_2'},
+        'address': {'label': 'Endereço', 'field': 'address'},
+        'number': {'label': 'Número', 'field': 'number'},
+        'neighborhood': {'label': 'Bairro', 'field': 'neighborhood'},
+        'cep': {'label': 'CEP', 'field': 'cep'},
+        'reference_point': {'label': 'Ponto de Referência', 'field': 'reference_point'},
+        'marital_status': {'label': 'Estado Civil', 'field': 'marital_status'},
+        'education': {'label': 'Escolaridade', 'field': 'education'},
+        'race': {'label': 'Raça', 'field': 'race'},
+        'occupation': {'label': 'Ocupação', 'field': 'occupation'},
+        'salary_range': {'label': 'Faixa Salarial', 'field': 'salary_range'},
+        'num_residents': {'label': 'Nº de Moradores', 'field': 'num_residents'},
+        'status': {'label': 'Status', 'field': 'status'},
+    }
+    
+    # Cabeçalhos NA ORDEM dos campos selecionados
+    headers = []
+    for campo in campos:
+        if campo in campos_info:
+            headers.append(campos_info[campo]['label'])
+    
+    ws.append(headers)
+    
+    # Estilo do cabeçalho
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Dados NA ORDEM dos campos selecionados
+    for family in families:
+        row = []
+        for campo in campos:
+            if campo in campos_info:
+                field_name = campos_info[campo]['field']
+                valor = getattr(family, field_name, '')
+                
+                # Formata data se necessário
+                if campo == 'birth_date' and valor:
+                    valor = valor.strftime('%d/%m/%Y')
+                
+                row.append(str(valor) if valor else '')
+        
+        ws.append(row)
+    
+    # Ajusta largura das colunas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = min((max_length + 2), 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Resposta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'familias_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+
+
+@login_required
+def export_aluno_excel(request):
+    campos = request.GET.getlist('campos')
+    
+    if not campos:
+        campos = ['inscricao', 'name', 'cpf', 'birth_date', 'school', 'ensino', 'serie']
+    
+    alunos = Aluno.objects.select_related('family', 'turma').all().order_by('name')
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Alunos"
+    
+    # Dicionário com TODOS os campos possíveis
+    campos_info = {
+        'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
+        'name': {'label': 'Nome', 'field': 'name'},
+        'cpf': {'label': 'CPF', 'field': 'cpf'},
+        'nis': {'label': 'NIS', 'field': 'nis'},
+        'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
+        'idade': {'label': 'Idade', 'field': 'age'},
+        'sex': {'label': 'Sexo', 'field': 'sex'},
+        'school': {'label': 'Escola', 'field': 'school'},
+        'ensino': {'label': 'Ensino', 'field': 'ensino'},
+        'serie': {'label': 'Série', 'field': 'serie'},
+        'turno': {'label': 'Turno', 'field': 'turno'},
+        'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
+    }
+    
+    # Cabeçalhos NA ORDEM dos campos selecionados
+    headers = []
+    for campo in campos:
+        if campo in campos_info:
+            headers.append(campos_info[campo]['label'])
+    
+    ws.append(headers)
+    
+    # Estilo do cabeçalho
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Dados NA ORDEM dos campos selecionados
+    for aluno in alunos:
+        row = []
+        for campo in campos:
+            if campo in campos_info:
+                valor = ''
+                
+                # Campos especiais
+                if campo == 'inscricao':
+                    valor = aluno.family.registration_number if aluno.family else ''
+                elif campo == 'responsavel':
+                    valor = aluno.family.responsible_name if aluno.family else ''
+                elif campo == 'birth_date':
+                    valor = aluno.birth_date.strftime('%d/%m/%Y') if aluno.birth_date else ''
+                elif campo == 'idade':
+                    valor = aluno.age if hasattr(aluno, 'age') else ''
+                else:
+                    valor = getattr(aluno, campo, '')
+                
+                row.append(str(valor) if valor else '')
+        
+        ws.append(row)
+    
+    # Ajusta largura das colunas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = min((max_length + 2), 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'alunos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+
+@login_required
+def export_adult_excel(request):
+     # DEBUG - Lista todos os campos do modelo
+    adult = Adult.objects.first()
+    if adult:
+        print("===== CAMPOS DISPONÍVEIS NO MODELO ADULT =====")
+        for field in adult._meta.get_fields():
+            print(f"Campo: {field.name}")
+        print("=" * 50)
+    campos = request.GET.getlist('campos')
+    
+    if not campos:
+        campos = ['inscricao', 'name', 'cpf', 'birth_date', 'parentesco', 'ocupacao']
+    
+    adults = Adult.objects.select_related('family').all().order_by('name')
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Adultos"
+    
+    # Dicionário com TODOS os campos possíveis
+    campos_info = {
+        'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
+        'name': {'label': 'Nome', 'field': 'name'},
+        'cpf': {'label': 'CPF', 'field': 'cpf'},
+        'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
+        'idade': {'label': 'Idade', 'field': 'age'},
+        'sex': {'label': 'Sexo', 'field': 'sex'},
+        'education': {'label': 'Escolaridade', 'field': 'education'},
+        'parentesco': {'label': 'Parentesco', 'field': 'parentesco'},
+        'ocupacao': {'label': 'Ocupação', 'field': 'ocupacao'},
+        'renda': {'label': 'Renda', 'field': 'income'},
+        'telephone': {'label': 'Telefone', 'field': 'telephone'},
+        'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
+    }
+    
+    # Cabeçalhos NA ORDEM dos campos selecionados
+    headers = []
+    for campo in campos:
+        if campo in campos_info:
+            headers.append(campos_info[campo]['label'])
+    
+    ws.append(headers)
+    
+    # Estilo do cabeçalho
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Dados NA ORDEM dos campos selecionados
+    for adult in adults:
+        row = []
+        for campo in campos:
+            if campo in campos_info:
+                valor = ''
+                
+                # Campos especiais
+                if campo == 'inscricao':
+                    valor = adult.family.registration_number if adult.family else ''
+                elif campo == 'responsavel':
+                    valor = adult.family.responsible_name if adult.family else ''
+                elif campo == 'birth_date':
+                    valor = adult.birth_date.strftime('%d/%m/%Y') if adult.birth_date else ''
+                elif campo == 'idade':
+                    valor = adult.age if hasattr(adult, 'age') else ''
+                elif campo == 'is_working':
+                    valor = 'Sim' if adult.is_working == 'sim' else 'Não' if adult.is_working else ''
+                else:
+                    valor = getattr(adult, campo, '')
+                
+                row.append(str(valor) if valor else '')
+        
+        ws.append(row)
+    
+    # Ajusta largura das colunas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = min((max_length + 2), 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'adultos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response

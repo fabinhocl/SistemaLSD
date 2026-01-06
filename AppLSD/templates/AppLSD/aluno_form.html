@@ -22,15 +22,16 @@
                     <label>Buscar por Inscrição, Nome ou CPF</label>
                     <input type="text" name="family" id="busca_familia" value="" class="form-control" placeholder="Digite inscrição, nome ou CPF" autocomplete="off" onkeyup="buscarFamilia()">
                     <div id="resultados_busca" class="list-group"></div>
-                   <div class="col-md-8">{{ form.family|as_crispy_field }}</div>
+                   <div class="col-md-7">{{ form.family|as_crispy_field }}</div>
                 {% endif %}
 
-               <div class="col-md-4"> {{ form.parentesco|as_crispy_field }}</div>
+               <div class="col-md-5"> {{ form.parentesco|as_crispy_field }}</div>
                 </div>
                 
                 <div class="row mb-3">
-                    <div class="col-md-9">{{ form.name|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.cpf|as_crispy_field }}</div>
+                    <div class="col-md-3">{{ form.nis|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
@@ -41,21 +42,8 @@
                     <div class="col-md-8">{{ form.school|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-5">
-                        <label for="ensino">Ensino</label>
-                        <select id="ensino" name="ensino" class="form-select" required>
-                        <option value="" selected disabled>Selecione o ensino</option>
-                        <option value="fundamental1">Ensino Fundamental 1</option>
-                        <option value="fundamental2">Ensino Fundamental 2</option>
-                        <option value="medio">Ensino Médio</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="serie">Série</label>
-                        <select id="serie" name="serie" class="form-select" required>
-                        <option value="">Selecione a série</option>
-                        </select>
-                    </div>
+                    <div class="col-md-5">{{ form.ensino|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.serie|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.turno|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
@@ -150,41 +138,76 @@ function selecionaFamilia(id, registro, nome, cpf) {
         alert('Campo "family" não encontrado no formulário!');
     }
 }
+</script>
 
-const ensinoSeries = {
-  'fundamental1': [
-    {value: '1', text: '1º ano'},
-    {value: '2', text: '2º ano'},
-    {value: '3', text: '3º ano'},
-    {value: '4', text: '4º ano'},
-    {value: '5', text: '5º ano'}
-  ],
-  'fundamental2': [
-    {value: '6', text: '6º ano'},
-    {value: '7', text: '7º ano'},
-    {value: '8', text: '8º ano'},
-    {value: '9', text: '9º ano'}
-  ],
-  'medio': [
-    {value: '1', text: '1º ano'},
-    {value: '2', text: '2º ano'},
-    {value: '3', text: '3º ano'}
-  ]
-};
-document.getElementById('ensino').addEventListener('change', function() {
-  const serieEl = document.getElementById('serie');
-  const ensinoVal = this.value;
-  serieEl.innerHTML = '<option value="">Selecione a série</option>';
-  if (ensinoSeries[ensinoVal]) {
-    ensinoSeries[ensinoVal].forEach(function(opt) {
-      const o = document.createElement('option');
-      o.value = opt.value;
-      o.innerText = opt.text;
-      serieEl.appendChild(o);
-    });
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Mapeamento de ensino e séries
+  const ensinoSeries = {
+    'fundamental1': [
+      {value: '1', text: '1º ano'},
+      {value: '2', text: '2º ano'},
+      {value: '3', text: '3º ano'},
+      {value: '4', text: '4º ano'},
+      {value: '5', text: '5º ano'}
+    ],
+    'fundamental2': [
+      {value: '6', text: '6º ano'},
+      {value: '7', text: '7º ano'},
+      {value: '8', text: '8º ano'},
+      {value: '9', text: '9º ano'}
+    ],
+    'medio': [
+      {value: '1', text: '1º ano'},
+      {value: '2', text: '2º ano'},
+      {value: '3', text: '3º ano'}
+    ]
+  };
+
+  const ensinoEl = document.querySelector('select[name="ensino"]');
+  const serieEl = document.querySelector('select[name="serie"]');
+  
+  if (!ensinoEl || !serieEl) return;
+
+  // PEGUE O VALOR DIRETO DO DJANGO TEMPLATE
+  const serieSalva = '{{ aluno.serie|default:"" }}';
+  
+  console.log('Série salva:', serieSalva); // Deve mostrar "3"
+
+  // Função para preencher as séries
+  function preencherSeries(ensinoVal, serieSelecionada = '') {
+    serieEl.innerHTML = '<option value="">Selecione a série</option>';
+    
+    if (ensinoSeries[ensinoVal]) {
+      ensinoSeries[ensinoVal].forEach(function(opt) {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.innerText = opt.text;
+        
+        // Compara como string
+        if (opt.value === String(serieSelecionada)) {
+          o.selected = true;
+        }
+        
+        serieEl.appendChild(o);
+      });
+    }
+  }
+
+  // Evento de mudança no ensino
+  ensinoEl.addEventListener('change', function() {
+    preencherSeries(this.value);
+  });
+
+  // Carrega as séries ao iniciar
+  const ensinoAtual = ensinoEl.value;
+  if (ensinoAtual && serieSalva) {
+    preencherSeries(ensinoAtual, serieSalva);
   }
 });
-
+</script>
+<script>    
 document.addEventListener('DOMContentLoaded', function() {
     const inputNasc = document.getElementById("id_birth_date");
     const inputIdade = document.getElementById("id_idade");
@@ -216,7 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
         exibirIdadeAnos();
     }
 });
-
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', function () {
   var probSaude = document.getElementById('health_problem');
   var qualProblema = document.getElementById('special_need');
@@ -232,7 +256,8 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   probSaude.dispatchEvent(new Event('change'));
 });
-
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', function () {
   var usoMedicacao = document.getElementById('uso_medicacao');
   var qualMedicacao = document.getElementById('qual_medicacao');

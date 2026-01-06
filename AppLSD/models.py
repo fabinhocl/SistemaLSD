@@ -160,13 +160,22 @@ class Family(AuditModel):
 ]
     # Programas sociais (checkbox múltiplo)
     mae_solo = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='não')
+    SIM_NAO_CHOICES = [
+    ('', '---------'),    
+    ('Sim', 'Sim'),
+    ('Não', 'Não'),
+    ('Nutriz', 'Nutriz')
+    ]
+    gestante = models.CharField(max_length=15, choices=SIM_NAO_CHOICES, blank=True, default="")
     cep = models.CharField("CEP", max_length=9, blank=False, null=True)
     address = models.CharField(max_length=300, blank=False, null=True)
     number = models.CharField(max_length=10, default="S/N", blank=True, null=True)
     neighborhood = models.CharField(max_length=100, default="Não informado")
     reference_point = models.CharField(max_length=200, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
+    nome_contato = models.CharField(max_length=100, blank=True, null=True)
     telephone_2 = models.CharField(max_length=20, blank=True, null=True)
+    nome_contato_2 = models.CharField(max_length=100, blank=True, null=True)
     # Estado civil
     ESTADO_CIVIL_CHOICES = [('solteira', 'Solteira'), ('casada', 'Casada'), ('separada', 'Separada'), ('viuva', 'Viúva'), ('divorciada', 'Divorciada'), ('uniao_estavel', 'União Estável'), ('convive', 'Convive com Alguém'), ('outro', 'Outro')]
     marital_status = models.CharField(max_length=30, choices=ESTADO_CIVIL_CHOICES, verbose_name="Estado Civil", default= "Escolha o estado civil", blank=True, null=True)
@@ -209,7 +218,6 @@ class Family(AuditModel):
     # Qual Programas sociais (checkbox múltiplo)
     PROGRAMAS_SOCIAIS_CHOICES = [
         ('Programa Bolsa Família - PBF', 'Programa Bolsa Família - PBF'),
-        ('Auxílio Brasil', 'Auxílio Brasil'),
         ('Benefício de Prestação Continuada - BPC', 'Benefício de Prestação Continuada - BPC'),
         ('Criança Alagoana - CRIA', 'Criança Alagoana - CRIA'),
     ]
@@ -220,7 +228,7 @@ class Family(AuditModel):
     
     # Trabalhando no momento
     is_working = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
-    function = models.CharField(max_length=100, default=False, blank=True, null=False)
+    location = models.CharField(max_length=100, default=False, blank=True, null=False)
 
     # Renda comprovada
     has_proven_income = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
@@ -231,6 +239,8 @@ class Family(AuditModel):
         ('pensao', 'Pensão'),
         ('auxilio_doenca', 'Auxílio Doença'),
         ('aposentado', 'Aposentado'),
+        ('bpc', 'BPC'),
+        
     ]
     income_types = models.JSONField(default=list, blank=True, null=False)
     # Faixa salarial
@@ -375,6 +385,7 @@ class Aluno(AuditModel):
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
     cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
+    nis = models.CharField(max_length=20, default='', blank=True, null=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
     ESCOLHA_SEXO = [
@@ -431,9 +442,7 @@ class Aluno(AuditModel):
     
     STATUS_CHOICES = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
-    ('ativo', 'Ativo'),
-    ('inativo', 'Inativo'),
-    ('Suspenso', 'Suspenso'),
+    ('Frequentando', 'Frequentando'),
     ('desligado', 'Desligado')
     ]
     status_lsd = models.CharField(max_length=15, choices=STATUS_CHOICES, default='', blank=True)

@@ -10,14 +10,29 @@
     <a href="{% url 'family_create' %}" class="btn btn-success">Cadastrar Nova Família</a>
     <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
     <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportFamilyModal">
+    📊 Exportar Excel</button>
 </div>
 
+<div class="row mb-3">
 <form method="get" class="form-inline mb-3">
     <input type="text" name="search" placeholder="Buscar por nome, inscrição, CPF" value="{{ search }}" class="form-control" />
+</form>
+</div>
+<div class="mb-3">
     <button type="submit" class="btn btn-primary me-2">Buscar</button>
     <a href="{% url 'family_list' %}" class="btn btn-secondary">Limpar</a>
-</form>
-
+</div>
+<!-- Mostra total de resultados -->
+{% if search %}
+<div class="alert alert-info">
+    Encontradas {{ page_obj.paginator.count }} família(s) para "{{ search }}"
+</div>
+{% else %}
+<div class="alert alert-info">
+    Total de famílias: {{ page_obj.paginator.count }}
+</div>
+{% endif %}
 
 <table class="table table-striped table-bordered">
     <thead class="table-light">
@@ -51,6 +66,166 @@
         {% empty %}
         <tr><td colspan="5" class="text-center">Nenhuma família cadastrada.</td></tr>
         {% endfor %}
+    <!-- Modal de exportação - Adicione no final do template, antes do </body> -->
+<div class="modal fade" id="exportFamilyModal" tabindex="-1">
+
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Exportar Famílias para Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportFamilyForm" method="GET" action="{% url 'export_family_excel' %}">
+                    <p class="fw-bold">Selecione os campos que deseja exportar:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="registration_number" id="f_inscricao" checked>
+                                <label class="form-check-label" for="f_inscricao">Inscrição</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="responsible_name" id="f_responsible" checked>
+                                <label class="form-check-label" for="f_responsible">Responsável</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="cpf" id="f_cpf" checked>
+                                <label class="form-check-label" for="f_cpf">CPF</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="rg" id="f_rg">
+                                <label class="form-check-label" for="f_rg">RG</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="nis" id="f_nis">
+                                <label class="form-check-label" for="f_nis">NIS</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="birth_date" id="f_birth">
+                                <label class="form-check-label" for="f_birth">Data de Nascimento</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="sex" id="f_sex">
+                                <label class="form-check-label" for="f_sex">Sexo</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="telephone" id="f_telefone" checked>
+                                <label class="form-check-label" for="f_telefone">Telefone</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="telephone_2" id="f_telefone2">
+                                <label class="form-check-label" for="f_telefone2">Telefone 2</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="address" id="f_endereco" checked>
+                                <label class="form-check-label" for="f_endereco">Endereço</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="number" id="f_numero">
+                                <label class="form-check-label" for="f_numero">Número</label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="neighborhood" id="f_bairro" checked>
+                                <label class="form-check-label" for="f_bairro">Bairro</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="cep" id="f_cep">
+                                <label class="form-check-label" for="f_cep">CEP</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="reference_point" id="f_ref">
+                                <label class="form-check-label" for="f_ref">Ponto de Referência</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="marital_status" id="f_civil">
+                                <label class="form-check-label" for="f_civil">Estado Civil</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="education" id="f_education">
+                                <label class="form-check-label" for="f_education">Escolaridade</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="race" id="f_race">
+                                <label class="form-check-label" for="f_race">Raça</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="occupation" id="f_occupation">
+                                <label class="form-check-label" for="f_occupation">Ocupação</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="salary_range" id="f_salary">
+                                <label class="form-check-label" for="f_salary">Faixa Salarial</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="num_residents" id="f_residents">
+                                <label class="form-check-label" for="f_residents">Nº de Moradores</label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="campos" value="status" id="f_status" checked>
+                                <label class="form-check-label" for="f_status">Status</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodosFamilias()">
+                            ✓ Selecionar Todos
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desmarcarTodosFamilias()">
+                            ✗ Desmarcar Todos
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="exportFamilyForm" class="btn btn-success">
+                    📥 Baixar Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selecionarTodosFamilias() {
+    const checkboxes = document.querySelectorAll('#exportFamilyModal input[type="checkbox"][name="campos"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+}
+
+function desmarcarTodosFamilias() {
+    const checkboxes = document.querySelectorAll('#exportFamilyModal input[type="checkbox"][name="campos"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+}
+</script>
+
     </tbody>
 </table>
 

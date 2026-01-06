@@ -46,10 +46,11 @@
                     <div class="col-md-4"><strong>CPF:</strong> <div>{{ family.cpf }}</div></div>
                 </div>             
                 <div class="row mb-3">
-                    <div class="col-md-3"><strong>Data de Nascimento:</strong> <div>{{ family.birth_date|date:'d/m/Y' }}</div></div>
-                    <div class="col-md-3"><strong>Idade:</strong> <div>{{ family.idade }}</div></div>
-                    <div class="col-md-3"><strong>Sexo:</strong> <div>{{ family.get_sex_display }}</div></div>
-                    <div class="col-md-3"><strong>Mãe Solo:</strong> <div>{{ family.get_mae_solo_display }}</div></div>
+                    <div class="col-md-4"><strong>Data de Nascimento:</strong> <div>{{ family.birth_date|date:'d/m/Y' }}</div></div>
+                    <div class="col-md-2"><strong>Idade:</strong> <div>{{ family.idade }}</div></div>
+                    <div class="col-md-2"><strong>Sexo:</strong> <div>{{ family.get_sex_display }}</div></div>
+                    <div class="col-md-2"><strong>Mãe Solo:</strong> <div>{{ family.get_mae_solo_display }}</div></div>
+                    <div class="col-md-2"><strong>Gestante:</strong> <div>{{ family.get_gestante_display }}</div></div>
                 </div>  
                 <div class="row mb-3">
                     <div class="col-md-2"><strong>CEP:</strong> <div>{{ family.cep }}</div></div>
@@ -76,7 +77,7 @@
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>Ocupação/Profissão:</strong> <div>{{ family.occupation }}</div></div>
                     <div class="col-md-4"><strong>Trabalhando no momento?:</strong> <div>{{ family.get_is_working_display }}</div></div>
-                    <div class="col-md-4"><strong>Qual função?:</strong> <div>{{ family.function }}</div></div>
+                    <div class="col-md-4"><strong>Qual local?:</strong> <div>{{ family.location }}</div></div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>Possui Renda Comprovada:</strong> <div>{{ family.get_has_proven_income_display }}</div></div>
@@ -116,12 +117,13 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr class="text-center"><th>CPF</th><th>Nome do Assistido</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
+        <thead><tr class="text-center"><th>CPF</th><th>Nome do Assistido</th><th>Status</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
         <tbody>
             {% for aluno in family.alunos.all %}
                 <tr class="text-center">
                     <td>{{ aluno.cpf }}</td>
                     <td>{{ aluno.name }}</td>
+                    <td>{{ aluno.status_lsd }}</td>
                     <td>{{ aluno.idade }}</td>
                     <td>{% if aluno.turma %}{{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
                     <td>    

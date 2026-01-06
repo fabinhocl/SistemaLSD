@@ -109,6 +109,10 @@ urlpatterns = [
     path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
     path('relatorio/aluno/busca/', views_templates.relatorio_busca_aluno, name='relatorio_busca_aluno'),
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
+    path('families/export/', views_templates.export_family_excel, name='export_family_excel'),
+    path('alunos/export/', views_templates.export_aluno_excel, name='export_aluno_excel'),
+    path('adults/export/', views_templates.export_adult_excel, name='export_adult_excel'),
+
     
     
    #path('families/autocomplete/', views_templates.family_autocomplete, name="family_autocomplete"),

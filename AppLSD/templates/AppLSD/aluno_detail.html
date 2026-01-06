@@ -42,18 +42,21 @@
       <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
           <div class="row mb-3">
-            <div class="col-md-4"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
-            <div class="col-md-8"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            <div class="col-md-3"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
+            <div class="col-md-7"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            <div class="col-md-2"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
+            
           </div>
           <div class="row mb-3">
-            <div class="col-md-4"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
-            <div class="col-md-4"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
-            <div class="col-md-4"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
+            <div class="col-md-3"><strong>CPF:</strong> <div>{{ aluno.cpf }}</div></div>
+            <div class="col-md-3"><strong>NIS:</strong> <div>{{ aluno.nis }}</div></div>
+            <div class="col-md-3"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
+            <div class="col-md-3"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
           </div>
           <div class="row mb-3">
             <div class="col-md-4"><strong>Responsável:</strong> <div>{{ aluno.family.responsible_name }}</div></div>
             <div class="col-md-4"><strong>Telefone responsável:</strong> <div>{{ aluno.family.telephone }}</div></div>
-            <div class="col-md-4"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            <div class="col-md-4"><strong>Parentesco:</strong> <div>{{ aluno.parentesco }}</div></div>
           </div>
           <div class="row mb-3">
             <div class="col-md-4"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>

@@ -6,7 +6,7 @@ from django.forms.models import inlineformset_factory
 from django.forms import DateInput
 from django.contrib.auth.models import User
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Row, Column
+from crispy_forms.layout import Layout, Field, Row, Column
 from .validators import cpf_validator
 from datetime import date
 import re
@@ -112,13 +112,16 @@ class FamilyForm(forms.ModelForm):
             'idade',
             'sex',
             'mae_solo',
+            'gestante',
             'cep',
             'address',
             'number',
             'neighborhood',
             'reference_point',
             'telephone',
+            'nome_contato',
             'telephone_2',
+            'nome_contato_2',
             'marital_status',
             'education',
             'race',
@@ -127,7 +130,7 @@ class FamilyForm(forms.ModelForm):
             'social_benefits',
             'occupation',
             'is_working',
-            'function',
+            'location',
             'has_proven_income',
             'income_types',
             'salary_range',
@@ -156,13 +159,16 @@ class FamilyForm(forms.ModelForm):
             'idade': 'Idade',
             'sex': 'Sexo',
             'mae_solo': 'Mãe Solo',
+            'gestante': 'Gestante',
             'cep': 'CEP',
             'address': 'Endereço',
             'number': 'Nº',
             'neighborhood': 'Bairro',
             'reference_point': 'Ponto de Referência',
             'telephone': 'Telefone',
+            'nome_contato': 'Nome do Contato',
             'telephone_2': 'Telefone 2',
+            'nome_contato_2': 'Nome do Contato',
             'marital_status': 'Estado Civil',
             'education': 'Escolaridade',
             'race': 'Raça',
@@ -171,7 +177,9 @@ class FamilyForm(forms.ModelForm):
             'social_benefits': 'Qual Programas Sociais',
             'occupation': 'Ocupação/Profissão',
             'is_working': 'Está Trabalhando?',
+            'location': 'Qual local?',
             'has_proven_income': 'Possui Renda Comprovada',
+            'income_types': 'Tipo de Renda Comprovada',
             'salary_range': 'Faixa Salarial',
             'others_contribute': 'Outras Pessoas Contribuem com a Renda da Família',
             'who_contributes': 'Quem Contribui',
@@ -262,7 +270,7 @@ class FamilyForm(forms.ModelForm):
                 Row(
                     Column('occupation', css_class='col-md-4'),
                     Column('is_working', css_class='col-md-4'),
-                    Column('function', css_class='col-md-4'),
+                    Column('location', css_class='col-md-4'),
                 ),
                 Row(
                     Column('has_proven_income', css_class='col-md-4'),
@@ -325,7 +333,7 @@ class AdultForm(forms.ModelForm):
         }
         widgets = {
             'family': forms.HiddenInput(),
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
+            'birth_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),   
         }
 
     def clean_cpf(self):
@@ -375,6 +383,11 @@ class AlunoForm(forms.ModelForm):
         max_length=14,
         widget=forms.TextInput(attrs={'id': 'cpf', 'placeholder': 'xxx.xxx.xxx-xx'}),
     )
+    nis = forms.CharField(
+        max_length=11,
+        required=True,
+        validators=[RegexValidator(r'^\d{11}$', message='NIS deve ter 11 dígitos numéricos')]
+    )
     class Meta:
         model = Aluno
         fields = '__all__'
@@ -383,8 +396,9 @@ class AlunoForm(forms.ModelForm):
             'family': 'Família',
             'name': 'Nome do Aluno',
             'cpf': 'CPF',
+            'nis': 'NIS',
             'sex': 'Sexo',
-            'parentesco': 'Parentesco',
+            'parentesco': 'Parentesco (Criança com o Responsável)',
             'birth_date': 'Data de Nascimento',
             'idade': 'Idade',
             'school': 'Escola',
@@ -402,7 +416,7 @@ class AlunoForm(forms.ModelForm):
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-select'}),
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
+            'birth_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'ensino': forms.Select(attrs={'class': 'form-select', 'id': 'ensino'}),
             'serie': forms.Select(attrs={'class': 'form-select', 'id': 'serie'}),
             'health_problem': forms.RadioSelect(),
@@ -489,6 +503,12 @@ class AlunoForm(forms.ModelForm):
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
+    
+    def clean_nis(self):
+        nis = self.cleaned_data.get('nis')
+        if nis and not nis.isdigit():
+            raise forms.ValidationError("NIS deve conter apenas números.")
+        return nis
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -497,6 +517,7 @@ class AlunoForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+    
 
 
 AlunoInlineFormSet = forms.inlineformset_factory(

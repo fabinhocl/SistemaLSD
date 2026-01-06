@@ -32,9 +32,10 @@
                 <!-- Linha 3 -->
             <div class="row mb-3">
                 <div class="col-md-3">{{ form.birth_date|as_crispy_field }}</div>
-                <div class="col-md-3">{{ form.idade|as_crispy_field }}</div>
+                <div class="col-md-2">{{ form.idade|as_crispy_field }}</div>
                 <div class="col-md-3">{{ form.sex|as_crispy_field }}</div>
-                <div class="col-md-3">{{ form.mae_solo|as_crispy_field }}</div>
+                <div class="col-md-2">{{ form.mae_solo|as_crispy_field }}</div>
+                <div class="col-md-2">{{ form.gestante|as_crispy_field }}</div>
             </div>
             
                 <!-- Linha 4 -->
@@ -61,8 +62,10 @@
             </div>
             <!-- Linha 6 -->
             <div class="row mb-3">
-                <div class="col-md-6">{{ form.telephone|as_crispy_field }}</div>
-                <div class="col-md-6">{{ form.telephone_2|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.telephone|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.nome_contato|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.telephone_2|as_crispy_field }}</div>
+                <div class="col-md-3">{{ form.nome_contato_2|as_crispy_field }}</div>
             </div>
             
                 
@@ -100,7 +103,7 @@
                             {{ form.is_working|as_crispy_field  }}
                         </div>
                         <div class="col-md-3">
-                            {{ form.function|as_crispy_field  }}
+                            {{ form.location|as_crispy_field  }}
                         </div>
                     </div>    
                 </div>
@@ -160,7 +163,7 @@
                         {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                     </button>
                     
-                        <a href="{% url 'family_list' %}" class="btn btn-secondary btn-sm">Voltar à Lista</a>
+                        <a href="{% url 'family_detail' family.pk %}" class="btn btn-secondary btn-sm">Voltar para família</a>
                 </div>
             </form>
             <div class="row mb-3">
@@ -217,7 +220,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
 
+<script>
 document.addEventListener('DOMContentLoaded', function () {
     // Beneficiário de Programas Sociais
     var beneficioRadios = document.getElementsByName('is_benefits');
@@ -241,55 +246,95 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
     toggleBenefitsPrograms();
-
-
-    // Trabalhando no momento? (função)
+});
+</script>
+   
+<script>
+     // Trabalhando no momento? (função)
     // radios de "Trabalhando no momento?"
+    // Campos
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ============================================
+    // 1. CONTROLE: Trabalhando no momento? → Qual local?
+    // ============================================
     const workingRadios = document.querySelectorAll('input[name="is_working"]');
-    const functionInput = document.querySelector('input[name="function"]');
+    const locationInput = document.querySelector('input[name="location"]');
 
-    function toggleFunctionField() {
-        if (!functionInput) return;
-
+    function toggleLocationField() {
         let isWorkingYes = false;
         workingRadios.forEach(r => {
-            if (r.checked && r.value.toLowerCase() === 'sim') {
+            if (r.checked && (r.value === 'Sim' || r.value === 'sim')) {
                 isWorkingYes = true;
             }
         });
 
-        functionInput.disabled = !isWorkingYes;
-    }
-
-    if (workingRadios.length && functionInput) {
-        // estado inicial ao carregar a página
-        toggleFunctionField();
-        // reagir às mudanças
-        workingRadios.forEach(r => {
-            r.addEventListener('change', toggleFunctionField);
-        });
-    }
-
-    // Renda comprovada (tipos)
-    var rendaRadios = document.getElementsByName('has_proven_income');
-    var rendaTypesGroup = document.getElementById('income-types-group');
-    var rendaTypesField = document.getElementById('id_income_types');
-    function toggleRendaTypes() {
-        var selected = Array.from(rendaRadios).find(r => r.checked);
-        if (selected && selected.value === "sim") {
-            rendaTypesGroup.style.display = '';
-            if (rendaTypesField) rendaTypesField.disabled = false;
-        } else {
-            rendaTypesGroup.style.display = 'none';
-            if (rendaTypesField) {
-                rendaTypesField.disabled = true;
-                rendaTypesField.value = '';
+        if (locationInput) {
+            locationInput.disabled = !isWorkingYes;
+            if (!isWorkingYes) {
+                locationInput.value = '';
             }
         }
     }
-    rendaRadios.forEach(r => r.addEventListener('change', toggleRendaTypes));
-    toggleRendaTypes();
 
+    if (workingRadios.length > 0) {
+        workingRadios.forEach(r => {
+            r.addEventListener('change', toggleLocationField);
+        });
+        toggleLocationField(); // Estado inicial
+    }
+
+    // ============================================
+    // 2. CONTROLE: Possui renda comprovada? → Tipo de renda + Faixa Salarial
+    // ============================================
+    const rendaRadios = document.querySelectorAll('input[name="has_proven_income"]');
+    const rendaTypesGroup = document.getElementById('income-types-group');
+    const faixaSalarialField = document.querySelector('select[name="faixa_salarial"]');
+
+    function toggleIncomeFields() {
+        let hasProvenIncomeYes = false;
+        rendaRadios.forEach(r => {
+            if (r.checked && (r.value === 'Sim' || r.value === 'sim')) {
+                hasProvenIncomeYes = true;
+            }
+        });
+
+        // Tipos de renda
+        if (rendaTypesGroup) {
+            rendaTypesGroup.style.display = hasProvenIncomeYes ? 'block' : 'none';
+            
+            const checkboxes = rendaTypesGroup.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.disabled = !hasProvenIncomeYes;
+                if (!hasProvenIncomeYes) {
+                    cb.checked = false;
+                }
+            });
+        }
+
+        // Faixa Salarial
+        if (faixaSalarialField) {
+            faixaSalarialField.disabled = !hasProvenIncomeYes;
+            if (!hasProvenIncomeYes) {
+                faixaSalarialField.value = '';
+            }
+        }
+    }
+
+    if (rendaRadios.length > 0) {
+        rendaRadios.forEach(r => {
+            r.addEventListener('change', toggleIncomeFields);
+        });
+        toggleIncomeFields(); // Estado inicial
+    }
+
+}); // FIM DOMContentLoaded
+</script>
+
+<script>
+
+
+document.addEventListener('DOMContentLoaded', function() {
     // Outras pessoas contribuem com a renda
     var contribuiRadios = document.getElementsByName('others_contribute');
     var quemGroup = document.getElementById('who-contributes-group');

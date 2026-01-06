@@ -1,6 +1,6 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
-    {% block title %}Lista de Aluno{% endblock %}
+    {% block title %}Lista de Adultos{% endblock %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     {% block content %}
@@ -9,8 +9,40 @@
         <a href="{% url 'adult_create' %}" class="btn btn-success">Cadastrar Novo Adulto</a>
         <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
         <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportAdultModal">
+         📊 Exportar Excel</button>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="form-control" 
+                placeholder="Buscar por nome, CPF, inscrição"
+                autofocus
+            >
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-2">
+            <button type="button" class="btn btn-primary w-100" onclick="buscarAdultos()">Buscar</button>
+            </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-secondary w-100 mt-2" onclick="limparBusca()">Limpar</button>
+        </div>
     </div>
 
+<!-- Mostra total de resultados -->
+{% if query %}
+<div class="alert alert-info">
+    Encontrados {{ total }} resultado(s) para "{{ query }}"
+</div>
+{% else %}
+<div class="alert alert-info">
+    Total de adultos: {{ total }}
+</div>
+{% endif %}
+    <!-- Tabela de Adultos -->
     <table class="table table-striped table-bordered">
         <thead>
             <tr class="text-center">
@@ -26,7 +58,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for adulto in page_obj %}
+            {% for adulto in adultos %}
             <tr>
                 <td class="text-center">{{ adulto.family.registration_number }}</td>
                 <td>{{ adulto.cpf }}</td>
@@ -41,33 +73,185 @@
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="4" class="text-center">Nenhum aluno cadastrado.</td>
-            </tr>
+            <td colspan="9" class="text-center">
+                {% if query %}
+                    Nenhum adulto encontrado para "{{ query }}"
+                {% else %}
+                    Nenhum adulto cadastrado
+                {% endif %}
+            </td>
+        </tr>
             {% endfor %}
+
+            <div class="modal fade" id="exportAdultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Exportar Adultos para Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportAdultForm" method="GET" action="{% url 'export_adult_excel' %}">
+                    <p class="fw-bold">Selecione os campos que deseja exportar:</p>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="inscricao" id="ad_inscricao" checked>
+                        <label class="form-check-label" for="ad_inscricao">Inscrição</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="name" id="ad_name" checked>
+                        <label class="form-check-label" for="ad_name">Nome</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="cpf" id="ad_cpf" checked>
+                        <label class="form-check-label" for="ad_cpf">CPF</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="birth_date" id="ad_birth" checked>
+                        <label class="form-check-label" for="ad_birth">Data de Nascimento</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="idade" id="ad_idade">
+                        <label class="form-check-label" for="ad_idade">Idade</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="sexo" id="ad_sexo">
+                        <label class="form-check-label" for="ad_sexo">Sexo</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="parentesco" id="ad_parentesco" checked>
+                        <label class="form-check-label" for="ad_parentesco">Parentesco</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="ocupacao" id="ad_ocupacao" checked>
+                        <label class="form-check-label" for="ad_ocupacao">Ocupação</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="is_working" id="ad_working">
+                        <label class="form-check-label" for="ad_working">Trabalhando</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="location" id="ad_location">
+                        <label class="form-check-label" for="ad_location">Local de Trabalho</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="responsavel" id="ad_responsavel">
+                        <label class="form-check-label" for="ad_responsavel">Responsável</label>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodosAdultos()">
+                            ✓ Selecionar Todos
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desmarcarTodosAdultos()">
+                            ✗ Desmarcar Todos
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="exportAdultForm" class="btn btn-success">
+                    📥 Baixar Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<<script>
+function selecionarTodosAdultos() {
+    const checkboxes = document.querySelectorAll('#exportAdultModal input[type="checkbox"][name="campos"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+}
+
+function desmarcarTodosAdultos() {
+    const checkboxes = document.querySelectorAll('#exportAdultModal input[type="checkbox"][name="campos"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+}
+</script>
+
             </tbody>
 
     </table>
 
-    <nav aria-label="Paginação">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-                <li class="page-item"><a href="?page=1" class="page-link">Primeira</a></li>
-                <li class="page-item"><a href="?page={{ page_obj.previous_page_number }}" class="page-link">Anterior</a></li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Primeira</span></li>
-                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-            {% endif %}
-            <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
-            {% if page_obj.has_next %}
-                <li class="page-item"><a href="?page={{ page_obj.next_page_number }}" class="page-link">Próxima</a></li>
-                <li class="page-item"><a href="?page={{ page_obj.paginator.num_pages }}" class="page-link">Última</a></li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Próxima</span></li>
-                <li class="page-item disabled"><span class="page-link">Última</span></li>
-            {% endif %}
-        </ul>
-    </nav>
-
+    <!-- Paginação -->
+{% if adultos.has_other_pages %}
+<nav>
+    <ul class="pagination justify-content-center">
+        {% if adultos.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page=1">Primeira</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ adultos.previous_page_number }}">Anterior</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">Página {{ adultos.number }} de {{ adultos.paginator.num_pages }}</span>
+        </li>
+        
+        {% if adultos.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ adultos.next_page_number }}">Próxima</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ adultos.paginator.num_pages }}">Última</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+ {% endif %}
     
-    {% endblock %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    
+    // Busca ao pressionar Enter
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            buscarAdultos();
+        }
+    });
+    
+    // Se houver parâmetro de busca na URL, preenche o campo
+    const urlParams = new URLSearchParams(window.location.search);
+    const termoBusca = urlParams.get('q');
+    if (termoBusca) {
+        searchInput.value = termoBusca;
+    }
+});
+
+function buscarAdultos() {
+    const termo = document.getElementById('searchInput').value.trim();
+    
+    // Se o campo estiver vazio, apenas recarrega a página sem query
+    if (!termo) {
+        window.location.href = window.location.pathname;
+        return;
+    }
+    
+    window.location.href = '?q=' + encodeURIComponent(termo);
+}
+
+function limparBusca() {
+    document.getElementById('searchInput').value = '';
+    window.location.href = window.location.pathname;
+}
+</script>
+{% endblock %}
