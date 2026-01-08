@@ -163,7 +163,15 @@
                         {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                     </button>
                     
-                        <a href="{% url 'family_detail' family.pk %}" class="btn btn-secondary btn-sm">Voltar para família</a>
+                        {% if form.instance.pk %}
+                            <a href="{% url 'family_detail' form.instance.pk %}" class="btn btn-secondary btn-sm">
+                                Voltar para família
+                            </a>
+                        {% else %}
+                            <a href="{% url 'family_list' %}" class="btn btn-secondary btn-sm">
+                                Voltar para lista de famílias
+                            </a>
+                        {% endif %}
                 </div>
             </form>
             <div class="row mb-3">

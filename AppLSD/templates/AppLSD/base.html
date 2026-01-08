@@ -160,9 +160,7 @@
         <div class="d-flex align-items-center">
             <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="48">
         </div>
-        <div class="flex-grow-1 text-center">
-            <span class="fs-4 fw-bold text-primary">Sistema Lar São Domingos</span>
-        </div>
+       
         <div class="d-flex align-items-center">
             {% if user.is_authenticated %}
                 <span class="me-2 fw-semibold text-secondary">Olá, {{ user.get_full_name|default:user.username }}</span>
