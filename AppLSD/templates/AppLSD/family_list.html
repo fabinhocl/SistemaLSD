@@ -14,23 +14,33 @@
     📊 Exportar Excel</button>
 </div>
 
-<div class="row mb-3">
-<form method="get" class="form-inline mb-3">
-    <input type="text" name="search" placeholder="Buscar por nome, inscrição, CPF" value="{{ search }}" class="form-control" />
+<form method="get" class="row mb-3">
+    <div class="row mb-3">
+        
+        <div class="col-md-6">
+            <input 
+                type="text" 
+                name="q"
+                id="searchInput"
+                class="form-control"
+                placeholder="Buscar por nome, inscrição, CPF"
+                value="{{ query|default:'' }}"
+            >
+        </div>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">Buscar</button>
+        <a href="{% url 'family_list' %}" class="btn btn-secondary flex-fill">Limpar</a>
+    </div>
 </form>
-</div>
-<div class="mb-3">
-    <button type="submit" class="btn btn-primary me-2">Buscar</button>
-    <a href="{% url 'family_list' %}" class="btn btn-secondary">Limpar</a>
-</div>
 <!-- Mostra total de resultados -->
 {% if search %}
-<div class="alert alert-info">
-    Encontradas {{ page_obj.paginator.count }} família(s) para "{{ search }}"
+<div class="col-md-6 alert alert-info">
+    Encontradas {{ total }} família(s) para "{{ search }}"
 </div>
 {% else %}
 <div class="alert alert-info">
-    Total de famílias: {{ page_obj.paginator.count }}
+    Total de famílias: {{ total }}
 </div>
 {% endif %}
 
@@ -49,7 +59,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for family in page_obj %}
+        {% for family in families %}
         <tr>
             <td>{{ family.registration_number }}</td>
             <td>{{ family.cpf }}</td>
@@ -64,7 +74,15 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center">Nenhuma família cadastrada.</td></tr>
+        <tr>
+        <td colspan="8" class="text-center">
+            {% if query %}
+                Nenhuma família encontrada para "{{ query }}"
+            {% else %}
+                Nenhuma família cadastrada.
+            {% endif %}
+        </td>
+    </tr>
         {% endfor %}
     <!-- Modal de exportação - Adicione no final do template, antes do </body> -->
 <div class="modal fade" id="exportFamilyModal" tabindex="-1">
@@ -231,21 +249,63 @@ function desmarcarTodosFamilias() {
 
 <nav aria-label="Paginação">
     <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item"><a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">Primeira</a></li>
-        <li class="page-item"><a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">Anterior</a></li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Primeira</span></li>
-        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
-        {% if page_obj.has_next %}
-        <li class="page-item"><a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">Próxima</a></li>
-        <li class="page-item"><a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="page-link">Última</a></li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Próxima</span></li>
-        <li class="page-item disabled"><span class="page-link">Última</span></li>
-        {% endif %}
+        {% if families.has_other_pages %}
+<nav>
+  <ul class="pagination justify-content-center">
+    {% if families.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page=1">Primeira</a>
+    </li>
+    <li class="page-item">
+      <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ families.previous_page_number }}">Anterior</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+      <span class="page-link">Página {{ families.number }} de {{ families.paginator.num_pages }}</span>
+    </li>
+
+    {% if families.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ families.next_page_number }}">Próxima</a>
+    </li>
+    <li class="page-item">
+      <a class="page-link" href="?{% if query %}q={{ query }}&{% endif %}page={{ families.paginator.num_pages }}">Última</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
     </ul>
 </nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarFamilias();
+        }
+    });
+});
+
+function buscarFamilias() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    const termo = input.value.trim();
+    const params = new URLSearchParams(window.location.search);
+    if (termo) {
+        params.set('q', termo);
+        params.delete('page');
+        window.location.href = window.location.pathname + '?' + params.toString();
+    } else {
+        window.location.href = window.location.pathname;
+    }
+}
+</script>
+
+
 {% endblock %}

@@ -71,32 +71,41 @@
                 
                 <!-- Linha 7 -->
                 <div class="row mb-3">
-                <div class="col-md-6">{{ form.marital_status|as_crispy_field }}</div>
-                <div class="col-md-6">{{ form.education|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.marital_status|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.education|as_crispy_field }}</div>
                 </div>
 
                 <!-- Linha 8 -->
                 <div class="row mb-3">
-                <div class="col-md-6">{{ form.race|as_crispy_field }}</div>
-                <div class="col-md-6">{{ form.religion|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.race|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.religion|as_crispy_field }}</div>
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-md-5">
-                        
+                    <div class="col-md-4">
                         {{ form.is_benefits|as_crispy_field }}
                     </div>
-                    <div class="col-md-4">
-                        <div id="benefits-programs" style="display:none;">
-                        
-                        {{ form.social_benefits|as_crispy_field }}
+                    <div class="col-md-8">
+                        <div class="row">
+                            <div class="form-label" id="benefits-programs" style="display:none;">
+                                {{ form.social_benefits|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6" id="bolsa-familia-group" style="display:none;">
+                                <label for="id_bolsa_familia_value" class="form-label">
+                                    Valor Bolsa Família
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    {{ form.bolsa_familia_value }}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>    
+                </div>   
                     
                 <div class="row mb-4">
-                    <div class="row mb-3"></div>
+                    <div class="row mb-3">
                         <div class="col-md-5">
-                            
                             {{ form.occupation|as_crispy_field  }}
                         </div>
                         <div class="col-md-4">
@@ -109,32 +118,38 @@
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-3">
-                        
                         {{ form.has_proven_income|as_crispy_field  }}
                     </div>
                     <div class="col-md-6" id="income-types-group">
-                        
                         {{ form.income_types|as_crispy_field  }}
                     </div>
                     <div class="col-md-3">{{ form.salary_range|as_crispy_field }}</div>
                 </div>
                 <!-- Linha 9 -->
                 <div class="row mb-3">
-                    
                     <div class="col-md-6">              
                         {{ form.others_contribute|as_crispy_field  }}
                     </div>
                     <div class="col-md-3" id="who-contributes-group">
                         {{ form.who_contributes|as_crispy_field  }}
                     </div>
-               <div class="row mb-3">
-                   <div class="col-md-6">{{ form.domicile_type|as_crispy_field }}</div>
-                   <div class="col-md-6">{{ form.num_residents|as_crispy_field }}</div>
-                    
-               </div>
+                </div>
+                <div class="row mb-3">
+                   <div class="col-md-4">{{ form.domicile_type|as_crispy_field }}</div>
+                   <div class="col-md-4" id="aluguel-group" style="display:none;">
+                        <label for="id_aluguel_value" class="form-label">
+                                    Valor do Aluguel
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    {{ form.aluguel_value }}
+                                </div>
+                    </div>
+                   <div class="col-md-4">{{ form.num_residents|as_crispy_field }}</div>
+                </div>
                               
                 
-                <div class="row">
+                <div class="row mb-3">
                     <div class="col-md-2">{{ form.has_adult|as_crispy_field }}</div>
                     <div class="col-md-2">{{ form.has_elderly|as_crispy_field }}</div>
                     <div class="col-md-2">{{ form.has_pcd|as_crispy_field }}</div>
@@ -232,28 +247,81 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Beneficiário de Programas Sociais
-    var beneficioRadios = document.getElementsByName('is_benefits');
-    var benefitsProgramsDiv = document.getElementById('benefits-programs');
+    // --- Beneficiário de Programas Sociais ---
+    const beneficioRadios = document.getElementsByName('is_benefits');
+    const benefitsProgramsDiv = document.getElementById('benefits-programs');
+    const socialBenefitsSelect = document.getElementById('id_social_benefits');
+    const bolsaGroup = document.getElementById('bolsa-familia-group');
+    const bolsaInput = bolsaGroup ? bolsaGroup.querySelector('input') : null;
 
     function toggleBenefitsPrograms() {
-        var selected = Array.from(beneficioRadios).find(r => r.checked);
-        if (selected && selected.value === "Sim") {
-            benefitsProgramsDiv.style.display = '';
-            // Habilitar campo interno, se necessário
-            var sb = document.getElementById('id_social_benefits');
-            if (sb) sb.disabled = false;
-        } else {
-            benefitsProgramsDiv.style.display = 'none';
-            var sb = document.getElementById('id_social_benefits');
-            if (sb) {
-                sb.disabled = true;
-                sb.value = '';
+        const selectedRadio = Array.from(beneficioRadios).find(r => r.checked);
+        const isSim = selectedRadio && selectedRadio.value === "Sim";
+
+        // Mostra/esconde o select de programas
+        if (benefitsProgramsDiv) {
+            benefitsProgramsDiv.style.display = isSim ? '' : 'none';
+        }
+        if (socialBenefitsSelect) {
+            socialBenefitsSelect.disabled = !isSim;
+            if (!isSim) {
+                socialBenefitsSelect.value = '';
+            }
+        }
+
+        // Agora controla o campo "Valor Bolsa Família"
+        let bolsaSelecionado = false;
+        if (isSim && socialBenefitsSelect) {
+            // valor exato da opção no model
+            if (socialBenefitsSelect.value === 'Programa Bolsa Família - PBF') {
+                bolsaSelecionado = true;
+            }
+        }
+
+        if (bolsaGroup) {
+            bolsaGroup.style.display = bolsaSelecionado ? '' : 'none';
+        }
+        if (bolsaInput) {
+            bolsaInput.disabled = !bolsaSelecionado;
+            if (!bolsaSelecionado) {
+                bolsaInput.value = '';
             }
         }
     }
-    beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
+
+    if (beneficioRadios.length) {
+        beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
+    }
+    if (socialBenefitsSelect) {
+        socialBenefitsSelect.addEventListener('change', toggleBenefitsPrograms);
+    }
+
+    // --- Informações sobre o domicílio ---
+    const domicileSelect = document.getElementById('id_domicile_type');
+    const aluguelGroup = document.getElementById('aluguel-group');
+    const aluguelInput = aluguelGroup ? aluguelGroup.querySelector('input') : null;
+
+    function toggleAluguel() {
+        if (!domicileSelect || !aluguelGroup) return;
+        // Ajuste o valor conforme seu choices de domicile_type
+        const isAlugado = domicileSelect.value === 'Alugado' || domicileSelect.value === 'alugado';
+
+        aluguelGroup.style.display = isAlugado ? '' : 'none';
+        if (aluguelInput) {
+            aluguelInput.disabled = !isAlugado;
+            if (!isAlugado) {
+                aluguelInput.value = '';
+            }
+        }
+    }
+
+    if (domicileSelect) {
+        domicileSelect.addEventListener('change', toggleAluguel);
+    }
+
+    // Estado inicial ao carregar (edição)
     toggleBenefitsPrograms();
+    toggleAluguel();
 });
 </script>
    

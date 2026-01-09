@@ -25,12 +25,12 @@ def format_cpf(cpf):
 class FamilyForm(forms.ModelForm):
     nis = forms.CharField(
         max_length=11,
-        required=True,
+        required=False,
         validators=[RegexValidator(r'^\d{11}$', message='NIS deve ter 11 dígitos numéricos')]
     )
     rg = forms.CharField(
         max_length=20,
-        required=True,
+        required=False,
         validators=[RegexValidator(r'^\d+$', message='RG deve conter apenas dígitos')]
     )
     cpf = forms.CharField(
@@ -67,7 +67,8 @@ class FamilyForm(forms.ModelForm):
         widget=forms.Select,
         required=False,
         label="Qual Programa?"
-    )   
+    )
+    
     has_proven_income = forms.ChoiceField(
         choices=[('Sim', 'Sim'), ('Não', 'Não')],
         widget=forms.RadioSelect,
@@ -128,6 +129,7 @@ class FamilyForm(forms.ModelForm):
             'religion',
             'is_benefits',
             'social_benefits',
+            'bolsa_familia_value',
             'occupation',
             'is_working',
             'location',
@@ -137,6 +139,7 @@ class FamilyForm(forms.ModelForm):
             'others_contribute',
             'who_contributes',
             'domicile_type',
+            'aluguel_value',
             'num_residents',
             'has_pcd',
             'has_adult',
@@ -197,6 +200,12 @@ class FamilyForm(forms.ModelForm):
         }
         widgets = {
             'birth_date': DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'bolsa_familia_value': forms.NumberInput(attrs={'class': 'form-control',
+                'step': '0.01',
+                'min': '0',}),
+            'aluguel_value': forms.NumberInput(attrs={'class': 'form-control',
+                'step': '0.01',
+                'min': '0',}),
             #'marital_status': forms.RadioSelect,
             #'education': forms.RadioSelect,
             #'race': forms.RadioSelect,
@@ -300,12 +309,9 @@ class AdultForm(forms.ModelForm):
         max_length=20,
         required=False,
         label="Telefone",
-        validators=[RegexValidator(
-            r'^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$',
-            message='Telefone no formato válido (ex: (99) 99999-9999)'
-        )]
+        widget=forms.TextInput(attrs={'id': 'telephone', 'placeholder': '(99) 99999-9999'}),
         
-    )
+        )
     cpf = forms.CharField(
         label='CPF',
         required=True,
@@ -322,7 +328,7 @@ class AdultForm(forms.ModelForm):
             'cpf': 'CPF',
             'social_name': 'Nome Social',
             'sex': 'Sexo',
-            'parentesco': 'Parentesco',
+            'parentesco': 'Parentesco (Adulto com o Responsável)',
             'birth_date': 'Data de Nascimento',
             'idade': 'Idade',
             'education': 'Escolaridade',
@@ -344,6 +350,11 @@ class AdultForm(forms.ModelForm):
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
+    
+    def clean_telephone(self):
+        tel = self.cleaned_data.get("telephone")
+        # já validado via RegexValidator
+        return tel
 
 class AlunoForm(forms.ModelForm):
     health_problem = forms.ChoiceField(
@@ -385,7 +396,7 @@ class AlunoForm(forms.ModelForm):
     )
     nis = forms.CharField(
         max_length=11,
-        required=True,
+        required=False,
         validators=[RegexValidator(r'^\d{11}$', message='NIS deve ter 11 dígitos numéricos')]
     )
     class Meta:

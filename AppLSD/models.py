@@ -222,7 +222,13 @@ class Family(AuditModel):
         ('Criança Alagoana - CRIA', 'Criança Alagoana - CRIA'),
     ]
     social_benefits = models.CharField(max_length=255, choices=PROGRAMAS_SOCIAIS_CHOICES, verbose_name="Programas Sociais", blank=True, null=True)
-    
+    bolsa_familia_value = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="Valor do Bolsa Família"
+    )
     # Ocupação/profissão
     occupation = models.CharField(max_length=100, blank=True, null=True)
     
@@ -262,7 +268,13 @@ class Family(AuditModel):
         ('proprio', 'Próprio'), ('alugado', 'Alugado'), ('cedido', 'Cedido')
     ]
     domicile_type = models.CharField(max_length=30, choices=DOMICILE_CHOICES, blank=True, null=True)
-    
+    aluguel_value = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="Valor do aluguel"
+    )
     # Extras
     num_residents = models.IntegerField(default=0)
     has_pcd = models.IntegerField(default=0)
@@ -360,8 +372,15 @@ class Adult(AuditModel):
     education = models.CharField(max_length=50, choices=ESCOLARIDADE_CHOICES, verbose_name="Escolaridade", default="Escolha a escolaridade", blank=True, null=True)
     ocupacao = models.CharField(max_length=100, blank=True, null=True)
     renda = models.CharField(max_length=100, blank=True, null=True)
-    status = models.CharField(max_length=50, blank=True, null=True)
+    SITUACAO_CHOICES = [
+        ('trabalha', 'Trabalha'),
+        ('nao_trabalha', 'Não Trabalha'),
+        ('faz_bico', 'Faz Bico'),
+        ('autonomo', 'Autônomo'),
+    ]
+    status = models.CharField(max_length=50, choices=SITUACAO_CHOICES, blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
+    
 
     @property
     def idade(self):

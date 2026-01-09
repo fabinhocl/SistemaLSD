@@ -477,36 +477,39 @@ def family_delete_confirm(request, pk):
         'error': error,
     })
 
+@login_required
 def family_list(request):
-    search_query = request.GET.get('search', '').strip()
-    families_all = Family.objects.all().order_by('responsible_name')
+    # termo vindo da URL ?q=...
+    query = request.GET.get('q', '').strip()
 
-    if search_query:
-        search_query_norm = remove_accents(search_query.lower())
-        families_list = []
-        for f in families_all:
-            resp = (f.responsible_name or '').lower()
-            reg  = (f.registration_number or '').lower()
-            cpf  = (f.cpf or '').lower()
-            # Adicione outros campos se quiser
-            if (
-                search_query_norm in remove_accents(resp)
-                or search_query_norm in remove_accents(reg)
-                or search_query_norm in remove_accents(cpf)
-            ):
-                families_list.append(f)
-    else:
-        families_list = list(families_all)
+    # queryset base
+    families_qs = Family.objects.all()
 
-    paginator = Paginator(families_list, 20)
+    # aplica filtro se houver busca
+    if query:
+        families_qs = families_qs.filter(
+            Q(registration_number__icontains=query) |
+            Q(responsible_name__icontains=query) |
+            Q(cpf__icontains=query)
+        )
+
+    # ordenação
+    families_qs = families_qs.order_by('registration_number')
+
+    # guarda total ANTES da paginação
+    total = families_qs.count()
+
+    # paginação
+    paginator = Paginator(families_qs, 50)  # 50 por página
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    families_page = paginator.get_page(page_number)
 
-    return render(request, 'AppLSD/family_list.html', {
-        'page_obj': page_obj,
-        'request': request,
-        'search': search_query,
-    })
+    context = {
+        'families': families_page,  # objeto de página
+        'query': query,
+        'total': total,
+    }
+    return render(request, 'AppLSD/family_list.html', context)
 
 
 def family_edit(request, pk):
@@ -797,8 +800,8 @@ def aluno_create(request):
                 'aluno_criado',
                 f'Aluno {aluno.name} criado e vinculado à família {aluno.family.responsible_name}.'
             )
-            return redirect('aluno_list')  # Ou outro local desejado
-            #return redirect('family_detail', pk=family.pk)
+            #return redirect('family_detail')  # Ou outro local desejado
+            return redirect('family_detail', pk=family.pk)
     else:
         # Se veio a família, preenche campo oculto. Senão, deixa campo visível
         initial_data = {'family': family} if family else {}
