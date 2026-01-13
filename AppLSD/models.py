@@ -482,7 +482,48 @@ class Aluno(AuditModel):
             (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
         )
 
-   
+    def get_serie_display_custom(self):
+        """Retorna o texto legível da série baseado no ensino"""
+        series_map = {
+            'infantil': {
+                'alfabetizacao': 'Alfabetização',
+            },
+            'fundamental1': {
+                '1': '1º ano',
+                '2': '2º ano',
+                '3': '3º ano',
+                '4': '4º ano',
+                '5': '5º ano',
+            },
+            'fundamental2': {
+                '6': '6º ano',
+                '7': '7º ano',
+                '8': '8º ano',
+                '9': '9º ano',
+            },
+            'medio': {
+                '1': '1º ano',
+                '2': '2º ano',
+                '3': '3º ano',
+            }
+        }
+        
+        # Converte para string para comparação
+        serie_str = str(self.serie) if self.serie else ''
+        
+        if self.ensino in series_map and serie_str in series_map[self.ensino]:
+            return series_map[self.ensino][serie_str]
+        return self.serie  # Retorna o valor original se não encontrar
+    
+    def get_ensino_display_custom(self):
+        """Retorna o texto legível do ensino"""
+        ensino_map = {
+            'infantil': 'Ensino Infantil',
+            'fundamental1': 'Ensino Fundamental 1',
+            'fundamental2': 'Ensino Fundamental 2',
+            'medio': 'Ensino Médio',
+        }
+        return ensino_map.get(self.ensino, self.ensino)
   
 
 
