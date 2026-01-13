@@ -526,7 +526,7 @@ def family_list(request):
     }
     return render(request, 'AppLSD/family_list.html', context)
 
-
+@login_required
 def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
 
@@ -552,6 +552,7 @@ def family_edit(request, pk):
     }
     return render(request, 'AppLSD/family_form.html', {'form': form, 'family': family})
 
+@login_required
 def family_create(request):
     if request.method == 'POST':
         form = FamilyForm(request.POST, request.FILES)

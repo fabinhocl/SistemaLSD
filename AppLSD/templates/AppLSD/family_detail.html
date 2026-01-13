@@ -70,9 +70,33 @@
                     <div class="col-md-3"><strong>Raça:</strong> <div>{{ family.get_race_display }}</div></div>
                     <div class="col-md-3"><strong>Religião:</strong> <div>{{ family.get_religion_display }}</div></div>
                 </div>
-                <div class="row mb-3">
-                    <div class="col-md-6"><strong>Beneficiária de Programas Sociais:</strong> <div>{{ family.get_is_benefits_display }}</div></div>
-                    <div class="col-md-6"><strong>Qual Programa Social:</strong> <div>{{ family.get_social_benefits_display }}</div></div>
+                <div class="row mb-2">
+                    <div class="col-md-4">
+                        <strong>Beneficiário de Programas Sociais:</strong>
+                        <div>{{ family.get_is_benefits_display }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Qual Programa Social:</strong>
+                        <div>
+                            {% if family.get_social_benefits_display_list %}
+                                {{ family.get_social_benefits_display_list|join:", " }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Qual Valor:</strong>
+                        <div>
+                            {% if family.bolsa_familia_value %}
+                                R$ {{ family.bolsa_familia_value|floatformat:2 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>Ocupação/Profissão:</strong> <div>{{ family.occupation }}</div></div>
@@ -80,17 +104,40 @@
                     <div class="col-md-4"><strong>Qual local?:</strong> <div>{{ family.location }}</div></div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4"><strong>Possui Renda Comprovada:</strong> <div>{{ family.get_has_proven_income_display }}</div></div>
-                    <div class="col-md-4"><strong>Tipo de renda comprovada:</strong> <div>{{ family.income_types_display }}</div></div>
-                    <div class="col-md-4"><strong>Faixa Salarial:</strong> <div>{{ family.get_salary_range_display }}</div></div>
+                    <div class="col-md-4">
+                        <strong>Possui Renda Comprovada:</strong>
+                        <div>{{ family.get_has_proven_income_display }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Tipo de renda comprovada:</strong>
+                        <div>
+                            {% if family.get_income_types_display_list %}
+                                {{ family.get_income_types_display_list|join:", " }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Faixa Salarial:</strong>
+                        <div>{{ family.get_salary_range_display }}</div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6"><strong>Outras Pessoas Contribuem com a Renda da Família:</strong> <div>{{ family.get_others_contribute_display }}</div></div>
                     <div class="col-md-6"><strong>Quem Contribui:</strong> <div>{{ family.who_contributes }}</div></div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-6"><strong>Informações sobre o domicílio:</strong> <div>{{ family.get_domicile_type_display }}</div></div>
-                    <div class="col-md-6"><strong>Quantidade de Pessoas no Domicílio:</strong> <div>{{ family.num_residents }}</div></div>
+                    <div class="col-md-4"><strong>Informações sobre o domicílio:</strong> <div>{{ family.get_domicile_type_display }}</div></div>
+                    <div class="col-md-4"><strong>Valor do Aluguel:</strong> <div>{% if family.aluguel_value %}
+                                R$ {{ family.aluguel_value|floatformat:2 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div></div>
+                    <div class="col-md-4"><strong>Qtd de Pessoas no Domicílio:</strong> <div>{{ family.num_residents }}</div></div>
                 </div>
                 <div class="row mb-3">
                         <div class="col-md-2"><strong>Adulto:</strong> <div>{{ family.has_adult }}</div></div>

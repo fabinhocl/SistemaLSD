@@ -5,10 +5,13 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import date
 from AppLSD.validators import validate_cpf
+from django.contrib.postgres.fields import ArrayField
+
 
 #from localflavor.br.forms import BRCPFField
 import re
@@ -221,7 +224,12 @@ class Family(AuditModel):
         ('Benefício de Prestação Continuada - BPC', 'Benefício de Prestação Continuada - BPC'),
         ('Criança Alagoana - CRIA', 'Criança Alagoana - CRIA'),
     ]
-    social_benefits = models.CharField(max_length=255, choices=PROGRAMAS_SOCIAIS_CHOICES, verbose_name="Programas Sociais", blank=True, null=True)
+    social_benefits = ArrayField(
+        models.CharField(max_length=50, choices=PROGRAMAS_SOCIAIS_CHOICES),
+        blank=True,
+        default=list,
+        verbose_name="Programas Sociais"
+    )
     bolsa_familia_value = models.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -276,13 +284,34 @@ class Family(AuditModel):
         verbose_name="Valor do aluguel"
     )
     # Extras
-    num_residents = models.IntegerField(default=0)
-    has_pcd = models.IntegerField(default=0)
-    has_adult = models.IntegerField(default=0)
-    has_elderly = models.IntegerField(default=0)
-    has_adolescent = models.IntegerField(default=0)
-    has_child = models.IntegerField(default=0)
-    has_pregnant = models.IntegerField(default=0)
+    num_residents = models.PositiveIntegerField(
+        verbose_name="Quantidade de Pessoas no Domicílio",
+        validators=[MinValueValidator(1)]  # mínimo 1
+    )
+    has_pcd = models.PositiveIntegerField(
+        verbose_name="PCD",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
+    has_adult = models.PositiveIntegerField(
+        verbose_name="Adulto",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
+    has_elderly = models.PositiveIntegerField(
+        verbose_name="Idoso",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
+    has_adolescent = models.PositiveIntegerField(
+        verbose_name="Adolescente",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
+    has_child = models.PositiveIntegerField(
+        verbose_name="Criança",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
+    has_pregnant = models.PositiveIntegerField(
+        verbose_name="Gestante",
+        validators=[MinValueValidator(0)]  # mínimo 0
+    )
     file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
     STATUS_CHOICES = [
         ('ativo', 'Ativo'), ('inativo', 'Inativo'), ('desligado', 'Desligado'),
@@ -316,6 +345,16 @@ class Family(AuditModel):
 
     def __str__(self):
         return f"{self.responsible_name} - {self.cpf}"
+
+
+    def get_social_benefits_display_list(self):
+        """Retorna lista com os textos legíveis dos programas sociais."""
+        lookup = dict(self.PROGRAMAS_SOCIAIS_CHOICES)
+        return [lookup.get(code, code) for code in (self.social_benefits or [])]
+    
+    def get_income_types_display_list(self):
+        lookup = dict(self.INCOME_TYPE_CHOICES)
+        return [lookup.get(code, code) for code in (self.income_types or [])]
     
     #Procedimento para gerar número de registro automático
     """
@@ -413,6 +452,11 @@ class Aluno(AuditModel):
     ('Feminino', 'Feminino')
     ]
     sex = models.CharField(max_length=10, choices=ESCOLHA_SEXO, verbose_name="Sexo", default= "Escolha o sexo", blank=True, null=True)
+    REDE_ENSINO_CHOICES = [
+        ('municipal', 'Municipal'),
+        ('estadual', 'Estadual'),
+    ]
+    rede_ensino = models.CharField(max_length=20, choices=REDE_ENSINO_CHOICES, default='', blank=True)
     school = models.CharField(max_length=200, default='', blank=True)
     ENSINO_CHOICES = [
     ('', 'Selecione o ensino'),  # Django usa por padrão esse rótulo se vazio

@@ -209,6 +209,65 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('SCRIPT BENEFICIOS: iniciado');
+
+    const beneficioRadios = document.querySelectorAll('input[name="is_benefits"]');
+    const benefitsProgramsDiv = document.getElementById('benefits-programs');
+    const bolsaGroup = document.getElementById('bolsa-familia-group');
+    const bolsaInput = bolsaGroup ? bolsaGroup.querySelector('input') : null;
+    const socialBenefitsCheckboxes = document.querySelectorAll('input[name="social_benefits"]');
+
+    function checkBolsaFamilia() {
+        let bolsaSelecionado = false;
+
+        socialBenefitsCheckboxes.forEach(cb => {
+            if (cb.checked && cb.value === 'Programa Bolsa Família - PBF') {
+                bolsaSelecionado = true;
+            }
+        });
+
+        if (bolsaGroup) {
+            bolsaGroup.style.display = bolsaSelecionado ? '' : 'none';
+        }
+        if (bolsaInput) {
+            bolsaInput.disabled = !bolsaSelecionado;
+            if (!bolsaSelecionado) {
+                bolsaInput.value = '';
+            }
+        }
+    }
+
+    function toggleBenefitsPrograms() {
+        const selectedRadio = Array.from(beneficioRadios).find(r => r.checked);
+        const valor = selectedRadio ? selectedRadio.value : null;
+        const isSim = valor === 'Sim';
+
+        if (benefitsProgramsDiv) {
+            benefitsProgramsDiv.style.display = isSim ? '' : 'none';
+        }
+
+        if (!isSim) {
+            socialBenefitsCheckboxes.forEach(cb => cb.checked = false);
+            if (bolsaGroup) bolsaGroup.style.display = 'none';
+            if (bolsaInput) {
+                bolsaInput.disabled = true;
+                bolsaInput.value = '';
+            }
+            return;
+        }
+
+        checkBolsaFamilia();
+    }
+
+    beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
+    socialBenefitsCheckboxes.forEach(cb => cb.addEventListener('change', checkBolsaFamilia));
+
+    toggleBenefitsPrograms();
+});
+</script>
+
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     const cepInput = document.getElementById('id_cep');
     const enderecoInput = document.getElementById('id_address');
@@ -246,56 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // --- Beneficiário de Programas Sociais ---
-    const beneficioRadios = document.getElementsByName('is_benefits');
-    const benefitsProgramsDiv = document.getElementById('benefits-programs');
-    const socialBenefitsSelect = document.getElementById('id_social_benefits');
-    const bolsaGroup = document.getElementById('bolsa-familia-group');
-    const bolsaInput = bolsaGroup ? bolsaGroup.querySelector('input') : null;
-
-    function toggleBenefitsPrograms() {
-        const selectedRadio = Array.from(beneficioRadios).find(r => r.checked);
-        const isSim = selectedRadio && selectedRadio.value === "Sim";
-
-        // Mostra/esconde o select de programas
-        if (benefitsProgramsDiv) {
-            benefitsProgramsDiv.style.display = isSim ? '' : 'none';
-        }
-        if (socialBenefitsSelect) {
-            socialBenefitsSelect.disabled = !isSim;
-            if (!isSim) {
-                socialBenefitsSelect.value = '';
-            }
-        }
-
-        // Agora controla o campo "Valor Bolsa Família"
-        let bolsaSelecionado = false;
-        if (isSim && socialBenefitsSelect) {
-            // valor exato da opção no model
-            if (socialBenefitsSelect.value === 'Programa Bolsa Família - PBF') {
-                bolsaSelecionado = true;
-            }
-        }
-
-        if (bolsaGroup) {
-            bolsaGroup.style.display = bolsaSelecionado ? '' : 'none';
-        }
-        if (bolsaInput) {
-            bolsaInput.disabled = !bolsaSelecionado;
-            if (!bolsaSelecionado) {
-                bolsaInput.value = '';
-            }
-        }
-    }
-
-    if (beneficioRadios.length) {
-        beneficioRadios.forEach(r => r.addEventListener('change', toggleBenefitsPrograms));
-    }
-    if (socialBenefitsSelect) {
-        socialBenefitsSelect.addEventListener('change', toggleBenefitsPrograms);
-    }
-
     // --- Informações sobre o domicílio ---
     const domicileSelect = document.getElementById('id_domicile_type');
     const aluguelGroup = document.getElementById('aluguel-group');
@@ -322,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Estado inicial ao carregar (edição)
     toggleBenefitsPrograms();
     toggleAluguel();
-});
+
 </script>
    
 <script>

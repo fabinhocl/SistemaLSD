@@ -59,10 +59,13 @@
             <div class="col-md-4"><strong>Parentesco:</strong> <div>{{ aluno.parentesco }}</div></div>
           </div>
           <div class="row mb-3">
-            <div class="col-md-4"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
-            <div class="col-md-3"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display_custom }}</div></div>
-            <div class="col-md-3"><strong>Série:</strong> <div>{{ aluno.get_serie_display_custom }}</div></div>
-            <div class="col-md-2"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
+            <div class="col-md-4"><strong>Rede de Ensino:</strong> <div>{{ aluno.get_rede_ensino_display }}</div></div>
+            <div class="col-md-8"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display_custom }}</div></div>
+            <div class="col-md-4"><strong>Série:</strong> <div>{{ aluno.get_serie_display_custom }}</div></div>
+            <div class="col-md-4"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
           </div>
           <div class="row mb-3">
             <div class="col-md-6"><strong>Problema de Saúde:</strong> <div>{{ aluno.get_health_problem_display }}</div></div>

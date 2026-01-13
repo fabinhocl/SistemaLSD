@@ -9,6 +9,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
 from .validators import cpf_validator
 from datetime import date
+from multiselectfield.forms.fields import MultiSelectFormField
 import re
 
 
@@ -62,9 +63,9 @@ class FamilyForm(forms.ModelForm):
         widget=forms.RadioSelect,
         label="Beneficiário de Programas Sociais?"
     )
-    social_benefits = forms.ChoiceField(
+    social_benefits = forms.MultipleChoiceField(
         choices=Family.PROGRAMAS_SOCIAIS_CHOICES,
-        widget=forms.Select,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         required=False,
         label="Qual Programa?"
     )
@@ -202,7 +203,8 @@ class FamilyForm(forms.ModelForm):
             'birth_date': DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'bolsa_familia_value': forms.NumberInput(attrs={'class': 'form-control',
                 'step': '0.01',
-                'min': '0',}),
+                'min': '0',
+                'placeholder': '0,00'}),
             'aluguel_value': forms.NumberInput(attrs={'class': 'form-control',
                 'step': '0.01',
                 'min': '0',}),
@@ -267,41 +269,47 @@ class FamilyForm(forms.ModelForm):
         return cleaned_data
 
     def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.fields['birth_date'].input_formats = ['%Y-%m-%d']
-            self.helper = FormHelper()
-            self.helper.layout = Layout(
-                # Outras linhas...
-                Row(
-                    Column('is_benefits', css_class='col-md-4'),
-                    Column('social_benefits', css_class='col-md-4'),
-                ),
-                Row(
-                    Column('occupation', css_class='col-md-4'),
-                    Column('is_working', css_class='col-md-4'),
-                    Column('location', css_class='col-md-4'),
-                ),
-                Row(
-                    Column('has_proven_income', css_class='col-md-4'),
-                    Column('income_types', css_class='col-md-4'),
-                    Column('salary_range', css_class='col-md-4'),
-                ),
-                Row(
-                    Column('others_contribute', css_class='col-md-4'),
-                    Column('who_contributes', css_class='col-md-4'),
-                ),
-                Row(
-                    Column('num_residents', css_class='col-md-4'),
-                    # Campos dos tipos em uma linha
-                    Column('has_adult', css_class='col-md-2'),
-                    Column('has_elderly', css_class='col-md-2'),
-                    Column('has_pcd', css_class='col-md-2'),
-                    Column('has_adolescent', css_class='col-md-2'),
-                    Column('has_child', css_class='col-md-2'),
-                    Column('has_pregnant', css_class='col-md-2'),
-                )   
-                # Continue com os demais campos...
-            )
+        super().__init__(*args, **kwargs)
+        self.fields['birth_date'].input_formats = ['%Y-%m-%d']
+        
+        # Converte ArrayField para lista para o formulário
+        if self.instance.pk and self.instance.social_benefits:
+            self.initial['social_benefits'] = self.instance.social_benefits
+        
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            # Outras linhas...
+            Row(
+                Column('is_benefits', css_class='col-md-4'),
+                Column('social_benefits', css_class='col-md-4'),
+            ),
+            Row(
+                Column('occupation', css_class='col-md-4'),
+                Column('is_working', css_class='col-md-4'),
+                Column('location', css_class='col-md-4'),
+            ),
+            Row(
+                Column('has_proven_income', css_class='col-md-4'),
+                Column('income_types', css_class='col-md-4'),
+                Column('salary_range', css_class='col-md-4'),
+            ),
+            Row(
+                Column('others_contribute', css_class='col-md-4'),
+                Column('who_contributes', css_class='col-md-4'),
+            ),
+            Row(
+                Column('num_residents', css_class='col-md-4'),
+                # Campos dos tipos em uma linha
+                Column('has_adult', css_class='col-md-2'),
+                Column('has_elderly', css_class='col-md-2'),
+                Column('has_pcd', css_class='col-md-2'),
+                Column('has_adolescent', css_class='col-md-2'),
+                Column('has_child', css_class='col-md-2'),
+                Column('has_pregnant', css_class='col-md-2'),
+            )   
+            # Continue com os demais campos...
+        )
+
 
 
 class AdultForm(forms.ModelForm):
@@ -413,6 +421,7 @@ class AlunoForm(forms.ModelForm):
             'birth_date': 'Data de Nascimento',
             'idade': 'Idade',
             'school': 'Escola',
+            'rede_ensino': 'Rede de Ensino',
             'serie': 'Série',
             'ensino': 'Ensino',
             'turno': 'Turno',
