@@ -403,7 +403,7 @@ class Aluno(AuditModel):
     )
     family = models.ForeignKey('Family', on_delete=models.CASCADE, related_name='alunos')
     name = models.CharField(max_length=200, default='')
-    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
+    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=False)
     nis = models.CharField(max_length=20, default='', blank=True, null=True)
     parentesco = models.CharField(max_length=50, default='', blank=True)
     birth_date = models.DateField(blank=True, null=True)
