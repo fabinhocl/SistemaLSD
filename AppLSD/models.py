@@ -416,7 +416,7 @@ class Aluno(AuditModel):
     school = models.CharField(max_length=200, default='', blank=True)
     ENSINO_CHOICES = [
     ('', 'Selecione o ensino'),  # Django usa por padrão esse rótulo se vazio
-    ('infantil', 'Alfabetização'),
+    ('infantil', 'Ensino Infantil'),
     ('fundamental1', 'Ensino Fundamental 1'),
     ('fundamental2', 'Ensino Fundamental 2'),
     ('medio', 'Ensino Médio'),
