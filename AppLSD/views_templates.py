@@ -803,21 +803,40 @@ def aluno_create(request):
     if request.method == 'POST':
         form = AlunoForm(request.POST)
         if form.is_valid():
-            aluno = form.save(commit=False)
-            aluno.criado_por = request.user # registra quem criou
-            # Associa família caso venha selecionada/fixa
-            if family:
-                aluno.family = family
-            aluno.save()
-            registrar_log(
-                request.user,
-                aluno,
-                'aluno_criado',
-                f'Aluno {aluno.name} criado e vinculado à família {aluno.family.responsible_name}.'
-            )
+            try:
+                aluno = form.save(commit=False)
+                aluno.criado_por = request.user # registra quem criou
+                # Associa família caso venha selecionada/fixa
+                if family:
+                    aluno.family = family
+                aluno.save()
+                if aluno.family:
+                    family_name = aluno.family.responsible_name
+                    registrar_log(
+                        request.user,
+                        aluno,
+                        'aluno_criado',
+                        f'Aluno {aluno.name} criado e vinculado à família {aluno.family.responsible_name}.'
+                    )
+                    logger.info(f"Aluno {aluno.name} (ID: {aluno.pk}) criado e vinculado à família {family_name}")
+                    messages.success(request, f'Aluno {aluno.name} cadastrado com sucesso!')
             #return redirect('family_detail')  # Ou outro local desejado
-            return redirect('family_detail', pk=family.pk)
+                    return redirect('family_detail', pk=aluno.family.pk)
+                else:
+                    logger.info(f"Aluno {aluno.name} (ID: {aluno.pk}) criado sem família")
+                    messages.success(request, f'Aluno {aluno.name} cadastrado com sucesso!')
+
+                    return redirect('aluno_list')  # ajuste para sua view de lista de alunos
+                    
+            except Exception as e:
+                logger.error(f"Erro ao criar aluno: {str(e)}")
+                messages.error(request, f'Erro ao cadastrar aluno: {str(e)}')
+        else:
+            # Exibe erros do formulário
+            logger.warning(f"Formulário inválido ao criar aluno: {form.errors}")
+            messages.error(request, 'Por favor, corrija os erros no formulário.')
     else:
+        
         # Se veio a família, preenche campo oculto. Senão, deixa campo visível
         initial_data = {'family': family} if family else {}
         form = AlunoForm(initial=initial_data)
