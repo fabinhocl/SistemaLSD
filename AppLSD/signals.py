@@ -12,7 +12,7 @@ def create_user_profile(sender, instance, created, **kwargs):
         elif instance.groups.filter(name='Coordenador').exists():
             tipo_perfil = 'coordenador'
         elif instance.groups.filter(name='Serviço Social').exists():
-            tipo_perfil  = 'servico social'
+            tipo_perfil  = 'servicosocial'
         elif instance.groups.filter(name='Educadora').exists():
             tipo_perfil = 'educadora'
         elif instance.groups.filter(name='Facilitador').exists():

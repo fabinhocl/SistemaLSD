@@ -53,6 +53,13 @@ def is_educadora(user):
     tipo = get_tipo_perfil(user)
     return tipo == 'educadora'
 
+def is_servicosocial(user):
+    """
+    Verifica se o usuário é serviço social
+    """
+    tipo = get_tipo_perfil(user)
+    return tipo == 'servicosocial'
+
 
 def coordenacao_required(function):
     """

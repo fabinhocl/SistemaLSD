@@ -34,7 +34,9 @@ import io
 import base64
 import matplotlib.pyplot as plt
 import unicodedata
+import logging
 
+logger = logging.getLogger(__name__)
 
 def root_redirect(request):
     if request.user.is_authenticated:
@@ -63,6 +65,10 @@ def view_educadora(request):
 def view_facilitador(request):
     # apenas facilitador acessa
     pass
+@require_perfil('servicosocial')
+def view_servicosocial(request):
+    # apenas serviço social acessa
+    pass
 
 @require_perfil('admin')
 def view_admin(request):
@@ -73,6 +79,12 @@ def view_admin(request):
 def registrar_frequencia(request, turma_id):
     perfil = request.user.perfis.get(tipo_perfil='educadora')
     turma = get_object_or_404(Turma, id=turma_id, educadora=perfil)
+    # Resto da lógica
+
+@require_perfil('servicosocial')
+def registrar_frequencia(request):
+    perfil = request.user.perfis.get(tipo_perfil='servicosocial')
+    pass
     # Resto da lógica
 
 @require_perfil('facilitador')
@@ -208,6 +220,8 @@ def home(request):
         return redirect('home_facilitador')
     elif usuario_tem_perfil(request.user, "educadora"):
         return redirect('home_educadora')
+    elif usuario_tem_perfil(request.user, "servicosocial"):
+        return redirect('home_assist')
     elif usuario_tem_perfil(request.user, "diretoria"):
         return redirect('lsd_dashboard/dashboard')  # ou o nome correto do path para dashboard
     return render(request, "AppLSD/home.html", {
@@ -215,6 +229,7 @@ def home(request):
         "usuario_coord": usuario_tem_perfil(request.user, "coordenacao"),
         "usuario_supervisor": usuario_tem_perfil(request.user, "supervisor"),
         "usuario_educadora": usuario_tem_perfil(request.user, "educadora"),
+        "usuario_servicosocial": usuario_tem_perfil(request.user, "servicosocial"),
         "usuario_facilitador": usuario_tem_perfil(request.user, "facilitador"),
         "usuario_dir": usuario_tem_perfil(request.user, "diretoria"),
         "usuario_adm": usuario_tem_perfil(request.user, "administrativo"),
@@ -845,8 +860,9 @@ def aluno_edit(request, pk):
         'aluno': aluno,
         
     }
-    # DEBUG - Remova depois
-    print(f"Ensino: {aluno.ensino}, Série: {aluno.serie}")
+  
+    # Log para debug
+    logger.debug(f"Ensino: {aluno.ensino}, Série: {aluno.serie}")
     
     return render(request, 'AppLSD/aluno_form.html', context)
 
