@@ -1,6 +1,6 @@
 # AppLSD/templatetags/perfil_tags.py
 from django import template
-
+from AppLSD.utils import usuario_tem_perfil
 register = template.Library()
 
 @register.filter

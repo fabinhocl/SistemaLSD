@@ -1,5 +1,6 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
+{% load perfil_tags %}
 
 {% block title %}Detalhes do Adulto{% endblock %}
 
@@ -106,9 +107,13 @@
   </div>
 
   <div class="mt-4">
+    
+
+    {% if not user|has_perfil:"colaborador" %}
     <a href="{% url 'adult_edit' pk=adult.pk %}" class="btn btn-primary">Editar</a>
-    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
     <a href="{% url 'adult_delete_confirm' pk=adult.pk %}" class="btn btn-danger">Excluir</a>
+    {% endif %}
+     <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
     <a href="{% url 'family_detail' pk=adult.family.pk %}" class="btn btn-secondary">Voltar</a>
   </div>
 </div>

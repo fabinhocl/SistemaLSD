@@ -1,0 +1,198 @@
+{% load static %}
+{% load perfil_tags %}
+<!DOCTYPE html>
+<html lang="pt-br" class="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Integra+Lar{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static 'img/logo-lar-sao-domingos.png' %}">
+
+    <!-- CSS do Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- Estilo customizado para impressão -->
+    <img src="{% static 'img/logo-lar-sao-domingos.png' %}" class="logo-print-only" alt="Logo Impressão">
+
+    <style>
+        .logo-top {
+            width: 140px;
+            margin-bottom: 16px;
+        }
+        .logo-print-only {
+                display: none !important;
+            }
+            
+        @media print {
+            @page {
+                margin-top: 20mm;
+                margin-bottom: 20mm;
+                margin-left: 20mm;
+                margin-right: 20mm;   /* ajuste aqui a margem desejada da folha */
+            }
+            nav, footer, .btn, .no-print, .navbar { display: none !important; }
+            body, html {
+                margin: 0 !important; /* margem da folha */
+                padding: 0 !important;
+                font-size: 10px !important;
+                
+            }
+            h1, h2, h3 { color: #000 !important; font-size: 1.5em !important; }
+            table { max-width: 900px;
+                    border: none !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important; }
+            td, th { font-size: 1.5em !important; padding: 4px 8px; }
+            .container {
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .logo-top { display: block !important; }
+            .row {
+                margin: 0 !important;
+                padding: 0 !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+                font-size: 16px !important;
+            }
+            .col-md-4, .col-md-3, .col-md-2, .col-md-6 {
+                float: left !important;
+                width: 33% !important;
+                max-width: 33% !important;
+                box-sizing: border-box;
+            }
+            
+                .logo-print-only {
+                    display: block !important;
+                    width: 140px !important;
+                    margin-bottom: 16px !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                }
+            
+
+            a[href]:after { content: ""; }
+        }
+        /* Melhorar o visual do select2 */
+        .select2-container .select2-selection--single {
+            height: 38px;
+            padding: 6px 12px;
+            border: 1px solid #ced4da;
+            border-radius: .375rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 24px;
+        }
+
+        .form-control,
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        input[type="tel"],
+        select,
+        textarea {
+            border: 1.5px solid #555;
+        }
+
+        .form-control:focus,
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 1px #000;
+        }
+        
+        /* selects (dropdown) */
+    select,
+    .form-select {
+        border: 1.5px solid #555;
+    }
+
+    select:focus,
+    .form-select:focus {
+        border-color: #000;
+        box-shadow: 0 0 0 1px #000;
+    }
+
+   /* radios maiores e sempre com contorno escuro */
+    input[type="radio"].form-check-input,
+    input[type="radio"] {
+        width: 18px !important;
+        height: 18px !important;
+        border: 2px solid #555 !important;
+        border-radius: 50% !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        background-color: #fff !important;
+    }
+
+    input[type="radio"].form-check-input:checked,
+    input[type="radio"]:checked {
+        border-color: #000 !important;
+        background-color: #000 !important;
+    }
+
+    input[type="radio"].form-check-input:focus,
+    input[type="radio"]:focus {
+        outline: 2px solid #000 !important;
+        outline-offset: 2px !important;
+        box-shadow: none !important;
+    }
+    </style>
+
+    <!-- Fonts e Tailwind -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display overflow-hidden h-screen flex">
+
+    <!-- SIDEBAR FIXO -->
+    <aside class="w-72 bg-surface-light dark:bg-surface-dark border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 z-20">
+        <div class="d-flex align-items-center">
+            <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="48">
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="{% url 'home' %}" class="block px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 {% if request.resolver_match.url_name == 'home' %}bg-slate-200 dark:bg-slate-700 font-semibold{% endif %}">Início</a>
+            <a href="{% url 'home_assist' %}" class="block px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 {% if request.resolver_match.url_name == 'family_list' %}bg-slate-200 dark:bg-slate-700 font-semibold{% endif %}">Serviço Social</a>
+            <a href="{% url 'home_escola' %}" class="block px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 {% if request.resolver_match.url_name == 'adult_list' %}bg-slate-200 dark:bg-slate-700 font-semibold{% endif %}">Escola</a>
+            <a href="{% url 'home_relatorios' %}" class="block px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 {% if request.resolver_match.url_name == 'child_list' %}bg-slate-200 dark:bg-slate-700 font-semibold{% endif %}">Relatórios</a>
+            <a href="{% url 'usuarios_gerenciar' %}" class="block px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 {% if request.resolver_match.url_name == 'usuarios_gerenciar' %}bg-slate-200 dark:bg-slate-700 font-semibold{% endif %}">Usuários</a>
+        <div class="d-flex align-items-center">
+            {% if user.is_authenticated %}
+                <span class="me-2 fw-semibold text-secondary">Olá, {{ user.get_full_name|default:user.username }}</span>
+                <form action="{% url 'logout' %}" method="post" class="mb-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Sair</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    </aside>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-background-light dark:bg-background-dark overflow-hidden">
+        <!-- HEADER FIXO -->
+        <header class="h-16 bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shrink-0">
+            <!-- (cole aqui o conteúdo do header: busca, notificações, usuário) -->
+        </header>
+
+        <!-- CONTEÚDO DAS PÁGINAS -->
+        <div class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</body>
+</html>

@@ -150,7 +150,7 @@ class FamilyForm(forms.ModelForm):
             'has_pregnant',
             'file_info',
             'status',
-            'motivo_desligamento',
+            #'motivo_desligamento',
         ]
         labels = {
             'registration_number': 'Inscrição',
@@ -197,7 +197,7 @@ class FamilyForm(forms.ModelForm):
             'has_pregnant': 'Gestante',
             'file_info': 'Arquivo',
             'status': 'Situação',
-            'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
+            #'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
         }
         widgets = {
             'birth_date': DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),

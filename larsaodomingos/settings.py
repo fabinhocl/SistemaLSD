@@ -52,7 +52,23 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'widget_tweaks',
     'channels',          # Necessário para websocket no Dash
-    #'dpd_static_support', # Para servir assets do Dash 
+    'dpd_static_support', # Para servir assets do Dash 
+]
+
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'django_plotly_dash.finders.DashAssetFinder',
+    'django_plotly_dash.finders.DashComponentFinder',
+    'django_plotly_dash.finders.DashAppDirectoryFinder',
+]
+
+PLOTLY_COMPONENTS = [
+    # componentes padrão do dash são adicionados automaticamente
+    'dpd_components',
+    'dpd_static_support',
+    # se usar dash_bootstrap_components, adicionar também:
+    # 'dash_bootstrap_components',
 ]
 
 MIDDLEWARE = [

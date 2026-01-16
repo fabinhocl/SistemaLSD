@@ -1,21 +1,23 @@
 from pyexpat.errors import messages
 from dal import autocomplete
-from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, PerfilUsuario, AppLog
-from .utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log # ✅ Importar as funções
+from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario
+from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
 from django import forms
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse 
-from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef
+from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef, IntegerField
+from django.db.models.functions import Cast
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
 from datetime import date, timedelta, datetime
@@ -98,6 +100,7 @@ def dashboard_coordenador(request):
     # Coordenação pode acessar dashboards/admin de turmas
     pass
 
+
 @require_perfil('diretoria')
 def dashboard_diretoria(request):
     # Diretoria pode acessar dashboards/admin de turmas
@@ -127,7 +130,7 @@ def usuarios_gerenciar(request):
             return redirect('usuarios_gerenciar')
 
     # Lista de tipos de perfil a partir do model
-    from AppLSD.models import PerfilUsuario
+    #from AppLSD.models import PerfilUsuario
     tipos_perfil = [tp[0] for tp in PerfilUsuario._meta.get_field('tipo_perfil').choices]
 
     # Se estiver mostrando perfis de um único usuário (por exemplo, ao editar), passe assim:
@@ -135,58 +138,88 @@ def usuarios_gerenciar(request):
     usuario_id = request.GET.get("usuario_id")  # exemplo para edição de um usuário
     if usuario_id:
         usuario = get_object_or_404(User, id=usuario_id)
-        perfis_por_usuario = {usuario.id: [perfil.tipo_perfil for perfil in usuario.perfis.all()]
-        for usuario in usuarios
-}
-    # Caso contrário, pode passar vazio ou lista para cada usuário no contexto conforme sua lógica/template
+        perfis_do_usuario = [perfil.tipo_perfil for perfil in usuario.perfis.all()]
 
     return render(request, 'AppLSD/usuarios_gerenciar.html', {
         "usuarios": usuarios,
         "tipos_perfil": tipos_perfil,
         "perfis_do_usuario": perfis_do_usuario,
     })
-
-
+    
 
 @require_perfil('admin')
 def editar_perfis_usuario(request, usuario_id):
-    usuario = User.objects.get(id=usuario_id)
-    tipo_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "servico social", "financeiro", "nutricao"]
+    usuario = get_object_or_404(User, id=usuario_id)
+
     if request.method == "POST":
         novos_perfis = request.POST.getlist('tipo_perfil')
-        # Remove perfis não marcados
+
+        # mantém só tipos válidos
+        novos_perfis = [tp for tp in novos_perfis if tp in TIPOS_PERFIL_VALIDOS]
+
+        # remove perfis não marcados
         usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
-        # Adiciona os novos perfis
+
+        # adiciona os novos perfis
         for tipo in novos_perfis:
             if not usuario.perfis.filter(tipo_perfil=tipo).exists():
                 PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
+
+        # se ficou sem nenhum, força colaborador
+        if not usuario.perfis.exists():
+            PerfilUsuario.objects.create(user=usuario, tipo_perfil='colaborador')
+
+        sincronizar_grupos_usuario(usuario)
         return redirect('usuarios_gerenciar')
-    return render(request, 'AppLSD/editar_perfis.html', {"usuario": usuario, "tipo_perfil": tipo_perfil})
+
+    perfis_do_usuario = list(usuario.perfis.values_list('tipo_perfil', flat=True))
+    return render(
+        request,
+        'AppLSD/editar_perfis.html',
+        {
+            "usuario": usuario,
+            "tipo_perfil": TIPOS_PERFIL_VALIDOS,
+            "perfis_do_usuario": perfis_do_usuario,
+        },
+    )
 
 @require_perfil('admin')
 def editar_usuario(request, usuario_id):
     usuario = get_object_or_404(User, id=usuario_id)
-    tipo_perfil_choices = [tp[0] for tp in PerfilUsuario._meta.get_field('tipo_perfil').choices]
+    tipo_perfil_choices = TIPOS_PERFIL_VALIDOS
     perfis_do_usuario = list(usuario.perfis.values_list('tipo_perfil', flat=True))
+
     if request.method == "POST":
         usuario.first_name = request.POST.get('nome')
         usuario.email = request.POST.get('email')
-        usuario.is_active = True if request.POST.get('is_active') == 'on' else False
+        usuario.is_active = request.POST.get('is_active') == 'true'
         usuario.save()
-        # Atualiza perfis
+
         novos_perfis = request.POST.getlist('tipo_perfil')
-        # Remove perfis não marcados
+        novos_perfis = [tp for tp in novos_perfis if tp in TIPOS_PERFIL_VALIDOS]
+
         usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
-        # Adiciona perfis marcados
+
         for tipo in novos_perfis:
-           if tipo not in perfis_do_usuario:
+            if not usuario.perfis.filter(tipo_perfil=tipo).exists():
                 PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
+
+        if not usuario.perfis.exists():
+            PerfilUsuario.objects.create(user=usuario, tipo_perfil='colaborador')
+
+        sincronizar_grupos_usuario(usuario)
         return redirect('usuarios_gerenciar')
-    return render(request, 'AppLSD/editar_usuario.html', {
-        'usuario': usuario,
-        'tipo_perfil_choices': tipo_perfil_choices,  # sempre use o nome claro!   
-        'perfis_do_usuario': perfis_do_usuario,
-    })
+
+    return render(
+        request,
+        'AppLSD/editar_usuario.html',
+        {
+            'usuario': usuario,
+            'tipo_perfil_choices': tipo_perfil_choices,
+            'perfis_do_usuario': perfis_do_usuario,
+        },
+    )
+
 
 @require_perfil('admin')
 def resetar_senha_usuario(request, usuario_id):
@@ -200,19 +233,25 @@ def resetar_senha_usuario(request, usuario_id):
 
 @require_perfil('admin')
 def cadastrar_usuario(request):
-    tipo_perfil = ["admin", "administrativo", "coordenacao", "colaborador", "diretoria", "educadora", "facilitador", "servico social", "financeiro", "nutricao"]
     if request.method == 'POST':
         form = UsuarioForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Perfis enviados como lista
-            perfis = request.POST.getlist("perfis")
+            perfis = request.POST.getlist("perfis")  # nomes do tipo_perfil
             for perfil in perfis:
                 PerfilUsuario.objects.create(user=user, tipo_perfil=perfil)
+            # se não marcou nada, cria padrão colaborador
+            if not perfis:
+                PerfilUsuario.objects.create(user=user, tipo_perfil='colaborador')
+            sincronizar_grupos_usuario(user)
             return redirect('usuarios_gerenciar')
     else:
         form = UsuarioForm()
-    return render(request, 'AppLSD/cadastrar_usuario.html', {"form": form, "tipo_perfil": tipo_perfil})
+    return render(
+        request,
+        'AppLSD/cadastrar_usuario.html',
+        {"form": form, "tipo_perfil": TIPOS_PERFIL_VALIDOS},
+    )
 
 @login_required
 def home(request):
@@ -220,6 +259,8 @@ def home(request):
         return redirect('home_facilitador')
     elif usuario_tem_perfil(request.user, "educadora"):
         return redirect('home_educadora')
+    elif usuario_tem_perfil(request.user, "coordenacao"):
+        return redirect('home_escola')
     elif usuario_tem_perfil(request.user, "servicosocial"):
         return redirect('home_assist')
     elif usuario_tem_perfil(request.user, "diretoria"):
@@ -289,7 +330,20 @@ def home_facilitador(request):
 
 @login_required
 def home_assist(request):
-    return render(request, 'AppLSD/home_assist.html')
+    print(">>> ENTROU NA HOME_ASSIST")
+    servicosocial = request.user
+    hoje = timezone.now().date()
+    data_corte = date(hoje.year - 60, hoje.month, hoje.day)
+    contexto = {
+        "total_assistidos": Aluno.objects.count(),
+        "total_familias": Family.objects.count(),
+        "total_adultos": Adult.objects.count(),
+        "total_idosos": Adult.objects.filter(birth_date__lte=data_corte).count(),
+        # "percentual_presenca": calcular_presenca_hoje(),
+        "hoje": timezone.now().strftime("%d/%m/%Y"),
+    }
+    #hoje = timezone.now().date()
+    return render(request, 'AppLSD/home_assist.html', contexto)
 
 @login_required
 def home_escola(request):
@@ -305,102 +359,83 @@ def home_adm(request):
 #Mesclagem das views de dashboard de presença e relatórios
 @login_required
 def dashboard_completo(request):
-    """
-    View combinada do Dashboard de Presença e Relatórios
-    """
     today = timezone.now().date()
-    
+
     # ===== DASHBOARD DE PRESENÇA =====
-    
-    # Total de alunos ativos
     total_alunos = Aluno.objects.count()
-    
-    # Presentes hoje - contar FrequenciaAluno com presente=True
+
     presentes_hoje = FrequenciaAluno.objects.filter(
         chamada__data=today,
         presente=True
     ).count()
-    
-    # Faltas hoje - contar FrequenciaAluno com presente=False
+
     faltas_hoje = FrequenciaAluno.objects.filter(
         chamada__data=today,
         presente=False
     ).count()
-    
-    # Turmas ativas (ajuste o filtro conforme seu modelo)
+
     turmas_ativas = Turma.objects.count()
-    # Se não tiver campo is_active, use: turmas_ativas = Turma.objects.count()
-    
+
     # ===== RELATÓRIOS =====
-    
-    # Buscar turmas para os relatórios (ajuste conforme necessário)
     turmas = Turma.objects.all()
-    
-  
-    
+
     # Frequência por turma
     turmas_com_frequencia = []
-    for turma in Turma.objects.annotate(total_alunos=Count('alunos')):
+    for turma in Turma.objects.annotate(total_alunos=Count("alunos")):
         if turma.total_alunos > 0:
-            media_presenca = FrequenciaAluno.objects.filter(
-                aluno__turma=turma,
-                chamada__data__gte=today - timezone.timedelta(days=7)
-            ).aggregate(Avg('presente'))['presente__avg'] or 0
-            
+            media_presenca = (
+                FrequenciaAluno.objects
+                .filter(
+                    aluno__turma=turma,
+                    chamada__data__gte=today - timezone.timedelta(days=7),
+                )
+                .annotate(presente_int=Cast("presente", IntegerField()))
+                .aggregate(media=Avg("presente_int"))["media"] or 0
+            )
             turma.media_presenca = media_presenca * 100
             turmas_com_frequencia.append(turma)
-      
-  # Se você tem atividades, inclua também
+
+    # Atividades
     atividades_ativas = Activity.objects.count()
     atividades = Activity.objects.all()
-    
-    # Frequência por Atividade
+
     atividades_com_frequencia = []
-    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')):
+    for atividade in Activity.objects.annotate(total_alunos=Count("alunos")):
         if atividade.total_alunos > 0:
-            media_presenca = FrequenciaAluno.objects.filter(
-                aluno__atividades=atividade,
-                chamada__data__gte=today - timezone.timedelta(days=7)
-            ).aggregate(Avg('presente'))['presente__avg'] or 0
-                
+            media_presenca = (
+                FrequenciaAluno.objects
+                .filter(
+                    aluno__atividades=atividade,
+                    chamada__data__gte=today - timezone.timedelta(days=7),
+                )
+                .annotate(presente_int=Cast("presente", IntegerField()))
+                .aggregate(media=Avg("presente_int"))["media"] or 0
+            )
             atividade.media_presenca = media_presenca * 100
             atividades_com_frequencia.append(atividade)
 
-    #relatório de turmas e atividades
-    turmas = Turma.objects.all()
-    atividades = Activity.objects.all()
-    alunos = Aluno.objects.all()  # Incluído para o relatório de aluno
-    
-    # ===== CONTEXTO =====
-    
-    context = {
-        # Dados do Dashboard de Presença
-        'total_alunos': total_alunos,
-        'presentes_hoje': presentes_hoje,
-        'faltas_hoje': faltas_hoje,
-        'turmas_ativas': turmas_ativas,
-        'atividades_ativas': atividades_ativas,
-        'turmas_com_frequencia': turmas_com_frequencia,
-        'atividades_com_frequencia': atividades_com_frequencia,
-        #Dados do relatório
-        'turmas': turmas,
-        'atividades': atividades,
-        'alunos': alunos,
-       
-        # 'atividades': atividades,  # Se você tiver atividades
-    }
-    
-    return render(request, 'AppLSD/home_relatorios.html', context)
-    
-    
-        
-   
+    alunos = Aluno.objects.all()
 
+    context = {
+        "total_alunos": total_alunos,
+        "presentes_hoje": presentes_hoje,
+        "faltas_hoje": faltas_hoje,
+        "turmas_ativas": turmas_ativas,
+        "atividades_ativas": atividades_ativas,
+        "turmas_com_frequencia": turmas_com_frequencia,
+        "atividades_com_frequencia": atividades_com_frequencia,
+        "turmas": turmas,
+        "atividades": atividades,
+        "alunos": alunos,
+    }
+    return render(request, "AppLSD/home_relatorios.html", context)
+    
 #Tela para Educadora e Facilitador
 @login_required
 def dashboard_presenca(request):
     hoje = timezone.now().date()
     semana = hoje - timedelta(days=7)
+
     total_alunos = Aluno.objects.count()
     presentes_hoje = FrequenciaAluno.objects.filter(
         chamada__data=hoje, presente=True
@@ -409,53 +444,55 @@ def dashboard_presenca(request):
         chamada__data=hoje, presente=False
     ).count()
     turmas_ativas = Turma.objects.filter(alunos__isnull=False).distinct().count()
-    
+
     # Frequência por turma
     turmas_com_frequencia = []
     for turma in Turma.objects.annotate(total_alunos=Count('alunos')):
         if turma.total_alunos > 0:
-            media_presenca = FrequenciaAluno.objects.filter(
-                aluno__turma=turma,
-                chamada__data__gte=hoje - timezone.timedelta(days=7)
-            ).aggregate(Avg('presente'))['presente__avg'] or 0
-            
+            media_presenca = (
+                FrequenciaAluno.objects
+                .filter(
+                    aluno__turma=turma,
+                    chamada__data__gte=hoje - timezone.timedelta(days=7),
+                )
+                .annotate(presente_int=Cast("presente", IntegerField()))
+                .aggregate(media=Avg("presente_int"))["media"] or 0
+            )
+
             turma.media_presenca = media_presenca * 100
             turmas_com_frequencia.append(turma)
-    
+
     # IDs das atividades com presenças registradas nos últimos 7 dias
     atividades_ids = FrequenciaAtividade.objects.filter(
         data__gte=semana
-    ).values_list('atividade_id', flat=True).distinct()
+    ).values_list("atividade_id", flat=True).distinct()
 
     atividades_com_frequencia = []
-    for atividade in Activity.objects.annotate(total_alunos=Count('alunos')).filter(id__in=atividades_ids):
+    for atividade in Activity.objects.annotate(total_alunos=Count("alunos")).filter(
+        id__in=atividades_ids
+    ):
         if atividade.total_alunos > 0:
-            # Conta o número de presenças nos últimos 7 dias
             presencas = FrequenciaAtividade.objects.filter(
                 atividade=atividade,
                 data__gte=semana,
-                presente=True
+                presente=True,
             ).count()
             media = (presencas / atividade.total_alunos * 100) if atividade.total_alunos else 0
             atividade.media_presenca = round(media, 1)
             atividades_com_frequencia.append(atividade)
 
-    # ...demais contextos e return...
-    
-    return render(request, 'AppLSD/dashboard_presenca.html', {
-        # Dados do Dashboard de Presença
-        'total_alunos': total_alunos,
-        'presentes_hoje': presentes_hoje,
-        'faltas_hoje': faltas_hoje,
-        'turmas_ativas': turmas_ativas,
-        #'atividades_ativas': atividades_ativas,
-        'turmas_com_frequencia': turmas_com_frequencia,
-        'atividades_com_frequencia': atividades_com_frequencia,
-        #Dados do relatório
-        #'turmas': turmas,
-        #'atividades': atividades,
-        #'alunos': alunos,
-    })
+    return render(
+        request,
+        "AppLSD/dashboard_presenca.html",
+        {
+            "total_alunos": total_alunos,
+            "presentes_hoje": presentes_hoje,
+            "faltas_hoje": faltas_hoje,
+            "turmas_ativas": turmas_ativas,
+            "turmas_com_frequencia": turmas_com_frequencia,
+            "atividades_com_frequencia": atividades_com_frequencia,
+        },
+    )
 
 #Métódos Familia
 @login_required
@@ -863,6 +900,9 @@ def aluno_detail(request, pk):
 
 @login_required
 def aluno_edit(request, pk):
+    # bloqueia colaboradores
+    if usuario_tem_perfil(request.user, "colaborador"):
+        raise PermissionDenied("Colaborador não pode editar aluno.")
     aluno = get_object_or_404(Aluno, pk=pk)
     if request.method == 'POST':
         form = AlunoForm(request.POST, instance=aluno)
@@ -888,6 +928,9 @@ def aluno_edit(request, pk):
 
 @login_required
 def aluno_delete_confirm(request, pk):
+    # bloqueia colaboradores
+    if usuario_tem_perfil(request.user, "colaborador"):
+        raise PermissionDenied("Colaborador não pode excluir aluno.")
     aluno = get_object_or_404(Aluno, pk=pk)
     error = None
 

@@ -29,6 +29,7 @@ urlpatterns = [
     path('dashboard/', include('dashboard_lsd.urls')), # dashboard integrado
     path('events/', include('events.urls', namespace='events')),
     path('assistencia/', views_templates.home_assist, name='home_assist'),
+    #path('assistencia/', views_templates.dashboard_assist, name='dashboard_assist'),
     path('escola/', views_templates.home_escola, name='home_escola'),
     path('diretoria/', views_templates.home_diretoria, name='home_diretoria'),
     path('administracao/', views_templates.home_adm, name='home_adm'),

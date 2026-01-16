@@ -1,16 +1,19 @@
 from django.db import models, transaction
-from django.utils import timezone, dateformat
+from django.db.models.signals import post_save
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone, dateformat
 from datetime import date
 from AppLSD.validators import validate_cpf
-from django.contrib.postgres.fields import ArrayField
+from AppLSD.utils import sincronizar_grupos_usuario
+
+
 
 
 #from localflavor.br.forms import BRCPFField
@@ -289,39 +292,40 @@ class Family(AuditModel):
         validators=[MinValueValidator(1)]  # mínimo 1
     )
     has_pcd = models.PositiveIntegerField(
-        verbose_name="PCD",
+        verbose_name="PCD", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     has_adult = models.PositiveIntegerField(
-        verbose_name="Adulto",
+        verbose_name="Adulto", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     has_elderly = models.PositiveIntegerField(
-        verbose_name="Idoso",
+        verbose_name="Idoso", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     has_adolescent = models.PositiveIntegerField(
-        verbose_name="Adolescente",
+        verbose_name="Adolescente", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     has_child = models.PositiveIntegerField(
-        verbose_name="Criança",
+        verbose_name="Criança", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     has_pregnant = models.PositiveIntegerField(
-        verbose_name="Gestante",
+        verbose_name="Gestante", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
     STATUS_CHOICES = [
-        ('ativo', 'Ativo'), ('inativo', 'Inativo'), ('desligado', 'Desligado'),
+        ('ativo', 'Ativo'), ('inativo', 'Inativo'),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, blank=True, null=True)
+    """
     motivo_desligamento = models.CharField(
         max_length=255,
         blank=True,
         null=True,
-    )
+    )"""
     
     #aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, related_name='families')
     @property
@@ -667,20 +671,17 @@ class PerfilUsuario(models.Model):
 # Criar Perfil automaticamente ao criar User
 @receiver(post_save, sender=User)
 def criar_perfil_usuario(sender, instance, created, **kwargs):
-    if created and not PerfilUsuario.objects.filter(user=instance, tipo_perfil='colaborador').exists():
-        PerfilUsuario.objects.create(user=instance, tipo_perfil='colaborador')
+    if created: # and not PerfilUsuario.objects.filter(user=instance).exists():
+        #PerfilUsuario.objects.create(user=instance, tipo_perfil='colaborador')
+        return
 
-@receiver(post_save, sender=User)
-def salvar_perfil_usuario(sender, instance, **kwargs):
-    if hasattr(instance, 'perfilusuario'):
-        instance.perfis.all()
+
+@receiver(post_save, sender='AppLSD.PerfilUsuario')
+def sincronizar_grupos_perfil(sender, instance, **kwargs):
+    # sempre que um PerfilUsuario for salvo, re-sincroniza os grupos
+    sincronizar_grupos_usuario(instance.user)
+
     
-def cadastrar_educadora(request):
-    if request.method == "POST":
-        # ... criar user/usuario ...
-        # Antes de adicionar perfil:
-        PerfilUsuario.objects.filter(user=usuario, tipo_perfil='colaborador').delete()
-        PerfilUsuario.objects.create(user=usuario, tipo_perfil='educadora')
 
 
 

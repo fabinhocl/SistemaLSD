@@ -3,8 +3,43 @@ Funções auxiliares e decorators para controle de permissões
 """
 from django.core.exceptions import PermissionDenied
 from django.contrib.contenttypes.models import ContentType
-from AppLSD.models import AppLog
+from django.contrib.auth.models import Group
 from functools import wraps
+
+
+PERFIL_TO_GROUP = {
+    'admin': 'Admin',
+    'coordenacao': 'Coordenação',
+    'servicosocial': 'Serviço Social',
+    'educadora': 'Educadora',
+    'facilitador': 'Facilitador',
+    'administrativo': 'Administrativo',
+    'diretoria': 'Diretoria',
+    'colaborador': 'Colaborador',
+    'financeiro': 'Financeiro',
+    'nutricao': 'Nutrição',
+}
+
+# perfis válidos (em vez de lista “na mão”)
+TIPOS_PERFIL_VALIDOS = list(PERFIL_TO_GROUP.keys())
+
+def sincronizar_grupos_usuario(usuario):
+    from AppLSD.models import PerfilUsuario
+    # remove de todos os grupos gerenciados
+    for _, nome_grupo in PERFIL_TO_GROUP.items():
+        try:
+            grp = Group.objects.get(name=nome_grupo)
+            usuario.groups.remove(grp)
+        except Group.DoesNotExist:
+            continue
+
+    # adiciona grupos conforme perfis atuais
+    tipos = PerfilUsuario.objects.filter(user=usuario).values_list('tipo_perfil', flat=True)
+    for tipo in tipos:
+        nome_grupo = PERFIL_TO_GROUP.get(tipo)
+        if nome_grupo:
+            grp, _ = Group.objects.get_or_create(name=nome_grupo)
+            usuario.groups.add(grp)
 
 
 def get_tipo_perfil(user):
@@ -89,6 +124,7 @@ def educadora_ou_coordenacao_required(function):
     return wrap
 
 def registrar_log(user, objeto, acao, descricao):
+    from AppLSD.models import AppLog
     AppLog.objects.create(
         content_type=ContentType.objects.get_for_model(objeto.__class__),
         object_id=objeto.pk,

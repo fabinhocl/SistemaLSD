@@ -147,7 +147,10 @@
         outline-offset: 2px !important;
         box-shadow: none !important;
     }
+
+   
     </style>
+
 
     {% block extra_head %}
        {{ form.media }}
@@ -160,6 +163,49 @@
         <div class="d-flex align-items-center">
             <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Lar São Domingos" height="48">
         </div>
+        {% load perfil_tags %}
+    {% if user|has_perfil:"admin" %}
+        <nav class="mb-4">
+            <ul class="nav justify-content-center">
+                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Início</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'usuarios_gerenciar' %}">Gerenciar Usuários</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_assist' %}">Sistema de Convivência</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_escola' %}">Escola</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
+            </ul>
+        </nav>
+    {% elif user|has_perfil:"coordenacao" %}
+        <nav class="mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_escola' %}">Início</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'family_list' %}">Famílias</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'aluno_list' %}">Assistidos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'turma_list' %}">Turmas</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'activity_list' %}">Atividades</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
+            </ul>
+        </nav>
+    {% elif user|has_perfil:"servicosocial" %}
+        <nav class="mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_assist' %}">Início</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'family_list' %}">Famílias</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'aluno_list' %}">Assistidos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'adult_list' %}">Adultos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
+            </ul>
+        </nav>
+    {% elif user|has_perfil:"educadora" %}
+        <nav class="mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_educadora' %}">Minhas Turmas</a></li>
+                {% for turma in turmas %}
+                <li class="nav-item"><a class="nav-link" href="{% url 'relatorio_presenca_turma' turma.id %}">Frequência</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endif %}
+
        
         <div class="d-flex align-items-center">
             {% if user.is_authenticated %}
@@ -173,34 +219,6 @@
     </div>
 </nav>
  <!-- Menus DINÂMICOS por perfil, logo aqui após a navbar -->
-{% load perfil_tags %}
-    {% if user|has_perfil:"admin" %}
-        <nav class="mb-4">
-            <ul class="nav justify-content-center">
-                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Início</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'usuarios_gerenciar' %}">Gerenciar Usuários</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Sistema de Convivência</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
-            </ul>
-        </nav>
-    {% elif user|has_perfil:"coordenacao" %}
-        <nav class="mb-4">
-            <ul class="nav nav-pills">
-                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Início</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'family_list' %}">Famílias</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'aluno_list' %}">Assistidos</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'turma_list' %}">Turmas</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
-            </ul>
-        </nav>
-    {% elif user|has_perfil:"professor" %}
-        <nav class="mb-4">
-            <ul class="nav nav-pills">
-                <li class="nav-item"><a class="nav-link" href="{% url 'professor_turmas' %}">Minhas Turmas</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'professor_frequencia' %}">Frequência</a></li>
-            </ul>
-        </nav>
-    {% endif %}
 
 
     <!-- Main content -->
