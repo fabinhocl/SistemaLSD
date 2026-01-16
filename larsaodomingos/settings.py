@@ -65,8 +65,8 @@ STATICFILES_FINDERS = [
 
 PLOTLY_COMPONENTS = [
     # componentes padrão do dash são adicionados automaticamente
-    'dpd_components',
-    'dpd_static_support',
+    #'dpd_components',
+    #'dpd_static_support',
     # se usar dash_bootstrap_components, adicionar também:
     # 'dash_bootstrap_components',
 ]
