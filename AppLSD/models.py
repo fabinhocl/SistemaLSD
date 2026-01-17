@@ -573,6 +573,23 @@ class Aluno(AuditModel):
         }
         return ensino_map.get(self.ensino, self.ensino)
   
+    @property
+    def faixa_etaria(self):
+        idade = self.idade  # já é calculada pela @property idade
+        if idade in ("", None):
+            return None
+
+        idade = int(idade)
+
+        if 6 <= idade <= 7:
+            return '06 a 07 anos'
+        if 8 <= idade <= 9:
+            return '08 a 09 anos'
+        if 10 <= idade <= 12:
+            return '10 a 12 anos'
+        if 13 <= idade <= 17:
+            return '13 a 17 anos'
+        return None
 
 
 """
@@ -593,7 +610,7 @@ class Turma(AuditModel):
     ano_letivo = models.IntegerField(default=timezone.now().year)
 
     def __str__(self):
-        return f"{self.sala} - Educadora: {self.educadora.get_full_name() if self.educadora else 'Sem Educadora'}"
+        return f"{self.sala} - Educadora: {self.educadora.first_name} - {self.turno}"
 
 
 
@@ -724,11 +741,11 @@ class FrequenciaAluno(models.Model):
         return f"{self.aluno.name} ({'P' if self.presente else 'F'})"
 
 class MovimentacaoTurmaAluno(models.Model):
-    aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, related_name="historico_turmas")
-    turma_origem = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    turma_destino = models.ForeignKey(Turma, on_delete=models.CASCADE)
-    data_movimentacao = models.DateField(auto_now_add=True)
-    motivo = models.CharField(max_length=200, blank=True)
+    aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE)
+    turma_origem = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, related_name='+')
+    turma_destino = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    motivo = models.CharField(max_length=255, blank=True)
+    data = models.DateTimeField(auto_now_add=True)
 
 class OcorrenciaAluno(models.Model):
     aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, related_name="ocorrencias")

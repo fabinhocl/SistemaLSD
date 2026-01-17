@@ -20,6 +20,7 @@ from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef, 
 from django.db.models.functions import Cast
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
+from django.views.generic import ListView
 from datetime import date, timedelta, datetime
 from .permissoes import require_perfil
 # Concatena e ordena por data
@@ -888,13 +889,17 @@ def aluno_create(request):
 def aluno_detail(request, pk):
     aluno = get_object_or_404(Aluno, pk=pk)
 
-    from django.contrib.contenttypes.models import ContentType
     ct = ContentType.objects.get_for_model(Aluno)
     logs = AppLog.objects.filter(content_type=ct, object_id=aluno.pk)
+
+    historico_turmas = MovimentacaoTurmaAluno.objects.filter(
+        aluno=aluno
+    ).order_by('-data')   # traz inclusive quando turma_destino é None
 
     context = {
         'aluno': aluno,
         'logs': logs,
+        'historico_turmas': historico_turmas,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
 
@@ -1057,12 +1062,31 @@ def is_educadora(user):
     return tipo_perfil == 'educadora'
 
 
-def turma_list(request):
-    class_list = Turma.objects.all().order_by('educadora', 'sala', 'turno')
-    paginator = Paginator(class_list, 100)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'AppLSD/turma_list.html', {'page_obj': page_obj})
+class TurmaListView(ListView):
+    model = Turma
+    template_name = "AppLSD/turma_list.html"   # use o seu template atual
+    context_object_name = "page_obj"           # para reaproveitar o template
+    paginate_by = 20                          # mesmo valor do Paginator
+
+    def get_queryset(self):
+        qs = Turma.objects.all().order_by('educadora', 'sala', 'turno')
+
+        turno = self.request.GET.get("turno")
+        ano = self.request.GET.get("ano")
+        faixa = self.request.GET.get("faixa_etaria")
+        educadora = self.request.GET.get("educadora")
+
+        if turno:
+            qs = qs.filter(turno=turno)
+        if ano:
+            qs = qs.filter(ano_letivo=ano)
+        if faixa:
+            qs = qs.filter(faixa_etaria=faixa)
+        if educadora:
+            qs = qs.filter(educadora__first_name__icontains=educadora)
+
+
+        return qs
 
 @login_required
 def turma_create(request):
@@ -1501,15 +1525,41 @@ def turma_add_alunos(request, turma_id):
     turma = get_object_or_404(Turma, pk=turma_id)
     alunos_queryset = Aluno.objects.filter(turma__isnull=True)
 
+    # turno_oposto: se turma é Matutino, pega alunos Vespertino; se é Vespertino, pega Matutino
+    if turma.turno == 'Matutino':
+        alunos_queryset = alunos_queryset.filter(turno='Vespertino')
+    elif turma.turno == 'Vespertino':
+        alunos_queryset = alunos_queryset.filter(turno='Matutino')
+
     filtro = AlunoFiltroForm(request.GET or None)
     if filtro.is_valid():
         if filtro.cleaned_data['nome']:
             alunos_queryset = alunos_queryset.filter(name__icontains=filtro.cleaned_data['nome'])
-        if filtro.cleaned_data['familia']:
-            alunos_queryset = alunos_queryset.filter(family=filtro.cleaned_data['familia'])
-        if filtro.cleaned_data['escola']:
-            alunos_queryset = alunos_queryset.filter(school__icontains=filtro.cleaned_data['escola'])
+        if filtro.cleaned_data['registration_number']:
+            alunos_queryset = alunos_queryset.filter(family=filtro.cleaned_data['registration_number'])
+        faixa = filtro.cleaned_data.get('faixa_etaria')
+        if faixa:
+            hoje = date.today()
 
+            def intervalo_idade(min_idade, max_idade):
+                # pessoas com idade entre min e max nasceram entre estas datas:
+                data_max = date(hoje.year - min_idade, hoje.month, hoje.day)
+                data_min = date(hoje.year - max_idade - 1, hoje.month, hoje.day) + timedelta(days=1)
+                return data_min, data_max
+
+            if faixa == "06-07":
+                data_min, data_max = intervalo_idade(6, 7)
+            elif faixa == "08-09":
+                data_min, data_max = intervalo_idade(8, 9)
+            elif faixa == "10-12":
+                data_min, data_max = intervalo_idade(10, 12)
+            elif faixa == "13-17":
+                data_min, data_max = intervalo_idade(13, 17)
+
+            alunos_queryset = alunos_queryset.filter(
+                birth_date__range=(data_min, data_max)
+            )
+            
     class DinamicoAddAlunosToTurmaForm(AddAlunosToTurmaForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -1534,34 +1584,40 @@ def turma_add_alunos(request, turma_id):
 
 def mover_aluno(request, aluno_id):
     aluno = Aluno.objects.get(pk=aluno_id)
+
     if request.method == "POST":
         form = MoverAlunoForm(request.POST)
         if form.is_valid():
             turma_antiga = aluno.turma
-            turma_nova = form.cleaned_data['turma_destino']
-            motivo = form.cleaned_data['motivo']
+            turma_nova = form.cleaned_data.get('turma_destino')  # pode ser None
+            motivo = form.cleaned_data.get('motivo')
 
-            # Atualiza a turma do aluno
+            # Atualiza a turma do aluno (None = remove da turma)
             aluno.turma = turma_nova
             aluno.save()
 
-            # Cria registro no histórico
+            # Cria registro no histórico (permite turma_nova ou None)
             MovimentacaoTurmaAluno.objects.create(
                 aluno=aluno,
                 turma_origem=turma_antiga,
                 turma_destino=turma_nova,
                 motivo=motivo
             )
+
+            texto_destino = turma_nova if turma_nova else 'SEM TURMA'
             registrar_log(
                 request.user,
                 aluno,
                 'aluno_movido',
-                f'Aluno {aluno.name} movido da turma {turma_antiga} para {turma_nova}. Motivo: {motivo}'
+                f'Aluno {aluno.name} movido da turma {turma_antiga} para {texto_destino}. Motivo: {motivo}'
             )
+
             return redirect('aluno_detail', pk=aluno.pk)
     else:
         form = MoverAlunoForm(initial={'turma_destino': aluno.turma})
+
     return render(request, "AppLSD/mover_aluno.html", {"form": form, "aluno": aluno})
+
 
 def adicionar_ocorrencia(request, aluno_id):
     aluno = Aluno.objects.get(pk=aluno_id)

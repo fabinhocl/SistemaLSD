@@ -4,7 +4,7 @@ from dal import autocomplete
 from django.core.validators import RegexValidator
 from django.forms.models import inlineformset_factory
 from django.forms import DateInput
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
 from .validators import cpf_validator
@@ -432,7 +432,7 @@ class AlunoForm(forms.ModelForm):
             'frequencia_tipo': 'Tipo de Frequência',
             'dias_semana': 'Dias da Semana',
             'status_lsd': 'Situação Atual no Lar',
-            'faixa_etaria': 'Faixa Etária',
+            
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-select'}),
@@ -466,7 +466,7 @@ class AlunoForm(forms.ModelForm):
             'uso_medicacao',
             'qual_medicacao',
             'status_lsd',
-            'faixa_etaria',
+            
         )
 
         # se quiser garantir valor default para radios ao criar:
@@ -482,19 +482,7 @@ class AlunoForm(forms.ModelForm):
             (hoje.month, hoje.day) < (birth_date.month, birth_date.day)
         )
     
-    def calcular_faixa_etaria(self, idade):
-        if idade is None:
-            return None
-        if 6 <= idade <= 7:
-            return '06 a 07 anos'
-        if 8 <= idade <= 9:
-            return '08 a 09 anos'
-        if 10 <= idade <= 12:
-            return '10 a 12 anos'
-        if 13 <= idade <= 17:
-            return '13 a 17 anos'
-        return None
-
+    
     def clean(self):
         cleaned_data = super().clean()
 
@@ -561,12 +549,41 @@ AdultFormSet = inlineformset_factory(
     fields=['name', 'parentesco', 'birth_date', 'education', 'ocupacao', 'renda', 'status', 'telephone'],
     extra=0, can_delete=True
 )
-        
+
+
+   
+class EducadoraChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        # Usa first_name + last_name se existirem
+        if obj.first_name or obj.last_name:
+            return f"{obj.first_name} {obj.last_name}".strip()
+        # fallback para username
+        return obj.username
+
+
 class TurmaForm(forms.ModelForm):
+    educadora = EducadoraChoiceField(
+        queryset=User.objects.none(),
+        label="Nome da Educadora"
+    )
+
     class Meta:
         model = Turma
-        fields = ['educadora', 'faixa_etaria', 'sala', 'turno']
-        labels = {'educadora': 'Nome da Educadora', 'faixa_etaria': 'Faixa Etária', 'sala': 'Sala', 'turno': 'Turno'}
+        fields = ['educadora', 'sala', 'turno', 'faixa_etaria', 'ano_letivo']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        try:
+            grupo_educadora = Group.objects.get(name='Educadora')
+            # filtra usuários que pertencem ao grupo educadora
+            self.fields['educadora'].queryset = (
+                User.objects.filter(groups=grupo_educadora)
+                .order_by('first_name', 'last_name')
+            )
+        except Group.DoesNotExist:
+            # se o grupo ainda não existe, não mostra ninguém
+            self.fields['educadora'].queryset = User.objects.none()
 
 
 class ActivityForm(forms.ModelForm):
@@ -603,16 +620,36 @@ class AddAlunosToTurmaForm(forms.Form):
 
 class AlunoFiltroForm(forms.Form):
     nome = forms.CharField(label='Nome', required=False)
-    familia = forms.ModelChoiceField(
-        queryset=Family.objects.all(),
+    registration_number = forms.CharField(
         required=False,
-        label='Família'
+        label="Nº inscrição"
     )
-    escola = forms.CharField(label='Escola', required=False)
+    faixa_etaria = forms.ChoiceField(
+        required=False,
+        label="Faixa etária",
+        choices=(
+            ("", "Todas"),
+            ("06-07", "06-07 anos"),
+            ("08-09", "08-09 anos"),
+            ("10-12", "10-12 anos"),
+            ("13-17", "13-17 anos"),
+        )
+    )
 
 class MoverAlunoForm(forms.Form):
-    turma_destino = forms.ModelChoiceField(queryset=Turma.objects.all(), label="Nova Turma")
-    motivo = forms.CharField(max_length=255, required=False, label="Motivo da movimentação")
+    turma_destino = forms.ModelChoiceField(
+        queryset=Turma.objects.all(),
+        required=False,
+        label="Nova Turma",
+        empty_label="--- Remover da turma ---",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    motivo = forms.CharField(
+        label="Motivo da movimentação",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+
 
 class OcorrenciaAlunoForm(forms.ModelForm):
     class Meta:

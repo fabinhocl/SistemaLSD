@@ -1,15 +1,15 @@
-from django.urls import path, include
-from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from AppLSD.views import FamilyViewSet, AlunoViewSet, TurmaViewSet, ActivityViewSet, FamilyAutocomplete 
 from .import views_templates # importa as views para templates
 from .import views
+from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from django.contrib import admin
-from dal import autocomplete
 from django.conf import settings
+from django.conf.urls.static import static
 from django.views.static import serve
-from . import views
+from dal import autocomplete
+
 
 
 router = DefaultRouter()
@@ -62,7 +62,7 @@ urlpatterns = [
     path('alunos/<int:aluno_id>/ocorrencia/', views_templates.adicionar_ocorrencia, name='adicionar_ocorrencia'),
 
     #Turmas
-    path('turma/', views_templates.turma_list, name='turma_list'),
+    path('turma/', views_templates.TurmaListView.as_view(), name='turma_list'),
     path('turma/new/', views_templates.turma_create, name='turma_create'),
     path('turma/edit/<int:pk>/', views_templates.turma_edit, name='turma_edit'),
     path('turma/delete/<int:pk>/', views_templates.turma_delete, name='turma_delete'),

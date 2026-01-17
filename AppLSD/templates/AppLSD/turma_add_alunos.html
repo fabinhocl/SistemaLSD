@@ -1,19 +1,69 @@
 {% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
 {% block content %}
-<h2>Adicionar Alunos à Turma {{ turma.nome }}</h2>
-<form method="get" class="mb-3 border p-2 rounded">
-    <div class="row">
-        <div class="col">{{ filtro.nome.label_tag }} {{ filtro.nome }}</div>
-        <div class="col">{{ filtro.familia.label_tag }} {{ filtro.familia }}</div>
-        <div class="col">{{ filtro.escola.label_tag }} {{ filtro.escola }}</div>
-        <div class="col"><button type="submit" class="btn btn-info">Buscar</button></div>
+<h1>Adicionar Alunos à Turma </h1>
+<h2> Educadora: {{ turma.educadora.first_name }}</h2>
+<h3>Sala: {{ turma.sala }}</h3>
+  <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
+  <p><strong>Turno:</strong> {{ turma.turno }}</p>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control"
+            value="{{ filtro.data.nome }}">
     </div>
-</form>
 
-<form method="post" class="mb-4">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Adicionar à turma</button>
-    <a href="{% url 'turma_detail' turma.id %}" class="btn btn-secondary">Voltar para detalhes da turma</a>
+    <div class="col-md-4">
+        <label class="form-label">Nº inscrição</label>
+        <input type="text" name="inscricao" class="form-control"
+            value="{{ request.GET.inscricao }}">
+    </div>
+
+    <div class="col-md-3">
+  <label class="form-label">Faixa etária</label>
+  <select name="faixa_etaria" class="form-select">
+    <option value="">Todas</option>
+    <option value="06-07" {% if request.GET.faixa_etaria == "06-07" %}selected{% endif %}>06-07 anos</option>
+    <option value="08-09" {% if request.GET.faixa_etaria == "08-09" %}selected{% endif %}>08-09 anos</option>
+    <option value="10-12" {% if request.GET.faixa_etaria == "10-12" %}selected{% endif %}>10-12 anos</option>
+    <option value="13-17" {% if request.GET.faixa_etaria == "13-17" %}selected{% endif %}>13-17 anos</option>
+  </select>
+</div>
+
+    <div class="col-md-1 d-flex align-items-end">
+        <button type="submit" class="btn btn-info w-100">Buscar</button>
+        <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-outline-secondary">Limpar</a>
+    </div>
+    
 </form>
+<div>
+  <form method="post" class="mb-4">
+    {% csrf_token %}
+
+    <p>Selecione os alunos para adicionar à turma:</p>
+
+    {% for aluno in form.fields.alunos.queryset %}
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          name="alunos"
+          value="{{ aluno.id }}"
+          id="aluno_{{ aluno.id }}"
+        >
+        <label class="form-check-label" for="aluno_{{ aluno.id }}">
+          {{ aluno.name }}{% if aluno.faixa_etaria %} – {{ aluno.faixa_etaria }}{% endif %} – Turno: {{ aluno.turno }}
+        </label>
+      </div>
+    {% empty %}
+      <p>Nenhum aluno disponível para esta turma.</p>
+    {% endfor %}
+    
+        <button type="submit" class="btn btn-success mt-3">Adicionar à turma</button>
+        <a href="{% url 'turma_detail' turma.id %}" class="btn btn-secondary mt-3">Voltar para detalhes da turma</a>
+    
+  </form>
+</div>
+
 {% endblock %}

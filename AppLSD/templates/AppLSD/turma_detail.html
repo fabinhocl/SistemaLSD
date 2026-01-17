@@ -68,9 +68,13 @@ Detalhes da Turma - {{ turma.sala }}
             <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
             <td>{{ aluno.idade }}</td>
             <td>
-              <a href="{% url 'aluno_edit' aluno.pk %}" class="btn btn-sm btn-primary">Editar</a>
-              <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
-              <a href="{% url 'mover_aluno' aluno.pk %}" class="btn btn-warning btn-sm">Mover aluno</a>
+               <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">Visualizar</a>
+
+                  {% if pode_editar %}
+                    <a href="{% url 'aluno_edit' aluno.id %}" class="btn btn-primary btn-sm">Editar</a>
+                    <a href="{% url 'mover_aluno' aluno.id %}" class="btn btn-warning btn-sm">Mover aluno</a>
+                  {% endif %}
+                
             </td>
           </tr>
           {% empty %}
@@ -180,7 +184,7 @@ Detalhes da Turma - {{ turma.sala }}
   <div class="mt-4">
     <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
     <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
-    <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar à lista de turmas</a>
+    <a href="{% url 'home_educadora' %}" class="btn btn-secondary">Voltar à Home</a>
   </div>
 
 </div>

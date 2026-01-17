@@ -148,16 +148,24 @@
         </tr>
       </thead>
       <tbody>
-        {% for mov in aluno.historico_turmas.all %}
-          <tr class="text-center">
-            <td>{{ mov.data_movimentacao|date:"d/m/Y" }}</td>
-            <td>{% if mov.turma_origem %}{{ mov.turma_origem.faixa_etaria }}{% else %}-{% endif %}</td>
-            <td>{{ mov.turma_destino.faixa_etaria }}</td>
-            <td>{{ mov.motivo }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="4" class="text-center">Nenhuma movimentação registrada.</td></tr>
-        {% endfor %}
+        {% for mov in historico_turmas %}
+      <tr class="text-center">
+        <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+        <td>{{ mov.turma_origem }}</td>
+        <td>
+          {% if mov.turma_destino %}
+            {{ mov.turma_destino }}
+          {% else %}
+            Sem turma
+          {% endif %}
+        </td>
+        <td>{{ mov.motivo }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4" class="text-center">Nenhuma movimentação registrada.</td>
+      </tr>
+    {% endfor %}
       </tbody>
     </table>
 
