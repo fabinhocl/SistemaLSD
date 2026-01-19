@@ -499,7 +499,7 @@ class AlunoForm(forms.ModelForm):
         birth_date = cleaned_data.get("birth_date")
         if birth_date:
             idade = self.calcular_idade(birth_date)
-            cleaned_data["faixa_etaria"] = self.calcular_faixa_etaria(idade)
+            #cleaned_data["faixa_etaria"] = self.calcular_faixa_etaria(idade)
 
         return cleaned_data
 
