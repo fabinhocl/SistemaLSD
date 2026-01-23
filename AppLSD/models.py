@@ -644,6 +644,9 @@ class Activity(AuditModel):
     ]
     turno = models.CharField(max_length=50, choices=ESCOLHA_TURNO, default='', blank=True)
     alunos = models.ManyToManyField('Aluno', related_name='atividades')
+    #turma = models.ForeignKey("Turma", on_delete=models.CASCADE, related_name="atividades")
+    horario_inicio = models.TimeField()
+    horario_fim = models.TimeField()
     def __str__(self):
         return self.atividade
 
@@ -658,6 +661,15 @@ class Activity(AuditModel):
                 return self.dia_semana
             except Exception:
                 return self.dia_semana
+
+class ActivityLog(AuditModel):
+    Activity = models.ForeignKey('Activity', on_delete=models.CASCADE, related_name='logs')
+    acao = models.CharField(max_length=100)          # ex: 'frequencia_criada'
+    descricao = models.TextField()                   # texto humano: "Frequência de hoje registrada pela educadora Ana"
+    
+    class Meta:
+        verbose_name = 'Log de Atividade'
+        verbose_name_plural = 'Logs de Atividades'
 
 
 # models.py (adapte conforme seu modelo)

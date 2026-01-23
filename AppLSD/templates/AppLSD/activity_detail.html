@@ -56,7 +56,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
             <td>{{ aluno.name }}</td>
             <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
             <td>{{ aluno.idade }}</td>
-            <td>{{ aluno.turma.educadora.first_name }}</td>
+            <td>{{ aluno.turma }}</td>
             <td>
               <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
             </td>

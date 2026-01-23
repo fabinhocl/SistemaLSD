@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "AppLSD/base.html" %}
 {% load crispy_forms_tags %}
 {% block content %}
 
@@ -11,13 +11,15 @@
         {% load crispy_forms_tags %}
         <div class="row mb-3">
                     <div class="col-md-4">{{ form.atividade|as_crispy_field }}</div>
-                    <div class="col-md-8">{{ form.tipo|as_crispy_field }}</div>
-                <div class="row mb-3">
-                    <div class="col-md-8">{{ form.dia_semana|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.tipo|as_crispy_field }}</div>
                     <div class="col-md-4">{{ form.turno|as_crispy_field }}</div>
+                <div class="row mb-3">
+                    <div class="col-md-4">{{ form.dia_semana|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.horario_inicio|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.horario_fim|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-8">{{ form.facilitador|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.facilitador|as_crispy_field }}</div>
                 </div>
             </div>    
                 

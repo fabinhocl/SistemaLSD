@@ -338,6 +338,7 @@ def home_assist(request):
     contexto = {
         "total_assistidos": Aluno.objects.count(),
         "total_familias": Family.objects.count(),
+        "total_familias_ativas": Family.objects.filter(status="ativo").count(),
         "total_adultos": Adult.objects.count(),
         "total_idosos": Adult.objects.filter(birth_date__lte=data_corte).count(),
         # "percentual_presenca": calcular_presenca_hoje(),
@@ -1523,7 +1524,7 @@ def editar_frequencia_activity(request, activity_id):
 
 def turma_add_alunos(request, turma_id):
     turma = get_object_or_404(Turma, pk=turma_id)
-    alunos_queryset = Aluno.objects.filter(turma__isnull=True)
+    alunos_queryset = Aluno.objects.filter(status_lsd="Frequentando")
 
     # turno_oposto: se turma é Matutino, pega alunos Vespertino; se é Vespertino, pega Matutino
     if turma.turno == 'Matutino':
@@ -1634,35 +1635,72 @@ def adicionar_ocorrencia(request, aluno_id):
 
 def activity_add_alunos(request, activity_id):
     atividade = Activity.objects.get(id=activity_id)
-    alunos_queryset = Aluno.objects.exclude(atividades=atividade)  # alunos que ainda não estão na atividade
 
+    # alunos que ainda não estão na atividade e estão frequentando
+    alunos_queryset = Aluno.objects.exclude(atividades=atividade)
+    alunos_queryset = alunos_queryset.filter(status_lsd="Frequentando")
+
+    # Se quiser restringir pelo turno da própria atividade (opcional):
+    if atividade.turno == 'Matutino':
+       alunos_queryset = alunos_queryset.filter(turno='Vespertino')
+    elif atividade.turno == 'Vespertino':
+         alunos_queryset = alunos_queryset.filter(turno='Matutino')
+
+    # filtros de busca
     filtro = AlunoFiltroForm(request.GET or None)
     if filtro.is_valid():
-        if filtro.cleaned_data['nome']:
-            alunos_queryset = alunos_queryset.filter(name__icontains=filtro.cleaned_data['nome'])
-        if filtro.cleaned_data['familia']:
-            alunos_queryset = alunos_queryset.filter(family=filtro.cleaned_data['familia'])
-        if filtro.cleaned_data['escola']:
-            alunos_queryset = alunos_queryset.filter(school__icontains=filtro.cleaned_data['escola'])
+        nome = filtro.cleaned_data.get("nome")
+        inscricao = filtro.cleaned_data.get("registration_number")
+        faixa = filtro.cleaned_data.get("faixa_etaria")
 
-    class DinamicoAddAlunosToTurmaForm(AddAlunosToTurmaForm):
+        if nome:
+            alunos_queryset = alunos_queryset.filter(name__icontains=nome)
+
+        if inscricao:
+            alunos_queryset = alunos_queryset.filter(
+                family=inscricao
+            )
+
+        if faixa:
+            hoje = date.today()
+
+            def intervalo_idade(min_idade, max_idade):
+                data_max = date(hoje.year - min_idade, hoje.month, hoje.day)
+                data_min = date(hoje.year - max_idade - 1, hoje.month, hoje.day) + timedelta(days=1)
+                return data_min, data_max
+
+            if faixa == "06-07":
+                data_min, data_max = intervalo_idade(6, 7)
+            elif faixa == "08-09":
+                data_min, data_max = intervalo_idade(8, 9)
+            elif faixa == "10-12":
+                data_min, data_max = intervalo_idade(10, 12)
+            elif faixa == "13-17":
+                data_min, data_max = intervalo_idade(13, 17)
+
+            alunos_queryset = alunos_queryset.filter(
+                birth_date__range=(data_min, data_max)
+            )
+
+    # Form dinâmico usando o queryset filtrado
+    class DinamicoAddAlunosToAtividadeForm(AddAlunosToTurmaForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.fields['alunos'].queryset = alunos_queryset
+            self.fields["alunos"].queryset = alunos_queryset
 
-    if request.method == 'POST':
-        form = DinamicoAddAlunosToTurmaForm(request.POST)
+    if request.method == "POST":
+        form = DinamicoAddAlunosToAtividadeForm(request.POST)
         if form.is_valid():
-            for aluno in form.cleaned_data['alunos']:
-                atividade.alunos.add(aluno)  # adiciona aluno à atividade corretamente
-            return redirect('activity_detail', activity_id=atividade.id)
+            for aluno in form.cleaned_data["alunos"]:
+                atividade.alunos.add(aluno)
+            return redirect("activity_detail", activity_id=atividade.id)
     else:
-        form = DinamicoAddAlunosToTurmaForm()
+        form = DinamicoAddAlunosToAtividadeForm()
 
     return render(
-        request, 
-        'AppLSD/activity_add_alunos.html', 
-        {'atividade': atividade, 'form': form, 'filtro': filtro}
+        request,
+        "AppLSD/activity_add_alunos.html",
+        {"atividade": atividade, "form": form, "filtro": filtro},
     )
 
 @login_required

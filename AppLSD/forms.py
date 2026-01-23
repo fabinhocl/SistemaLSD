@@ -604,15 +604,29 @@ class ActivityForm(forms.ModelForm):
     dia_semana = forms.MultipleChoiceField(choices=DIAS_SEMANAS_CHOICES, widget=forms.CheckboxSelectMultiple, label='Dias da Semana')
     class Meta:
         model = Activity
-        fields = ['facilitador','atividade', 'tipo', 'dia_semana', 'turno']
-        labels = {'facilitador': 'Nome Facilitador(a)','atividade': 'Nome da Atividade', 'tipo': 'Tipo', 'dia_semana': 'Dias da Semana', 'turno': 'Turno'}
+        fields = ['facilitador','atividade', 'tipo', 'dia_semana', 'turno', 'horario_inicio', 'horario_fim']
+        labels = {'facilitador': 'Nome Facilitador(a)','atividade': 'Nome da Atividade', 'tipo': 'Tipo', 'dia_semana': 'Dias da Semana', 'turno': 'Turno', 'horario_inicio': 'Horário Início', 'horario_fim': 'Horário Fim'}
+
+        widgets = {
+                "horario_inicio": forms.TimeInput(
+                    format="%H:%M",
+                    attrs={"type": "time", "class": "form-control"}
+                ),
+                "horario_fim": forms.TimeInput(
+                    format="%H:%M",
+                    attrs={"type": "time", "class": "form-control"}
+                ),
+                
+            }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['facilitador'].queryset = User.objects.filter(perfis__tipo_perfil='facilitador')
+        self.fields["facilitador"].queryset = User.objects.filter(
+            perfis__tipo_perfil="facilitador"
+        )
 
 class AddAlunosToTurmaForm(forms.Form):
     alunos = forms.ModelMultipleChoiceField(
-        queryset=Aluno.objects.filter(turma__isnull=True),
+        queryset=Aluno.objects.filter(status_lsd="Frequentando"),
         widget=forms.CheckboxSelectMultiple,
         required=True,
         label="Selecione os alunos para adicionar à turma"
