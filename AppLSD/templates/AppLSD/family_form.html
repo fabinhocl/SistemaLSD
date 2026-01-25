@@ -13,8 +13,11 @@
                 {% csrf_token %}
                 {% load crispy_forms_tags %}
                 {{ form.errors }}
+                {{ form.non_field_errors }}
                 {{ formset.management_form }}
-
+                    {% for f in formset %}
+                        {{ f.as_p }}
+                    {% endfor %}
 
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
             <!-- Linha 1 -->

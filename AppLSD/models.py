@@ -808,4 +808,13 @@ def validar_cpf(value):
     if not (int(cpf[9]) == digito1 and int(cpf[10]) == digito2):
         raise ValidationError("CPF inválido.")
 
+# Modelo para armazenar documentos relacionados à família
+class DocumentoFamilia(models.Model):
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="documentos")
+    ano = models.IntegerField()
+    arquivo = models.FileField(upload_to='families_docs/')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.family} - {self.ano}"
 

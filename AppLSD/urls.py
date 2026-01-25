@@ -44,6 +44,7 @@ urlpatterns = [
     path('families/<int:pk>/delete/', views_templates.family_delete_confirm, name='family_delete_confirm'),
     path('families/buscar_family/', views_templates.buscar_family, name='buscar_family'),
     path('families/<int:pk>/termo/', views_templates.family_term_pdf, name='family_term_pdf'),
+    path("families/<int:pk>/upload-documento/", views_templates.upload_documento, name="upload_documento"),
     
     #Adultos
     path('adults/', views_templates.adult_list, name='adult_list'),

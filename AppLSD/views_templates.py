@@ -1,6 +1,6 @@
 from pyexpat.errors import messages
 from dal import autocomplete
-from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario
+from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia    
 from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
@@ -505,11 +505,37 @@ def family_detail(request, pk):
     ct = ContentType.objects.get_for_model(Family)
     logs = AppLog.objects.filter(content_type=ct, object_id=family.pk)
 
+    # Documentos por ano
+    ano_atual = timezone.now().year
+    doc_atual = DocumentoFamilia.objects.filter(family=family, ano=ano_atual).first()
+
+    #doc_anterior = family.documentos.filter(ano=ano_atual - 1).first()
+
     context = {
-        'family': family,
-        'logs': logs,
+        "family": family,
+        "logs": logs,
+        "doc_atual": doc_atual,
+        #"doc_anterior": doc_anterior,
     }
+
     return render(request, 'AppLSD/family_detail.html', context)
+
+def upload_documento(request, pk):
+    family = get_object_or_404(Family, pk=pk)
+
+    if request.method == "POST":
+        form = DocumentoFamiliaForm(request.POST, request.FILES)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.family = family
+            doc.ano = timezone.now().year
+            doc.save()
+            return redirect("family_detail", pk=family.pk)
+    else:
+        form = DocumentoFamiliaForm()
+
+    return render(request, "AppLSD/upload_documento.html", {"family": family, "form": form})
+
 
 @login_required
 def family_delete_confirm(request, pk):
@@ -570,26 +596,47 @@ def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
 
     if request.method == 'POST':
+        file_info_antigo = family.file_info
+
         form = FamilyForm(request.POST, request.FILES, instance=family)
-        if form.is_valid():
+        formset = AlunoInlineFormSet(request.POST, request.FILES, instance=family)
+
+        if form.is_valid() and formset.is_valid():
             family = form.save(commit=False)
-            family.editado_por = request.user           # auditoria
+            family.editado_por = request.user
             family.save()
+            formset.save()
             registrar_log(
                 request.user,
                 family,
                 'familia_editada',
                 f'Família {family.responsible_name} atualizada.'
             )
+
+            arquivo_atual = request.FILES.get('file_info')
+
+            if arquivo_atual:
+                ano_atual = timezone.now().year
+                DocumentoFamilia.objects.filter(family=family, ano=ano_atual).delete()
+                DocumentoFamilia.objects.create(
+                    family=family,
+                    ano=ano_atual,
+                    arquivo=arquivo_atual,
+                )
+
+                family.file_info = file_info_antigo
+                family.save(update_fields=['file_info'])
+
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
-    
-    context = {
-        'form': form,
-        'family': family,
-    }
-    return render(request, 'AppLSD/family_form.html', {'form': form, 'family': family})
+        formset = AlunoInlineFormSet(instance=family)
+
+    return render(
+        request,
+        'AppLSD/family_form.html',
+        {'form': form, 'formset': formset, 'family': family},
+    )
 
 @login_required
 def family_create(request):
@@ -618,18 +665,38 @@ def family_create(request):
 def family_update(request, pk):
     family = get_object_or_404(Family, pk=pk)
     if request.method == 'POST':
+        # guarda o valor antigo de file_info antes de processar o form
+        file_info_antigo = family.file_info
         form = FamilyForm(request.POST, request.FILES, instance=family)
         formset = AlunoInlineFormSet(request.POST, request.FILES, instance=family)
         if form.is_valid() and formset.is_valid():
-            family = form.save(commit=False)
+            family = form.save(commit=False) 
             family.editado_por = request.user           # auditoria
             family.save()
             formset.save()
+
+            print("FILES:", request.FILES)  # DEBUG
+            # arquivo do documento atual (campo EXTRA no template)
+            arquivo_atual = request.FILES.get('file_info')
+
+            print("ARQUIVO_ATUAL:", arquivo_atual)  # DEBUG
+
+            if arquivo_atual:
+                ano_atual = timezone.now().year
+                DocumentoFamilia.objects.filter(family=family, ano=ano_atual).delete()
+                DocumentoFamilia.objects.create(
+                    family=family,
+                    ano=ano_atual,
+                    arquivo=arquivo_atual,
+                )
+                # restaura o file_info antigo para continuar sendo o "documento anterior"
+                family.file_info = file_info_antigo
+                family.save(update_fields=['file_info'])
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
         formset = AlunoInlineFormSet(instance=family)
-    return render(request, 'families/family_form.html', {'form': form, 'formset': formset})
+    return render(request, 'families/family_form.html', {'form': form, 'formset': formset, 'family': family},)
 
 def buscar_family(request):
     query = request.GET.get('query', '')

@@ -153,13 +153,58 @@
                         
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-6"><strong>Documentação:</strong> <div>{% if family.file_info %}<a href="{{ family.file_info.url }}" class="btn btn-primary" style="font-size:12px; padding:5px 5px;" target="_blank">Visualizar documento</a>{% else %}Não disponível{% endif %}</div></div>
-                    <div class="col-md-6"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                    <div class="col-md-4"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                    
                 </div>
-    
             </div>
         </div>
     </div>    
+<div class="container mt-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 mx-auto">   
+            <h3 class="row justify-content-center">Documentos da Família</h3>
+
+            <div class="row">
+            <!-- Botão antigo, para não perder documentos já ligados a file_info -->
+                <div class="col-md-6 mb-2">
+                    <strong>Documentação Anterior:</strong>
+                    <div>
+                    {% if family.file_info %}
+                        <a href="{{ family.file_info.url }}"
+                        class="btn btn-primary"
+                        style="font-size:12px; padding:5px 5px;"
+                        target="_blank">
+                        Visualizar Documento 
+                        </a>
+                    {% else %}
+                        Não disponível
+                    {% endif %}
+                    </div>
+                </div>
+
+            <!-- Lista por ano usando DocumentoFamilia -->
+                <div class="col-md-6 mb-2">
+                    {% if doc_atual %}
+                    <strong>Documento {{ doc_atual.ano }}:</strong>
+                    <ul class="mb-0">
+                        
+                            <a href="{{ doc_atual.arquivo.url }}"
+                            class="btn btn-primary"
+                            style="font-size:12px; padding:5px 5px;"
+                            target="_blank">
+                            Visualizar Documento Atual
+                            </a>
+                        
+                        {% endif %}
+                    
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
     <h2 class="row justify-content-center"> Composição Familiar</h2>
     <h3 class="row justify-content-center mt-4">Crianças / Adolescente</h3>
     <a href="{% url 'aluno_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
