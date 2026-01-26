@@ -316,7 +316,7 @@ class Family(AuditModel):
         validators=[MinValueValidator(0)]  # mínimo 0
     )
     #file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
-    file_info = models.FileField(upload_to='familias/%Y/%m/%d/', null=True, blank=True)
+    file_info = models.CharField(max_length=255, null=True, blank=True)
     STATUS_CHOICES = [
         ('ativo', 'Ativo'), ('inativo', 'Inativo'),
     ]

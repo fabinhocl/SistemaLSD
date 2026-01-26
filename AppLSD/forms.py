@@ -100,6 +100,7 @@ class FamilyForm(forms.ModelForm):
         label="Qual função?"
     )
     idade = forms.CharField(label='Idade', required=False, widget=forms.TextInput(attrs={'readonly': 'readonly'}))
+    file_info = forms.FileField(required=False, label='Documento da família')
     class Meta:
         model = Family
         
@@ -148,7 +149,6 @@ class FamilyForm(forms.ModelForm):
             'has_adolescent',
             'has_child',
             'has_pregnant',
-            'file_info',
             'status',
             #'motivo_desligamento',
         ]
@@ -195,7 +195,6 @@ class FamilyForm(forms.ModelForm):
             'has_adolescent': 'Adolescente',
             'has_child': 'Criança',
             'has_pregnant': 'Gestante',
-            'file_info': 'Arquivo',
             'status': 'Situação',
             #'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
         }
