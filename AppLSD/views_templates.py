@@ -601,11 +601,11 @@ def family_edit(request, pk):
         form = FamilyForm(request.POST, request.FILES, instance=family)
        
 
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid():
             family = form.save(commit=False)
             family.editado_por = request.user
             family.save()
-            formset.save()
+            
             registrar_log(
                 request.user,
                 family,
