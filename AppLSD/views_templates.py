@@ -599,7 +599,7 @@ def family_edit(request, pk):
         file_info_antigo = family.file_info
 
         form = FamilyForm(request.POST, request.FILES, instance=family)
-        formset = AlunoInlineFormSet(request.POST, request.FILES, instance=family)
+       
 
         if form.is_valid() and formset.is_valid():
             family = form.save(commit=False)
@@ -630,12 +630,12 @@ def family_edit(request, pk):
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
-        formset = AlunoInlineFormSet(instance=family)
+        
 
     return render(
         request,
         'AppLSD/family_form.html',
-        {'form': form, 'formset': formset, 'family': family},
+        {'form': form, 'family': family},
     )
 
 @login_required
