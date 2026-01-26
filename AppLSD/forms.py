@@ -321,7 +321,7 @@ class AdultForm(forms.ModelForm):
         )
     cpf = forms.CharField(
         label='CPF',
-        required=True,
+        required=False,
         max_length=14,
         widget=forms.TextInput(attrs={'id': 'cpf', 'placeholder': 'xxx.xxx.xxx-xx'}),
     )
