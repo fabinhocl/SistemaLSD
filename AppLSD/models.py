@@ -315,7 +315,8 @@ class Family(AuditModel):
         verbose_name="Gestante", default=0,
         validators=[MinValueValidator(0)]  # mínimo 0
     )
-    file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
+    #file_info = models.FileField(upload_to='families_docs/', blank=True, null=True)
+    file_info = models.FileField(upload_to='familias/%Y/%m/%d/', null=True, blank=True)
     STATUS_CHOICES = [
         ('ativo', 'Ativo'), ('inativo', 'Inativo'),
     ]
@@ -810,11 +811,9 @@ def validar_cpf(value):
 
 # Modelo para armazenar documentos relacionados à família
 class DocumentoFamilia(models.Model):
-    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="documentos")
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='documentos')
     ano = models.IntegerField()
-    arquivo = models.FileField(upload_to='families_docs/')
+    tipo = models.CharField(max_length=50, default='geral')  # ex: comprovante_endereco, rg, etc.
+    arquivo = models.FileField(upload_to='familias/%Y/%m/%d/')
     criado_em = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.family} - {self.ano}"
 

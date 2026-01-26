@@ -6,6 +6,7 @@ from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
 from django import forms
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -505,20 +506,21 @@ def family_detail(request, pk):
     ct = ContentType.objects.get_for_model(Family)
     logs = AppLog.objects.filter(content_type=ct, object_id=family.pk)
 
-    # Documentos por ano
     ano_atual = timezone.now().year
     doc_atual = DocumentoFamilia.objects.filter(family=family, ano=ano_atual).first()
 
-    #doc_anterior = family.documentos.filter(ano=ano_atual - 1).first()
+    # todos os documentos da família, mais recentes primeiro
+    documentos = family.documentos.all().order_by('-criado_em')
 
     context = {
         "family": family,
         "logs": logs,
         "doc_atual": doc_atual,
-        #"doc_anterior": doc_anterior,
+        "documentos": documentos,
     }
 
     return render(request, 'AppLSD/family_detail.html', context)
+
 
 def upload_documento(request, pk):
     family = get_object_or_404(Family, pk=pk)
@@ -596,16 +598,13 @@ def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
 
     if request.method == 'POST':
-        file_info_antigo = family.file_info
-
         form = FamilyForm(request.POST, request.FILES, instance=family)
-       
 
         if form.is_valid():
             family = form.save(commit=False)
             family.editado_por = request.user
             family.save()
-            
+
             registrar_log(
                 request.user,
                 family,
@@ -613,24 +612,23 @@ def family_edit(request, pk):
                 f'Família {family.responsible_name} atualizada.'
             )
 
+            # Campo de arquivo único (file_info) OU múltiplos (documentos)
+            # 1) Se você mantiver um único input:
             arquivo_atual = request.FILES.get('file_info')
-
             if arquivo_atual:
-                ano_atual = timezone.now().year
-                DocumentoFamilia.objects.filter(family=family, ano=ano_atual).delete()
                 DocumentoFamilia.objects.create(
                     family=family,
-                    ano=ano_atual,
+                    ano=timezone.now().year,
+                    tipo='geral',
                     arquivo=arquivo_atual,
                 )
 
-                family.file_info = file_info_antigo
-                family.save(update_fields=['file_info'])
+            # 2) Se usar <input type="file" name="documentos" multiple>:
+           
 
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm(instance=family)
-        
 
     return render(
         request,
