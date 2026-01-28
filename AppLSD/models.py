@@ -733,6 +733,7 @@ class FrequenciaAtividade(AuditModel):
     atividade = models.ForeignKey('Activity', on_delete=models.CASCADE, null=True, blank=True)
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)
+    motivo_falta = models.CharField(max_length=100, blank=True)
         
     class Meta:
         unique_together = ('atividade', 'aluno', 'data')

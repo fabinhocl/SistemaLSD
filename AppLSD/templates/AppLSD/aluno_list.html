@@ -13,35 +13,52 @@
         📊 Exportar Excel</button>
     </div>
 <!-- Logo após os botões principais -->
-<div class="row mb-3">
-    <div class="col-md-8">
-        <input 
-            type="text" 
-            id="searchInput" 
-            class="form-control" 
-            placeholder="Buscar por nome, inscrição, CPF"
-            autofocus
-        >
+<form method="get" class="row g-2 mb-3">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" name="q" class="form-control"
+                placeholder="Buscar por nome, inscrição, CPF"
+                value="{{ query }}">
+        </div>
+
+        <div class="col-md-3 d-flex align-items-center">
+                <div class="form-check ms-2">
+                    <input class="form-check-input"
+                            type="checkbox"
+                            name="show_frequentando"           
+                            id="id_show_frequentando"
+                            {% if show_frequentando == 'on' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_show_frequentando">
+                        Mostrar só frequentando
+                    </label>
+                </div>
+        </div>
     </div>
-</div>
-<div class="row mb-3">
-    <div class="col-md-2">
-        <button type="button" class="btn btn-primary me-2" onclick="buscarAlunos()">Buscar</button>
-    </div>
-    <div class="col-md-2"> 
-        <button type="button" class="btn btn-secondary me-2" onclick="limparBusca()">Limpar</button>
-    </div>
-</div>
+    <div class="col-md-3">
+                <button class="btn btn-primary" type="submit">Buscar</button>
+                <a href="{% url 'aluno_list' %}" class="btn btn-secondary">Limpar</a>
+    </div>  
+</form>
 <!-- Mostra total de resultados -->
 {% if query %}
 <div class="alert alert-info">
     Encontrados {{ total }} resultado(s) para "{{ query }}"
 </div>
 {% else %}
-<div class="alert alert-info">
-    Total de alunos: {{ total }}
+<div class="row">
+        <div class="col-md-4 mb-2">
+            <div class="alert alert-info mb-0">
+                Total de assistidos: {{ total }}
+            </div>
+        </div>
+        <div class="col-md-4 mb-2">
+            <div class="alert alert-info mb-0">
+                Assistidos ativos: {{ total_ativos }}
+            </div>   
+        </div>
 </div>
 {% endif %}
+
     <!-- Tabela de Alunos -->
     <table class="table table-striped table-bordered">
         <thead>

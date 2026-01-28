@@ -50,6 +50,12 @@ Detalhes da Turma - {{ turma.sala }}
          aria-labelledby="tab-resumo">
 
       <h2 class="text-center mt-4">Alunos da Turma</h2>
+      <div class="col-md-2 mb-2">
+            <div class="alert alert-info mb-0">
+                Alunos na Turma: {{ total_alunos_turma }}
+            </div>
+        </div>
+      
       <table class="table table-striped">
         <thead>
           <tr>
@@ -61,7 +67,7 @@ Detalhes da Turma - {{ turma.sala }}
           </tr>
         </thead>
         <tbody>
-          {% for aluno in turma.alunos.all %}
+          {% for aluno in alunos %}
           <tr>
             <td>{{ aluno.family.registration_number }}</td>
             <td>{{ aluno.name }}</td>

@@ -337,7 +337,7 @@ def home_assist(request):
     hoje = timezone.now().date()
     data_corte = date(hoje.year - 60, hoje.month, hoje.day)
     contexto = {
-        "total_assistidos": Aluno.objects.count(),
+        "total_assistidos": Aluno.objects.filter(status_lsd="Frequentando").count(),
         "total_familias": Family.objects.count(),
         "total_familias_ativas": Family.objects.filter(status="ativo").count(),
         "total_adultos": Adult.objects.count(),
@@ -439,7 +439,7 @@ def dashboard_presenca(request):
     hoje = timezone.now().date()
     semana = hoje - timedelta(days=7)
 
-    total_alunos = Aluno.objects.count()
+    total_alunos = Aluno.objects.filter(status_lsd='Frequentando').count()
     presentes_hoje = FrequenciaAluno.objects.filter(
         chamada__data=hoje, presente=True
     ).count()
@@ -563,7 +563,7 @@ def family_delete_confirm(request, pk):
 def family_list(request):
     # termo vindo da URL ?q=...
     query = request.GET.get('q', '').strip()
-
+    show_ativas = request.GET.get('show_ativas')  # 'on' se checkbox marcado
     # queryset base
     families_qs = Family.objects.all()
 
@@ -575,11 +575,16 @@ def family_list(request):
             Q(cpf__icontains=query)
         )
 
+    # filtro de status ativo
+    if show_ativas == 'on':
+        families_qs = families_qs.filter(status='ativo')
+
     # ordenação
     families_qs = families_qs.order_by('registration_number')
 
     # guarda total ANTES da paginação
     total = families_qs.count()
+    total_ativas = families_qs.filter(status='ativo').count()
 
     # paginação
     paginator = Paginator(families_qs, 50)  # 50 por página
@@ -589,7 +594,9 @@ def family_list(request):
     context = {
         'families': families_page,  # objeto de página
         'query': query,
+        'show_ativas': show_ativas,
         'total': total,
+        'total_ativas': total_ativas,
     }
     return render(request, 'AppLSD/family_list.html', context)
 
@@ -867,31 +874,42 @@ def family_autocomplete(request):
 def aluno_list(request):
     # Captura o termo de busca
     query = request.GET.get('q', '').strip()
+    show_frequentando = request.GET.get('show_frequentando')
     
+    print('DEBUG show_frequentando =', show_frequentando)  # aqui
+
     # Base queryset
-    alunos = Aluno.objects.select_related('family', 'turma').all()
+    alunos_qs = Aluno.objects.select_related('family', 'turma').all()
     # Filtra os alunos
     if query:
-        alunos = alunos.filter(
+        alunos_qs = alunos_qs.filter(
             Q(name__icontains=query) |
             Q(cpf__icontains=query) |
             Q(family__registration_number__icontains=query) |
             Q(family__responsible_name__icontains=query)  # Busca pelo responsável
         )
-    # Ordena
-    alunos = alunos.order_by('name')
-    # Conta total ANTES da paginação
-    total = alunos.count()
     
+    if show_frequentando == 'on':
+        alunos_qs = alunos_qs.filter(status_lsd='Frequentando')  # ajuste ao valor real
+    
+        print(show_frequentando)
+    # Ordena
+    alunos_qs = alunos_qs.order_by('name')
+    # Conta total ANTES da paginação
+    total = alunos_qs.count()
+    total_ativos = alunos_qs.filter(status_lsd='Frequentando').count()
+
       # Paginação
-    paginator = Paginator(alunos, 50)
+    paginator = Paginator(alunos_qs, 50)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     
     context = {
         'alunos': page_obj,
         'query': query,
+        'show_frequentando': show_frequentando,
         'total': total,
+        'total_ativos': total_ativos,
     }
     
     return render(request, 'AppLSD/aluno_list.html', context)
@@ -1029,7 +1047,10 @@ def turma_detail(request, turma_id):
     Exibe detalhes da turma com verificação de frequência do dia
     """
     turma = get_object_or_404(Turma, id=turma_id)
-    alunos = Aluno.objects.filter(turma=turma)
+    alunos = Aluno.objects.filter(turma=turma).order_by('name')
+    
+    total_alunos_turma = alunos.count()
+
     today = timezone.now().date()
      # Verificar se já existe frequência para hoje
     frequencia_hoje = FrequenciaTurma.objects.filter(
@@ -1096,6 +1117,7 @@ def turma_detail(request, turma_id):
         'pode_iniciar': pode_iniciar,
         'is_coordenacao': is_coordenacao,
         'is_educadora': is_educadora,
+        'total_alunos_turma': total_alunos_turma,
     }
     return render(request, 'AppLSD/turma_detail.html', context)
 
@@ -2109,6 +2131,8 @@ def export_aluno_excel(request):
         'serie': {'label': 'Série', 'field': 'serie'},
         'turno': {'label': 'Turno', 'field': 'turno'},
         'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
+        'status_lsd': {'label': 'Status LSD', 'field': 'status_lsd'},
+        'turma': {'label': 'Turma', 'field': 'turma__name'},
     }
     
     # Cabeçalhos NA ORDEM dos campos selecionados
