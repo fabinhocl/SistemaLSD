@@ -204,6 +204,14 @@
                 {% endfor %}
             </ul>
         </nav>
+    
+    {% elif user|has_perfil:"diretoria" %}
+        <nav class="mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_diretoria' %}">Gráficos</a></li>
+                 
+            </ul>
+        </nav>
     {% endif %}
 
        

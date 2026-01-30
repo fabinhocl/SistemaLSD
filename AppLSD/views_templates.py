@@ -266,7 +266,7 @@ def home(request):
     elif usuario_tem_perfil(request.user, "servicosocial"):
         return redirect('home_assist')
     elif usuario_tem_perfil(request.user, "diretoria"):
-        return redirect('lsd_dashboard/dashboard')  # ou o nome correto do path para dashboard
+        return redirect('home_diretoria')  # ou o nome correto do path para dashboard
     return render(request, "AppLSD/home.html", {
         "usuario_admin": usuario_tem_perfil(request.user, "admin"),
         "usuario_coord": usuario_tem_perfil(request.user, "coordenacao"),
@@ -354,7 +354,21 @@ def home_escola(request):
 
 @login_required
 def home_diretoria(request):
-    return render(request, 'AppLSD/home_diretoria.html')
+    diretoria = request.user
+    hoje = timezone.now().date()
+    data_corte = date(hoje.year - 60, hoje.month, hoje.day)
+    contexto = {
+        "total_assistidos": Aluno.objects.filter(status_lsd="Frequentando").count(),
+        "total_familias": Family.objects.count(),
+        "total_familias_ativas": Family.objects.filter(status="ativo").count(),
+        "total_adultos": Adult.objects.count(),
+        "total_idosos": Adult.objects.filter(birth_date__lte=data_corte).count(),
+        # "percentual_presenca": calcular_presenca_hoje(),
+        "hoje": timezone.now().strftime("%d/%m/%Y"),
+    }
+    #hoje = timezone.now().date()
+    return render(request, 'AppLSD/home_diretoria.html', contexto)
+       
 @login_required
 def home_adm(request):
     return render(request, 'AppLSD/home_adm.html')

@@ -8,12 +8,63 @@
 
 <h1 class="mb-5 text-center">Painel Diretoria</h1>
 <div class="row justify-content-center">
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'dashboard' %}" class="text-decoration-none text-primary">
-            <i class="bi bi-bar-chart-line" style="font-size:3em;"></i>
+            
+
+            <!-- Famílias Ativas -->
+            <div class="col-12 col-md-4 col-lg-3">
+                <div class="card shadow-sm border-0 text-center py-4">
+                    <div class="mb-3">
+                    <i class="bi bi-house-fill text-success" style="font-size:2rem; color: #16a34a;"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Famílias Ativas</h6>
+                    <h3 class="fw-bold mb-0">{{ total_familias_ativas }}</h3>
+                </div>
+            </div>
+
+            <!-- Total Assistidos -->
+            <div class="col-12 col-md-4 col-lg-3">
+                <div class="card shadow-sm border-0 text-center py-4">
+                    <div class="mb-3">
+                    <i class="bi bi-people-fill text-primary" style="font-size:2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Total de Assistidos</h6>
+                    <h3 class="fw-bold mb-0">{{ total_assistidos }}</h3>
+                </div>
+            </div>
+        
+
+            <!-- Adultos Cadastrados -->
+            <div class="col-12 col-md-4 col-lg-3">
+                <div class="card shadow-sm border-0 text-center py-4">
+                    <div class="mb-3">
+                    <i class="bi bi-people-fill text-info" style="font-size:2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Adultos Cadastrados</h6>
+                    <h3 class="fw-bold mb-0">{{ total_adultos }}</h3>
+                </div>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <div class="card shadow-sm border-0 text-center py-4">
+                    <div class="mb-3">
+                    <i class="bi bi-people-fill text-info" style="font-size:2rem;"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Idosos Cadastrados</h6>
+                    <h3 class="fw-bold mb-0">{{ total_idosos }}</h3>
+                </div>
+            </div>
+</div>
+            <!-- Idosos Cadastrados -->
+    <div class="row justify-content-center">
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'dashboard' %}" class="text-decoration-none text-primary">
+                <i class="bi bi-bar-chart-line" style="font-size:3em;"></i>
         <div class="mt-2 fs-5">Dashboard</div>
-        </a>
+            </a>
 
     </div>
-</div>
+    
+    
+                    
+        
+    </div>
 {% endblock %}
