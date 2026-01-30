@@ -12,8 +12,20 @@
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% load crispy_forms_tags %}
-                {{ form.errors }}
                 {{ form.non_field_errors }}
+                {{ form.errors }}
+
+                
+
+               {# ESSENCIAL: management_form do formset (pode ficar escondido) #}
+                {{ formset.management_form }}
+
+                {# campos dos alunos (ajuste o layout como já faz hoje) #}
+                {% for f in formset %}
+                    {{ f.errors }}
+                    {{ f|crispy }}
+                {% endfor %}
+
                 
 
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}

@@ -67,7 +67,7 @@
                 <td class="text-center">{{ adulto.parentesco }}</td>
                 <td class="text-center">{{ adulto.birth_date|date:"d/m/Y" }}</td>
                 <td class="text-center">{{ adulto.idade }}</td>
-                <td class="text-center">{{ adulto.sexo }}</td>
+                <td class="text-center">{{ adulto.sex }}</td>
                 <td>
                 <a href="{% url 'adult_detail' adulto.pk %}" class="btn btn-info btn-sm">Visualizar</a>
                 </td>
@@ -147,6 +147,10 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="campos" value="responsavel" id="ad_responsavel">
                         <label class="form-check-label" for="ad_responsavel">Responsável</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="campos" value="criado_em" id="f_criado_em">
+                        <label class="form-check-label" for="f_criado_em">Criado Em</label>
                     </div>
                     
                     <div class="mt-3">

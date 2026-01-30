@@ -393,7 +393,7 @@ class Adult(AuditModel):
         blank=True,   # importante
     )
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='adults')
-    cpf = models.CharField(max_length=14, default='', validators=[validate_cpf], blank=True, null=True, unique=True)
+    cpf = models.CharField(max_length=14, default=None, validators=[validate_cpf], blank=True, null=True, unique=True)
     name = models.CharField(max_length=100)
     social_name = models.CharField(max_length=255, default='')
     ESCOLHA_SEXO = [

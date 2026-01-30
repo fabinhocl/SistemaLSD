@@ -351,9 +351,12 @@ class AdultForm(forms.ModelForm):
 
     def clean_cpf(self):
         value = self.cleaned_data.get("cpf")
-        digits = ''.join(filter(str.isdigit, value or ''))
-        if not digits:
-            return ''          # aceita vazio, se for sua regra
+
+        # Se vier vazio ou só espaços, trata como None
+        if not value or not value.strip():
+            return None
+
+        digits = ''.join(filter(str.isdigit, value))
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
@@ -619,9 +622,19 @@ class ActivityForm(forms.ModelForm):
             }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # filtrar facilitadores
         self.fields["facilitador"].queryset = User.objects.filter(
             perfis__tipo_perfil="facilitador"
         )
+
+        # preencher dias da semana quando estiver editando
+        if self.instance and self.instance.pk and self.instance.dia_semana:
+            self.fields['dia_semana'].initial = self.instance.dia_semana.split(',')
+
+    def clean_dia_semana(self):
+        dias = self.cleaned_data['dia_semana']  # lista ['segunda', 'quarta']
+        return ','.join(dias)
 
 class AddAlunosToTurmaForm(forms.Form):
     alunos = forms.ModelMultipleChoiceField(

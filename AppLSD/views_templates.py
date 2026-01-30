@@ -646,25 +646,41 @@ def family_edit(request, pk):
 @login_required
 def family_create(request):
     if request.method == 'POST':
-        form = FamilyForm(request.POST, request.FILES)
-        formset = AlunoInlineFormSet(request.POST, request.FILES)
+        form = FamilyForm(request.POST, request.FILES or None)
+        formset = AlunoInlineFormSet(request.POST, request.FILES or None)
+
+        print("Family is_valid:", form.is_valid())
+        print("Family errors:", form.errors)
+        print("Family non_field_errors:", form.non_field_errors())
+        print("Formset is_valid:", formset.is_valid())
+        print("Formset errors:", formset.errors)
+        print("Formset non_form_errors:", formset.non_form_errors())
+
         if form.is_valid() and formset.is_valid():
             family = form.save(commit=False)
-            family.criado_por = request.user            # auditoria
+            family.criado_por = request.user  # auditoria
             family.save()
+
             formset.instance = family
             formset.save()
+
             registrar_log(
                 request.user,
                 family,
                 'familia_criada',
                 f'Família {family.responsible_name} cadastrada.'
             )
+
             return redirect('family_detail', pk=family.pk)
     else:
         form = FamilyForm()
         formset = AlunoInlineFormSet()
-    return render(request, 'AppLSD/family_form.html', {'form': form, 'formset': formset})
+
+    return render(
+        request,
+        'AppLSD/family_form.html',
+        {'form': form, 'formset': formset}
+    )
 
 @login_required
 def family_update(request, pk):
@@ -2006,27 +2022,43 @@ def finalizar_chamada(request, chamada_id):
     messages.success(request, f"Chamada finalizada! {faltas_criadas} faltas registradas automaticamente.")
     return redirect(request, 'AppLSD/home_relatorios.html')
 
+def get_created_at_for_instance(instance, acao):
+    """
+    Retorna a data/hora do primeiro log da ação informada
+    para a instância (por ex. 'familia_criada').
+    """
+    ct = ContentType.objects.get_for_model(instance.__class__)
+    log = (
+        AppLog.objects
+        .filter(
+            content_type=ct,
+            object_id=instance.pk,
+            acao=acao,
+        )
+        .order_by('criado_em')
+        .first()
+    )
+    return log.criado_em if log else None
 
 #Exportação em excel das listas Família, Aluno e Adulto
 @login_required
 def export_family_excel(request):
     campos = request.GET.getlist('campos')
-    
-    # Se nenhum campo selecionado, usa padrão
+
     if not campos:
-        campos = ['registration_number', 'responsible_name', 'cpf', 'telephone', 'address', 'neighborhood', 'status']
-    
-    # DEBUG - Ver quais campos foram selecionados
-    print(f"Campos selecionados: {campos}")
-    
+        campos = [
+            'criado_em', 'registration_number', 'responsible_name', 'cpf',
+            'telephone', 'address', 'neighborhood', 'status'
+        ]
+
     families = Family.objects.all().order_by('registration_number')
-    
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Famílias"
-    
-    # Dicionário com TODOS os campos possíveis
+
     campos_info = {
+        'criado_em': {'label': 'Criado em'},  # novo
         'registration_number': {'label': 'Inscrição', 'field': 'registration_number'},
         'responsible_name': {'label': 'Responsável', 'field': 'responsible_name'},
         'cpf': {'label': 'CPF', 'field': 'cpf'},
@@ -2049,38 +2081,38 @@ def export_family_excel(request):
         'num_residents': {'label': 'Nº de Moradores', 'field': 'num_residents'},
         'status': {'label': 'Status', 'field': 'status'},
     }
-    
-    # Cabeçalhos NA ORDEM dos campos selecionados
-    headers = []
-    for campo in campos:
-        if campo in campos_info:
-            headers.append(campos_info[campo]['label'])
-    
+
+    headers = [campos_info[c]['label'] for c in campos if c in campos_info]
     ws.append(headers)
-    
-    # Estilo do cabeçalho
+
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         cell.alignment = Alignment(horizontal="center")
-    
-    # Dados NA ORDEM dos campos selecionados
+
     for family in families:
         row = []
         for campo in campos:
-            if campo in campos_info:
+            if campo not in campos_info:
+                continue
+
+            valor = ''
+            if campo == 'criado_em':
+                dt = get_created_at_for_instance(family, 'familia_criada')
+                valor = dt.strftime('%d/%m/%Y %H:%M') if dt else ''
+            else:
                 field_name = campos_info[campo]['field']
-                valor = getattr(family, field_name, '')
-                
-                # Formata data se necessário
-                if campo == 'birth_date' and valor:
-                    valor = valor.strftime('%d/%m/%Y')
-                
-                row.append(str(valor) if valor else '')
-        
+                v = getattr(family, field_name, '')
+                if campo == 'birth_date' and v:
+                    v = v.strftime('%d/%m/%Y')
+                valor = v
+
+            row.append(str(valor) if valor else '')
+
         ws.append(row)
-    
-    # Ajusta largura das colunas
+
+    # (restante da função igual: ajustar colunas, salvar response)
+# Ajusta largura das colunas
     for column in ws.columns:
         max_length = 0
         column_letter = column[0].column_letter
@@ -2092,14 +2124,14 @@ def export_family_excel(request):
                 pass
         adjusted_width = min((max_length + 2), 50)
         ws.column_dimensions[column_letter].width = adjusted_width
-    
+   
     # Resposta HTTP
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     filename = f'familias_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
+   
     wb.save(response)
     return response
 
@@ -2109,7 +2141,7 @@ def export_aluno_excel(request):
     campos = request.GET.getlist('campos')
     
     if not campos:
-        campos = ['inscricao', 'name', 'cpf', 'birth_date', 'school', 'ensino', 'serie']
+        campos = ['criado_em','inscricao', 'name', 'cpf', 'birth_date', 'school', 'ensino', 'serie']
     
     alunos = Aluno.objects.select_related('family', 'turma').all().order_by('name')
     
@@ -2119,12 +2151,13 @@ def export_aluno_excel(request):
     
     # Dicionário com TODOS os campos possíveis
     campos_info = {
+        'criado_em': {'label': 'Criado em'},  # novo
         'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
         'name': {'label': 'Nome', 'field': 'name'},
         'cpf': {'label': 'CPF', 'field': 'cpf'},
         'nis': {'label': 'NIS', 'field': 'nis'},
         'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
-        'idade': {'label': 'Idade', 'field': 'age'},
+        'idade': {'label': 'Idade', 'field': 'idade'},
         'sex': {'label': 'Sexo', 'field': 'sex'},
         'school': {'label': 'Escola', 'field': 'school'},
         'ensino': {'label': 'Ensino', 'field': 'ensino'},
@@ -2164,7 +2197,10 @@ def export_aluno_excel(request):
                 elif campo == 'birth_date':
                     valor = aluno.birth_date.strftime('%d/%m/%Y') if aluno.birth_date else ''
                 elif campo == 'idade':
-                    valor = aluno.age if hasattr(aluno, 'age') else ''
+                    valor = aluno.idade if hasattr(aluno, 'idade') else ''
+                elif campo == 'criado_em':
+                    dt = get_created_at_for_instance(aluno, 'aluno_criado')
+                    valor = dt.strftime('%d/%m/%Y %H:%M') if dt else ''
                 else:
                     valor = getattr(aluno, campo, '')
                 
@@ -2206,7 +2242,7 @@ def export_adult_excel(request):
     campos = request.GET.getlist('campos')
     
     if not campos:
-        campos = ['inscricao', 'name', 'cpf', 'birth_date', 'parentesco', 'ocupacao']
+        campos = ['criado_em', 'inscricao', 'name', 'cpf', 'birth_date', 'parentesco', 'ocupacao']
     
     adults = Adult.objects.select_related('family').all().order_by('name')
     
@@ -2216,11 +2252,12 @@ def export_adult_excel(request):
     
     # Dicionário com TODOS os campos possíveis
     campos_info = {
+        'criado_em': {'label': 'Criado em'},
         'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
         'name': {'label': 'Nome', 'field': 'name'},
         'cpf': {'label': 'CPF', 'field': 'cpf'},
         'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
-        'idade': {'label': 'Idade', 'field': 'age'},
+        'idade': {'label': 'Idade', 'field': 'idade'},
         'sex': {'label': 'Sexo', 'field': 'sex'},
         'education': {'label': 'Escolaridade', 'field': 'education'},
         'parentesco': {'label': 'Parentesco', 'field': 'parentesco'},
@@ -2259,9 +2296,12 @@ def export_adult_excel(request):
                 elif campo == 'birth_date':
                     valor = adult.birth_date.strftime('%d/%m/%Y') if adult.birth_date else ''
                 elif campo == 'idade':
-                    valor = adult.age if hasattr(adult, 'age') else ''
+                    valor = adult.idade if hasattr(adult, 'idade') else ''
                 elif campo == 'is_working':
                     valor = 'Sim' if adult.is_working == 'sim' else 'Não' if adult.is_working else ''
+                elif campo == 'criado_em':
+                    dt = get_created_at_for_instance(adult, 'adulto_criado')
+                    valor = dt.strftime('%d/%m/%Y %H:%M') if dt else ''
                 else:
                     valor = getattr(adult, campo, '')
                 
