@@ -50,7 +50,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
           </tr>
         </thead>
         <tbody>
-          {% for aluno in atividade.alunos.all %}
+          {% for aluno in alunos_atividade %}
           <tr class="text-center">
             <td>{{ aluno.family.registration_number }}</td>
             <td>{{ aluno.name }}</td>

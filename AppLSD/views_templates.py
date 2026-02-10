@@ -1258,67 +1258,69 @@ def turma_delete(request, pk):
 def iniciar_frequencia_turma(request, turma_id):
     """
     Inicia uma nova frequência para a turma.
-    Educadora registra frequência se não existe, senão apenas visualiza.
+    Só cria/salva frequência no POST.
     """
     turma = get_object_or_404(Turma, id=turma_id)
     hoje = timezone.now().date()
-    alunos = Aluno.objects.filter(turma=turma) #inclui essa na criação da auditoria
-    # se quiser impedir duplicada no mesmo dia:
-    chamada, created = FrequenciaTurma.objects.get_or_create(
-        turma=turma,
-        data=hoje,
-        defaults={
-            'presente': True,          # valor padrão na chamada
-            'criado_por': request.user
-        }
-    )
-    #alunos = Aluno.objects.filter(turma=turma)
-    # Verificar se já existe frequência hoje
-    #frequencia_existente = FrequenciaTurma.objects.filter(turma=turma, data=timezone.now().date()).first()
+    alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
     if request.method == "POST":
-        # processamento da presença
+        # cria/obtém a chamada SOMENTE aqui
+        chamada, created = FrequenciaTurma.objects.get_or_create(
+            turma=turma,
+            data=hoje,
+            defaults={
+                'presente': True,      # se ainda usar esse campo
+                'criado_por': request.user,
+            }
+        )
+
         for aluno in alunos:
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
-            
-            # Aqui é o ponto crítico: SEMPRE passar chamada=chamada
+
             FrequenciaAluno.objects.update_or_create(
                 chamada=chamada,
                 aluno=aluno,
-                defaults={'presente': presente, 'motivo_falta': motivo_falta if not presente else ''}
+                defaults={
+                    'presente': presente,
+                    'motivo_falta': motivo_falta if not presente else '',
+                }
             )
+
         messages.success(request, 'Frequência registrada com sucesso!')
 
-        # depois de criar/obter chamada e salvar presenças, antes do redirect
         registrar_log(
             request.user,
             turma,
             'frequencia_criada',
-            f'Frequência do dia {hoje.strftime("%d/%m/%Y")} registrada pela educadora {request.user.get_full_name() or request.user.username}.',
+            f'Frequência do dia {hoje.strftime("%d/%m/%Y")} registrada pela educadora '
+            f'{request.user.get_full_name() or request.user.username}.',
         )
         return redirect('frequencia_visualizar', frequencia_id=chamada.id)
 
-    # No GET, renderize o template de registro!
-    return render(request, 'AppLSD/frequencia_turma_iniciar.html', {
-        'turma': turma,
-        'alunos': alunos,
-        'chamada': chamada,
-    })
+    # GET: apenas mostra o formulário, NÃO cria chamada nem registros
+    return render(
+        request,
+        'AppLSD/frequencia_turma_iniciar.html',
+        {
+            'turma': turma,
+            'alunos': alunos,
+            'data_hoje': hoje,
+        }
+    )
 
-    
-    # Redirecionar para página de registro de presença
-    #return redirect('frequencia_turma_iniciar', turma_id=chamada.turma.id)
 
 def visualizar_frequencia_turma(request, frequencia_id):
     """
     Visualiza a frequência em modo somente leitura
     """
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
-    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
+    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
     
     # Buscar alunos da turma
-    alunos_turma = Aluno.objects.filter(turma=chamada.turma)
+    alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
+    
     
     # Verificar permissão
     is_coordenadora = request.user.groups.filter(name='Coordenadora').exists() or request.user.is_superuser
@@ -1343,8 +1345,8 @@ def editar_frequencia_turma(request, frequencia_id):
     Edita a frequência - apenas coordenadoras
     """
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
-    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
-    alunos_turma = Aluno.objects.filter(turma=chamada.turma)
+    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
+    alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
     
     if request.method == 'POST':
         chamada.editado_por = request.user             # auditoria
@@ -1405,6 +1407,11 @@ def activity_detail(request, activity_id):
         data=hoje,
     ).exists()
 
+    # alunos vinculados à atividade em ordem alfabética
+    alunos_atividade = Aluno.objects.filter(
+        atividades=atividade
+    ).order_by('name')  # ou 'nome', conforme o campo no model
+
     from django.contrib.contenttypes.models import ContentType
     ct = ContentType.objects.get_for_model(Activity)
     logs = AppLog.objects.filter(content_type=ct, object_id=atividade.pk)
@@ -1415,6 +1422,7 @@ def activity_detail(request, activity_id):
         # se tiver controle de permissão, algo como:
         'is_coordenacao': request.user.groups.filter(name='Coordenacao').exists(),
         'logs': logs,
+        'alunos_atividade': alunos_atividade,
     }
     return render(request, 'AppLSD/activity_detail.html', context)
     
@@ -1484,13 +1492,13 @@ def iniciar_frequencia_activity(request, activity_id):
     atividade = get_object_or_404(Activity, id=activity_id)
     if request.user.is_superuser or request.user.groups.filter(name='Coordenacao').exists():
         # coordenação pode ver todos os alunos da atividade
-        alunos = Aluno.objects.filter(atividades=atividade)
+        alunos = Aluno.objects.filter(atividades=atividade).order_by('name')
     else:
         # educadora vê só alunos de turmas dela
         alunos = Aluno.objects.filter(
             atividades=atividade,
             turma__educadora=request.user,
-        )
+        ).order_by('name')
     # Data da chamada: se vier no POST usa, senão hoje
     if request.method == 'POST' and request.POST.get('data'):
         data_chamada = date.fromisoformat(request.POST['data'])
@@ -1823,7 +1831,7 @@ def activity_add_alunos(request, activity_id):
 @login_required
 def relatorio_presenca_turma(request, turma_id, data=None):
     turma = Turma.objects.get(id=turma_id)
-    alunos = Aluno.objects.filter(turma=turma)
+    alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
     # Busca data filtrada via URL (GET)
     data_get = request.GET.get('data')
@@ -1854,7 +1862,7 @@ def relatorio_presenca_turma(request, turma_id, data=None):
 @login_required
 def relatorio_presenca_activity(request, activity_id, data=None):
     atividade = Activity.objects.get(id=activity_id)
-    alunos = Aluno.objects.filter(atividades=atividade)
+    alunos = Aluno.objects.filter(atividades=atividade).order_by('name')
 
     # Primeiro verifica se há data passada por URL (GET)
     data_get = request.GET.get('data')

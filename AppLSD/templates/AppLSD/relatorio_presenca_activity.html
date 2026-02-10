@@ -1,6 +1,6 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
-{% block title %}Relatório - {{ atividade.nome }}{% endblock %}
+{% block title %}Relatório de Frequência do dia {{ atividade.nome }}{% endblock %}
 {% block content %}
 
 <h3>Chamada da Atividade: {{ atividade.atividade }} — Data: {{ data }}</h3>
@@ -12,6 +12,7 @@
 <table class="table">
     <thead>
         <tr>
+            <th>Inscrição</th>
             <th>Aluno</th>
             <th>Situação</th>
         </tr>
@@ -19,13 +20,14 @@
     <tbody>
     {% for chamada in chamadas %}
     <tr>
+        <td>{{ chamada.aluno.family.registration_number }}</td>
         <td>{{ chamada.aluno.name }}</td>
         <td>{% if chamada.presente %}Presente{% else %}Falta{% endif %}</td>
     </tr>
     {% endfor %}
 </table>
 <div class="no-print">
-        <a href="{% url 'iniciar_chamada_activity' atividade.id %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
+        <a href="{% url 'frequencia_activity_iniciar' atividade.pk %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
         <a href="{% url 'activity_list' %}" class="btn btn-secondary">Voltar</a>
         <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>

@@ -14,6 +14,7 @@
 <table class="table">
     <thead>
         <tr>
+            <th>Inscrição</th>
             <th>Aluno</th>
             <th>Situação</th>
             <th>Motivo da Falta</th>
@@ -22,6 +23,7 @@
     <tbody>
     {% for aluno in alunos %}
     <tr>
+        <td>{{ aluno.family.registration_number }}</td>
         <td>{{ aluno.name }}</td>
         <td>
             {% with presenca=presencas_dict|get_item:aluno.id %}
