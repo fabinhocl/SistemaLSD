@@ -3,7 +3,7 @@ from dal import autocomplete
 from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia    
 from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
-from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm
+from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm, RemoverAlunoAtividadeForm
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponse 
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef, IntegerField
 from django.db.models.functions import Cast
 from django.forms.models import inlineformset_factory
@@ -112,7 +112,7 @@ def dashboard_diretoria(request):
 def usuarios_gerenciar(request):
     # Lista todos os usuários do sistema, com seus perfis associados
     termo = request.GET.get("busca", "")
-    usuarios = User.objects.all().prefetch_related('perfis')
+    usuarios = User.objects.all().prefetch_related('perfis').order_by('username')
     if termo:
         usuarios = usuarios.filter(username__icontains=termo) | usuarios.filter(first_name__icontains=termo)
 
@@ -1071,6 +1071,54 @@ def aluno_delete_confirm(request, pk):
         'error': error,
     })
 
+#Remover Aluno da atividade através do aluno_detail
+@login_required
+def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+    atividade = get_object_or_404(Activity, id=activity_id)
+
+    if not (request.user.is_superuser or
+            request.user.groups.filter(name='Coordenacao').exists()):
+        return HttpResponseForbidden('Sem permissão')
+
+    if request.method == 'POST':
+        form = RemoverAlunoAtividadeForm(request.POST)
+        if form.is_valid():
+            senha = form.cleaned_data['senha']
+            motivo = form.cleaned_data['motivo']
+
+            user = authenticate(username=request.user.username, password=senha)
+            if user is None:
+                messages.error(request, 'Senha incorreta.')
+            else:
+                atividade.alunos.remove(aluno)
+
+                registrar_log(
+                    request.user,
+                    atividade,
+                    'aluno_removido_da_atividade',
+                    f'Aluno {aluno.name} removido da atividade '
+                    f'"{atividade.atividade}". Motivo: {motivo}.'
+                )
+
+                registrar_log(
+                    request.user,
+                    aluno,
+                    'aluno_removido_atividade',
+                    (
+                        f'Aluno removido da atividade "{atividade.atividade}". '
+                        f'Motivo: {motivo}.'
+                    ),
+                )
+
+                messages.success(request, 'Aluno removido da atividade.')
+
+        
+
+    # em qualquer caso (sucesso ou erro) volta para a página do aluno
+    return redirect('aluno_detail', pk=aluno.id)
+
+
 @login_required
 def turma_detail(request, turma_id):
     """
@@ -1827,6 +1875,42 @@ def activity_add_alunos(request, activity_id):
         "AppLSD/activity_add_alunos.html",
         {"atividade": atividade, "form": form, "filtro": filtro},
     )
+
+# views.py
+@login_required
+def remover_aluno_da_atividade(request, activity_id, aluno_id):
+    atividade = get_object_or_404(Activity, id=activity_id)
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+
+    if not (request.user.is_superuser or
+            request.user.groups.filter(name='Coordenacao').exists()):
+        return HttpResponseForbidden('Sem permissão')
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo', '').strip()
+
+        atividade.alunos.remove(aluno)  # ou aluno.atividades.remove(atividade)
+
+        # log na atividade
+        registrar_log(
+            request.user,
+            atividade,
+            'aluno_removido_da_atividade',
+            f'Aluno {aluno.name} removido da atividade '
+            f'"{atividade.atividade}". Motivo: {motivo or "não informado"}.'
+        )
+
+        # log no aluno (para aparecer no histórico do aluno)
+        registrar_log(
+            request.user,
+            aluno,
+            'aluno_removido_atividade',
+            f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo or "não informado"}.'
+        )
+
+        messages.success(request, 'Aluno removido da atividade.')
+
+    return redirect('activity_detail', activity_id=atividade.id)
 
 @login_required
 def relatorio_presenca_turma(request, turma_id, data=None):

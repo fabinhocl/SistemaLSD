@@ -61,6 +61,9 @@ urlpatterns = [
     path('alunos/<int:pk>/', views_templates.aluno_detail, name='aluno_detail'),
     path('alunos/<int:aluno_id>/mover/', views_templates.mover_aluno, name='mover_aluno'),
     path('alunos/<int:aluno_id>/ocorrencia/', views_templates.adicionar_ocorrencia, name='adicionar_ocorrencia'),
+    path('atividades/<int:activity_id>/remover-aluno/<int:aluno_id>/', views_templates.remover_aluno_da_atividade, name='remover_aluno_da_atividade'),
+    path('alunos/<int:aluno_id>/remover-da-atividade/<int:activity_id>/', views_templates.remover_aluno_da_atividade_por_aluno, name='remover_aluno_por_aluno'),
+
 
     #Turmas
     path('turma/', views_templates.TurmaListView.as_view(), name='turma_list'),

@@ -120,6 +120,7 @@
           <th>Atividade</th>
           <th>Turno</th>
           <th>Facilitador(a)</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -128,11 +129,73 @@
             <td>{{ activity.atividade }}</td>
             <td>{{ activity.turno|default:"-" }}</td>
             <td>{{ activity.facilitador }}</td>
+            <td>
+              <button type="button"
+                      class="btn btn-danger btn-sm"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalRemoverAtividade-{{ activity.id }}">
+                Remover desta atividade
+              </button>
+              
+            </td>
           </tr>
-        {% empty %}
+          <tr>
+           <td colspan="4"> 
+              <div class="modal fade" id="modalRemoverAtividade-{{ activity.id }}" tabindex="-1"
+            aria-labelledby="modalRemoverAtividadeLabel-{{ activity.id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <form method="post"
+                          action="{% url 'remover_aluno_por_aluno' aluno.id activity.id %}">
+                      {% csrf_token %}
+                      <div class="modal-header">
+                        <h5 class="modal-title"
+                            id="modalRemoverAtividadeLabel-{{ activity.id }}">
+                          Remover {{ aluno.name }} da atividade {{ activity.atividade }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                      </div>
+
+                      <div class="modal-body">
+                        <div class="mb-3">
+                          <label for="motivo-{{ activity.id }}" class="form-label">
+                            Motivo da remoção / desistência
+                          </label>
+                          <textarea name="motivo" id="motivo-{{ activity.id }}"
+                                    class="form-control" rows="3" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="senha-{{ activity.id }}" class="form-label">
+                            Confirme sua senha
+                          </label>
+                          <input type="password" name="senha" id="senha-{{ activity.id }}"
+                                class="form-control" required>
+                        </div>
+                      </div>
+
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary"
+                                data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">
+                          Confirmar remoção
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+           </td>
+          </tr>
+        
+          {% empty %}
           <tr>
             <td colspan="3" class="text-center">Nenhuma atividade matriculada.</td>
           </tr>
+
+        
         {% endfor %}
       </tbody>
     </table>

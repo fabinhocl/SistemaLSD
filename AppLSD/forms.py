@@ -676,6 +676,17 @@ class MoverAlunoForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
+class RemoverAlunoAtividadeForm(forms.Form):
+    motivo = forms.CharField(
+        label='Motivo da exclusão',
+        widget=forms.Textarea,
+        required=True,
+    )
+    senha = forms.CharField(
+        label='Senha de confirmação',
+        widget=forms.PasswordInput,
+        required=True,
+    )
 
 class OcorrenciaAlunoForm(forms.ModelForm):
     class Meta:

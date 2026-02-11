@@ -58,7 +58,12 @@ Detalhes da Atividade - {{ atividade.atividade }}
             <td>{{ aluno.idade }}</td>
             <td>{{ aluno.turma }}</td>
             <td>
-              <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-sm btn-info">Visualizar</a>
+              <button type="button"
+                      class="btn btn-danger btn-sm"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalRemoverAlunoAtividade-{{ aluno.id }}">
+                Remover
+              </button>
             </td>
           </tr>
           {% empty %}
@@ -68,7 +73,45 @@ Detalhes da Atividade - {{ atividade.atividade }}
           {% endfor %}
         </tbody>
       </table>
+      {% for aluno in alunos_atividade %}
+        <div class="modal fade" id="modalRemoverAlunoAtividade-{{ aluno.id }}" tabindex="-1"
+            aria-labelledby="modalRemoverAlunoAtividadeLabel-{{ aluno.id }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post"
+                    action="{% url 'remover_aluno_da_atividade' atividade.id aluno.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h5 class="modal-title" id="modalRemoverAlunoAtividadeLabel-{{ aluno.id }}">
+                    Remover {{ aluno.name }} desta atividade?
+                  </h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"
+                          aria-label="Close"></button>
+                </div>
 
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label for="motivo-{{ aluno.id }}" class="form-label">
+                      Motivo da remoção / desistência
+                    </label>
+                    <textarea name="motivo" id="motivo-{{ aluno.id }}"
+                              class="form-control" rows="3" required></textarea>
+                  </div>
+                </div>
+
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                  </button>
+                  <button type="submit" class="btn btn-danger">
+                    Confirmar remoção
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
       <div class="container mt-4">
         <div class="row justify-content-center">
           <div class="col-lg-8 mx-auto">

@@ -169,7 +169,7 @@
             <ul class="nav justify-content-center">
                 <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Início</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'usuarios_gerenciar' %}">Gerenciar Usuários</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'home_assist' %}">Sistema de Convivência</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home_assist' %}">Serviço de Convivência</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'home_escola' %}">Escola</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'home_relatorios' %}">Relatórios</a></li>
             </ul>
@@ -249,7 +249,9 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/i18n/pt-BR.js"></script>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
 {% block extra_scripts %}{% endblock %}
 
     {% block extra_js %}
@@ -286,4 +288,15 @@
 
     {% endblock %}
 </body>
+{% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 </html>
