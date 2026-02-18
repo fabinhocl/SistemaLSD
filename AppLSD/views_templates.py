@@ -350,7 +350,23 @@ def home_assist(request):
 
 @login_required
 def home_escola(request):
-    return render(request, 'AppLSD/home_escola.html')
+
+    hoje = date.today()
+
+    # todos aniversariantes do mês (todas as turmas)
+    aniversariantes_mes = (
+        Aluno.objects.select_related('turma').filter(birth_date__month=hoje.month, status_lsd="Frequentando")
+        .order_by('birth_date__day', 'name')
+    )
+
+    # aniversariantes do dia (subset do anterior)
+    aniversariantes_dia = aniversariantes_mes.filter(birth_date__day=hoje.day)
+
+    context = {
+        'aniversariantes_mes': aniversariantes_mes,
+        'aniversariantes_dia': aniversariantes_dia,
+    }
+    return render(request, 'AppLSD/home_escola.html', context)
 
 @login_required
 def home_diretoria(request):
@@ -1003,6 +1019,10 @@ def aluno_create(request):
 def aluno_detail(request, pk):
     aluno = get_object_or_404(Aluno, pk=pk)
 
+    is_educadora = request.user.groups.filter(name='Educadora').exists()
+
+    turma_atual = aluno.turma  # ajuste se o relacionamento for outro
+
     ct = ContentType.objects.get_for_model(Aluno)
     logs = AppLog.objects.filter(content_type=ct, object_id=aluno.pk)
 
@@ -1014,6 +1034,8 @@ def aluno_detail(request, pk):
         'aluno': aluno,
         'logs': logs,
         'historico_turmas': historico_turmas,
+        'is_educadora': is_educadora,
+        'turma_atual': turma_atual,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
 
@@ -1129,7 +1151,19 @@ def turma_detail(request, turma_id):
     
     total_alunos_turma = alunos.count()
 
+    # regra: somente coordenação ou superuser podem adicionar alunos
+    pode_adicionar_alunos = (
+        request.user.is_superuser
+        or request.user.groups.filter(name='Coordenacao').exists()
+    )
+
     today = timezone.now().date()
+    
+    # aniversariantes do mês atual, dentro da turma
+    aniversariantes_mes = alunos.filter(
+        birth_date__month=today.month
+        ).order_by('birth_date', 'name')
+
      # Verificar se já existe frequência para hoje
     frequencia_hoje = FrequenciaTurma.objects.filter(
         turma=turma,
@@ -1154,7 +1188,7 @@ def turma_detail(request, turma_id):
     
     # Verificar permissão do usuário
     is_coordenacao = (tipo_perfil == 'coordenacao') or user.is_superuser
-    is_educadora = (tipo_perfil == 'educadora')
+    is_educadora = request.user.groups.filter(name='Educadora').exists()
 
 
     print(f"is_coordenacao: {is_coordenacao}")
@@ -1196,6 +1230,8 @@ def turma_detail(request, turma_id):
         'is_coordenacao': is_coordenacao,
         'is_educadora': is_educadora,
         'total_alunos_turma': total_alunos_turma,
+        'pode_adicionar_alunos': pode_adicionar_alunos,
+        'aniversariantes_mes': aniversariantes_mes,
     }
     return render(request, 'AppLSD/turma_detail.html', context)
 
@@ -1475,12 +1511,71 @@ def activity_detail(request, activity_id):
     return render(request, 'AppLSD/activity_detail.html', context)
     
 
+
+@login_required
 def activity_list(request):
-    activity_list = Activity.objects.all().order_by('atividade')
-    paginator = Paginator(activity_list, 100)
+    atividades = Activity.objects.all().select_related('facilitador')
+
+    atividade_nome = request.GET.get("atividade") or ""
+    facilitador_id = request.GET.get("facilitador") or ""
+    dia_semana = request.GET.get("dia_semana") or ""
+    turno = request.GET.get("turno") or ""
+    tipo = request.GET.get("tipo") or ""
+
+    if atividade_nome:
+        atividades = atividades.filter(atividade__icontains=atividade_nome)
+    if facilitador_id:
+        atividades = atividades.filter(facilitador_id=facilitador_id)
+    if dia_semana:
+        atividades = atividades.filter(dia_semana__contains=f"'{dia_semana}'")
+    if turno:
+        atividades = atividades.filter(turno=turno)
+    if tipo:
+        atividades = atividades.filter(tipo=tipo)
+
+    atividades = atividades.order_by('atividade')
+
+    # aqui é o ajuste importante: pegar os facilitadores via Activity
+    # listas para os selects
+    facilitadores = User.objects.filter(
+        id__in=Activity.objects.values('facilitador_id')
+    ).order_by('first_name').distinct()
+
+     
+    nomes_atividades = (
+        Activity.objects.order_by('atividade')
+        .values_list('atividade', flat=True)
+        .distinct()
+    )
+
+    tipos_atividades = Activity.TIPO_CHOICES              # <--- aqui
+    dias_semana_choices = Activity.DIAS_SEMANAS_CHOICES   # <--- e aqui
+
+    turnos = (
+        Activity.objects.order_by('turno')
+        .values_list('turno', flat=True)
+        .distinct()
+    )
+
+    paginator = Paginator(atividades, 100)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'AppLSD/activity_list.html', {'page_obj': page_obj})
+
+    context = {
+        'page_obj': page_obj,
+        'facilitadores': facilitadores,
+        'nomes_atividades': nomes_atividades,
+        'tipos_atividades': tipos_atividades,
+        'dias_semana_choices': dias_semana_choices,
+        'turnos': turnos,
+        'filtro_atividade': atividade_nome,
+        'filtro_facilitador': facilitador_id,
+        'filtro_dia_semana': dia_semana,
+        'filtro_turno': turno,
+        'filtro_tipo': tipo,
+    }
+    return render(request, 'AppLSD/activity_list.html', context)
+
 
 @login_required
 def activity_create(request):
@@ -1697,7 +1792,16 @@ def editar_frequencia_activity(request, activity_id):
 
 def turma_add_alunos(request, turma_id):
     turma = get_object_or_404(Turma, pk=turma_id)
-    alunos_queryset = Aluno.objects.filter(status_lsd="Frequentando")
+
+    # base: só alunos frequentando
+    
+    alunos_queryset = Aluno.objects.filter(
+        status_lsd="Frequentando",
+        turma__isnull=True,          # <--- só quem não está em nenhuma turma
+    )
+
+    # excluir quem já está na turma
+    alunos_queryset = alunos_queryset.exclude(turma=turma)
 
     # turno_oposto: se turma é Matutino, pega alunos Vespertino; se é Vespertino, pega Matutino
     if turma.turno == 'Matutino':

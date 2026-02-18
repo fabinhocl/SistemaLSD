@@ -648,20 +648,39 @@ class Activity(AuditModel):
     #turma = models.ForeignKey("Turma", on_delete=models.CASCADE, related_name="atividades")
     horario_inicio = models.TimeField()
     horario_fim = models.TimeField()
+
+    DIAS_SEMANAS_CHOICES = (
+        ('segunda', 'Segunda-feira'),
+        ('terca', 'Terça-feira'),
+        ('quarta', 'Quarta-feira'),
+        ('quinta', 'Quinta-feira'),
+        ('sexta', 'Sexta-feira'),
+    )
     def __str__(self):
         return self.atividade
 
     def get_dia_semana_display(self):
-            if not self.dia_semana:
-                return "-"
-            try:
-                dias = ast.literal_eval(self.dia_semana)
-                if isinstance(dias, list):
-                    return ', '.join([str(dia).capitalize() for dia in dias])
-            # Se salva como string separada por vírgula
-                return self.dia_semana
-            except Exception:
-                return self.dia_semana
+        """
+        Retorna os dias formatados, ex.: 'Segunda-feira, Quarta-feira'.
+        """
+        if not self.dia_semana:
+            return "-"
+
+        try:
+            # tentar ler como lista salva em string: "['segunda', 'quarta']"
+            dias = ast.literal_eval(self.dia_semana)
+            if isinstance(dias, list):
+                # montar dict código -> label a partir do choices
+                label_map = dict(self.DIAS_SEMANAS_CHOICES)
+                return ', '.join(label_map.get(d, d).capitalize() for d in dias)
+            # se não for lista, cai no return final
+        except Exception:
+            pass
+
+        # fallback: texto cru (no caso de dados antigos)
+        return self.dia_semana
+    
+    
 
 class ActivityLog(AuditModel):
     Activity = models.ForeignKey('Activity', on_delete=models.CASCADE, related_name='logs')

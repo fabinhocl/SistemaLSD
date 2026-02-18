@@ -229,9 +229,13 @@ class FamilyForm(forms.ModelForm):
 
     def clean_rg(self):
         rg = self.cleaned_data.get('rg')
-        if rg and not rg.isdigit():
-            raise forms.ValidationError("RG deve conter apenas números.")
+        if rg:
+            # remove espaços e hífens, depois valida
+            rg_limpo = rg.replace(' ', '').replace('-', '')
+            if not rg_limpo.isalnum():
+                raise forms.ValidationError("RG deve conter apenas letras, números, espaços ou hífens.")
         return rg
+
 
     def clean_telephone(self):
         tel = self.cleaned_data.get("telephone")
@@ -596,14 +600,8 @@ class ActivityForm(forms.ModelForm):
         ('tecnologia', 'Tecnologia'),
     )
     tipo = forms.ChoiceField(choices=TIPO_CHOICES, label='Tipo')
-    DIAS_SEMANAS_CHOICES = (
-        ('segunda', 'Segunda-feira'),
-        ('terca', 'Terça-feira'),
-        ('quarta', 'Quarta-feira'),
-        ('quinta', 'Quinta-feira'),
-        ('sexta', 'Sexta-feira'),
-    )
-    dia_semana = forms.MultipleChoiceField(choices=DIAS_SEMANAS_CHOICES, widget=forms.CheckboxSelectMultiple, label='Dias da Semana')
+    DIAS_SEMANAS_CHOICES = Activity.DIAS_SEMANAS_CHOICES
+    dia_semana = forms.MultipleChoiceField(choices=DIAS_SEMANAS_CHOICES, widget=forms.CheckboxSelectMultiple, label='Dias da Semana', )
     class Meta:
         model = Activity
         fields = ['facilitador','atividade', 'tipo', 'dia_semana', 'turno', 'horario_inicio', 'horario_fim']
@@ -628,13 +626,24 @@ class ActivityForm(forms.ModelForm):
             perfis__tipo_perfil="facilitador"
         )
 
-        # preencher dias da semana quando estiver editando
-        if self.instance and self.instance.pk and self.instance.dia_semana:
-            self.fields['dia_semana'].initial = self.instance.dia_semana.split(',')
+       # quando editar, transformar o texto salvo em lista para o campo MultipleChoiceField
+        if self.instance and self.instance.dia_semana:
+            try:
+                dias = ast.literal_eval(self.instance.dia_semana)
+                if isinstance(dias, list):
+                    self.initial['dia_semana'] = dias
+                else:
+                    # caso antigo: 'segunda,quarta'
+                    self.initial['dia_semana'] = [
+                        d.strip() for d in str(self.instance.dia_semana).split(',')
+                    ]
+            except Exception:
+                self.initial['dia_semana'] = []
 
     def clean_dia_semana(self):
-        dias = self.cleaned_data['dia_semana']  # lista ['segunda', 'quarta']
-        return ','.join(dias)
+        dias = self.cleaned_data.get('dia_semana')  # lista de códigos
+        # salva sempre como string de lista Python
+        return str(dias)
 
 class AddAlunosToTurmaForm(forms.Form):
     alunos = forms.ModelMultipleChoiceField(

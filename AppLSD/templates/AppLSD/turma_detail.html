@@ -7,9 +7,9 @@ Detalhes da Turma - {{ turma.sala }}
 
 {% block content %}
 <div class="container mt-4">
-  <h1>Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
-  <p><strong>Faixa etária:</strong> {{ turma.faixa_etaria }}</p>
-  <p><strong>Turno:</strong> {{ turma.turno }}</p>
+  <h1 class="text-center">Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
+  <h3 class="text-center"><strong>Faixa etária:</strong> {{ turma.faixa_etaria }} - <strong>Turno:</strong> {{ turma.turno }}</h3>
+  
 
   <!-- DEBUG: Mostrar informações de permissão -->
   {% if user.is_superuser %}
@@ -23,6 +23,24 @@ Detalhes da Turma - {{ turma.sala }}
     Pode iniciar: {{ pode_iniciar }}<br>
     Já tem frequência: {{ ja_tem_frequencia }}
   </div>
+  {% endif %}
+
+  {% if is_educadora and aniversariantes_mes %}
+    <div class="card col-md-4 mb-3 border-warning">
+      <div class="card-header text-center bg-warning text-dark">
+        Aniversariantes deste mês
+      </div>
+      <div class="card-body">
+        <ul class="mb-0">
+          {% for aluno in aniversariantes_mes %}
+            <li>
+              <strong>{{ aluno.name }}</strong> -
+              {{ aluno.birth_date|date:"d/m" }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   {% endif %}
 
   {# ABAS #}
@@ -119,6 +137,30 @@ Detalhes da Turma - {{ turma.sala }}
         {% endif %}
       </div>
 
+      <div class="mt-4">
+    {% if pode_adicionar_alunos %}
+      <a href="{% url 'turma_add_alunos' turma.id %}"
+        class="btn btn-success">
+        Adicionar alunos
+      </a>
+    {% endif %}
+    
+    <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
+    
+      {% if is_educadora %}
+        {# educadora: volta para a home específica #}
+        <a href="{% url 'home_educadora' %}" class="btn btn-secondary">
+          Voltar para Home
+        </a>
+      {% else %}
+        {# demais usuários: volta para lista de turmas #}
+        <a href="{% url 'turma_list' %}" class="btn btn-secondary">
+          Voltar para lista de turmas
+        </a>
+      {% endif %}
+    
+  </div>
+
       <!-- CARD DE AUDITORIA DA TURMA -->
       <div class="container mt-4">
         <div class="row justify-content-center">
@@ -187,11 +229,7 @@ Detalhes da Turma - {{ turma.sala }}
 
   </div> {# fim tab-content #}
 
-  <div class="mt-4">
-    <a href="{% url 'turma_add_alunos' turma.id %}" class="btn btn-success">Adicionar alunos</a>
-    <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
-    <a href="{% url 'home_educadora' %}" class="btn btn-secondary">Voltar à Home</a>
-  </div>
+  
 
 </div>
 {% endblock %}

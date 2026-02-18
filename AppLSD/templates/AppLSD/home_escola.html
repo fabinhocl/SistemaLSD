@@ -27,7 +27,54 @@
         </a>
     </div>
    
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                Aniversariantes de hoje
+            </div>
+            <div class="card-body">
+                {% if aniversariantes_dia %}
+                <ul class="mb-0">
+                    {% for aluno in aniversariantes_dia %}
+                    <li>
+                        <strong>{{ aluno.name }}</strong>
+                        {% if aluno.turma %}
+                        – ({{ aluno.turma.educadora.first_name }} - {{ aluno.turma.turno }})
+                        {% else %}-
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mb-0">Nenhum aniversariante hoje.</p>
+                {% endif %}
+            </div>
+        </div>
 
+        <div class="card col-md-12 mb-3">
+        <div class="card-header text-center bg-light">
+            Aniversariantes do mês
+        </div>
+        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+            {% if aniversariantes_mes %}
+            <ul class="mb-0">
+                {% for aluno in aniversariantes_mes %}
+                <li>
+                    {{ aluno.birth_date|date:"d" }} -
+                    {{ aluno.name }}
+                    {% if aluno.turma %}
+                    ({{ aluno.turma.educadora.first_name }} - {{ aluno.turma.turno }})
+                    {% else %}-
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mb-0">Nenhum aniversariante neste mês.</p>
+            {% endif %}
+        </div>
+        </div>
+    </div>
     
 </div>
 {% endblock %}

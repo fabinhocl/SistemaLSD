@@ -9,6 +9,68 @@
         <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
         <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
     </div>
+
+<div class="mb-3">
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-2">
+        <label class="form-label">Atividades</label>
+        <select name="atividade" class="form-select">
+            <option value="">Todas as atividades</option>
+            {% for nome in nomes_atividades %}
+                <option value="{{ nome }}"
+                {% if filtro_atividade == nome %}selected{% endif %}>
+                {{ nome }}
+                </option>
+            {% endfor %}
+            </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Facilitador</label>
+      <select name="facilitador" class="form-select">
+            <option value="">Todos os facilitadores</option>
+            {% for facilitador in facilitadores %}
+                <option value="{{ facilitador.id }}"
+                {% if filtro_facilitador == facilitador.id|stringformat:"s" %}selected{% endif %}>
+                {{ facilitador }}
+                </option>
+            {% endfor %}
+        </select>
+
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Tipo</label>
+      <select name="tipo" class="form-select">
+            <option value="">Todos os tipos</option>
+            {% for value, label in tipos_atividades %}
+                <option value="{{ value }}"
+                    {% if filtro_tipo == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Dias da Semana</label>
+      <select name="dia_semana" class="form-select">
+            <option value="">Todos os dias</option>
+            {% for value, label in dias_semana_choices %}
+                    <option value="{{ value }}"
+                    {% if filtro_dia_semana == value %}selected{% endif %}>
+                {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+      <a href="{% url 'activity_list' %}" class="btn btn-outline-secondary">Limpar</a>
+    </div>
+  </form>
+</div>
     <table class="table table-striped table-bordered">
         <thead>
             <tr class="text-center">

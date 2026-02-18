@@ -8,9 +8,9 @@
 
 <h2 class="text-center">Turmas da Educadora {{ user.get_full_name }}</h2>
 
-<div class="row">
+<div class="row justify-content-center">
     {% for turma in turmas %}
-    <div class="col-md-6 mb-3 justify-content-center">
+    <div class="col-md-4 mb-3 justify-content-center">
         <div class="card">
             <div class="card-header justify-content-center" style="background-color: #f8f9fa;">
                 <h5 class="text-center">{{ turma.faixa_etaria }} - {{ turma.turno }}</h5>
@@ -26,9 +26,9 @@
     {% endfor %}
 </div>
 
-<h2>Atividades de Hoje dos seus alunos</h2>
+<h2 class="text-center">Atividades de Hoje dos seus alunos</h2>
 
-<div class="row">
+<div class="row justify-content-center">
     {% if atividades_do_dia %}
         {% for atividade in atividades_do_dia %}
     
