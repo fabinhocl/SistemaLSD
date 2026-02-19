@@ -288,40 +288,85 @@ def remove_accents(text):
         if unicodedata.category(c) != 'Mn'
     )
 
+
 @login_required
 def home_educadora(request):
     educadora = request.user
     hoje = timezone.now().date()
-    weekday = hoje.weekday()  # 0=segunda, 6=domingo
+    weekday = hoje.weekday()
 
-     # alunos da educadora
+    # ====== TURMAS COM STATUS DE FREQUÊNCIA ======
+    turmas = Turma.objects.filter(educadora=educadora)
+    
+    turmas_com_status = []
+    for turma in turmas:
+        frequencia_turma_hoje = FrequenciaTurma.objects.filter(
+            turma=turma,
+            data=hoje
+        ).first()
+
+         # ✅ Usando Aluno.objects.filter em vez de turma.aluno_set
+        total_alunos = Aluno.objects.filter(turma=turma).count()
+        
+        # ✅ Alunos presentes hoje
+        alunos_presentes_hoje = FrequenciaTurma.objects.filter(
+            turma=turma,
+            data=hoje,
+            presente=True
+        ).count()
+        
+        turmas_com_status.append({
+            'turma': turma,
+            'total_alunos': total_alunos,
+            'alunos_presentes': alunos_presentes_hoje,
+            'frequencia_existe': frequencia_turma_hoje is not None,
+            'frequencia': frequencia_turma_hoje,
+            'pode_editar': is_coordenacao(educadora),
+            'pode_visualizar': is_educadora(educadora) and frequencia_turma_hoje is not None,
+        })
+    
+     # ====== ATIVIDADES COM STATUS DE FREQUÊNCIA ======
     alunos_da_educadora = Aluno.objects.filter(turma__educadora=educadora)
     
-    # atividades que têm pelo menos um desses alunos
     atividades_com_alunos_da_educadora = Activity.objects.filter(
         Exists(
             alunos_da_educadora.filter(atividades=OuterRef('pk'))
         )
     )
-    # se você tem campo de dia da semana na Activity, aplique o filtro do dia aqui:
-    # por exemplo, se get_dia_semana_display usa choices com 'SEG', 'TER'...:
-    mapa_weekday = {
-        0: 'segunda',
-        1: 'terca',
-        2: 'quarta',
-        3: 'quinta',
-        4: 'sexta',
-    }
-
+    
+    mapa_weekday = {0: 'segunda', 1: 'terca', 2: 'quarta', 3: 'quinta', 4: 'sexta'}
     valor_dia = mapa_weekday.get(weekday)
+
+
     if valor_dia:
-        # se dia_semana guarda vários dias em uma string, usa contains
-        atividades_com_alunos_da_educadora = atividades_com_alunos_da_educadora.filter(dia_semana__icontains=valor_dia)
+        atividades_com_alunos_da_educadora = atividades_com_alunos_da_educadora.filter(
+            dia_semana__icontains=valor_dia
+        )
+
+    # CRIAR LISTA COM STATUS DE FREQUÊNCIA ✅
+    atividades_com_status = []
+    for atividade in atividades_com_alunos_da_educadora:
+        # Verifica se já existe pelo menos um registro de frequência hoje para esta atividade
+        # e para os alunos desta educadora
+        frequencia_existe = FrequenciaAtividade.objects.filter(
+            atividade=atividade,
+            data=hoje,
+            aluno__in=alunos_da_educadora
+        ).exists()
+
+        atividades_com_status.append({
+            'obj': atividade,
+            'frequencia_existe': frequencia_existe
+        })
+    
 
     context = {
-        'turmas': Turma.objects.filter(educadora=educadora),
-        'atividades_do_dia': atividades_com_alunos_da_educadora,
-        # outros dados que você já manda hoje (turmas do dia, etc.)
+        'turmas_com_status': turmas_com_status,  # ✅ Com este nome
+        'atividades_do_dia': atividades_com_status,
+        'is_coordenacao': is_coordenacao(educadora),
+        'is_educadora': is_educadora(educadora),
+        'total_alunos': total_alunos,
+        'alunos_presentes_hoje': alunos_presentes_hoje,
     }
     return render(request, 'AppLSD/home_educadora.html', context)
     
@@ -1151,73 +1196,70 @@ def turma_detail(request, turma_id):
     
     total_alunos_turma = alunos.count()
 
-    # regra: somente coordenação ou superuser podem adicionar alunos
-    pode_adicionar_alunos = (
-        request.user.is_superuser
-        or request.user.groups.filter(name='Coordenacao').exists()
-    )
+    # Use as funções do utils.py! ✅
+    coordenacao_status = is_coordenacao(request.user)
+    educadora_status = is_educadora(request.user)
+
+    # DEBUG
+    print(f"===== DEBUG TURMA DETAIL =====")
+    print(f"Usuário: {request.user.username}")
+    print(f"É coordenação (via utils): {coordenacao_status}")
+    print(f"É educadora (via utils): {educadora_status}")
+    
+    print(f"==============================\n")
+
+    # Regras de permissão
+    pode_adicionar_alunos = is_coordenacao
+    pode_mover_alunos = is_coordenacao  # ← Agora usa a mesma lógica
+    pode_editar_alunos = is_coordenacao  # ← Novo
 
     today = timezone.now().date()
     
-    # aniversariantes do mês atual, dentro da turma
+    # Aniversariantes do mês atual
     aniversariantes_mes = alunos.filter(
         birth_date__month=today.month
-        ).order_by('birth_date', 'name')
+    ).order_by('birth_date', 'name')
 
-     # Verificar se já existe frequência para hoje
+    # aniversariantes do dia (subset do anterior)
+    aniversariantes_dia = aniversariantes_mes.filter(birth_date__day=today.day)
+
+    # Verificar se já existe frequência para hoje
     frequencia_hoje = FrequenciaTurma.objects.filter(
         turma=turma,
         data=today
     ).first()
-   # Verificar grupos do usuário =====
-    user = request.user
-    tipo_perfil = None
 
-     # Buscar o perfil do usuário (pode ter múltiplos perfis)
-    perfis = user.perfis.all()
-    
-    if perfis.exists():
-        # Pegar o primeiro perfil (ou você pode implementar lógica para múltiplos)
-        tipo_perfil = perfis.first().tipo_perfil
-    # DEBUG: 
-    print(f"===== DEBUG TURMA DETAIL =====")
-    print(f"Usuário: {user.username}")
-    print(f"Tipo de Perfil: {tipo_perfil}")
-    print(f"Todos os perfis: {list(perfis.values_list('tipo_perfil', flat=True))}")
-    print(f"É superuser: {user.is_superuser}")
-    
-    # Verificar permissão do usuário
-    is_coordenacao = (tipo_perfil == 'coordenacao') or user.is_superuser
-    is_educadora = request.user.groups.filter(name='Educadora').exists()
-
-
-    print(f"is_coordenacao: {is_coordenacao}")
-    print(f"is_educadora: {is_educadora}")
-    print(f"Frequência hoje existe: {frequencia_hoje is not None}")
-    print(f"==============================\n")
-
-    
-    # Lógica de permissões
+       # Lógica de permissões para frequência
     pode_editar = False
     pode_visualizar = False
-    pode_iniciar = True
+    pode_iniciar = False  # Começa como False por segurança
     
     if frequencia_hoje:
-        # Já existe frequência hoje
+        # Frequência já existe: ninguém pode iniciar de novo
         pode_iniciar = False
 
-        if is_coordenacao:
+        if is_coordenacao(request.user):
+            # Coordenação: pode TUDO (editar e visualizar)
             pode_editar = True
             pode_visualizar = True
-        elif is_educadora:
+        elif is_educadora(request.user):
+            # Educadora: só pode visualizar após iniciada
             pode_visualizar = True
-            pode_editar = False  # Educadora não pode editar depois de criar
-        else:
-            # Não existe frequência - qualquer um pode iniciar
+            pode_editar = False
+    else:
+        # Frequência NÃO existe:
+        # Educadora ou Coordenação podem iniciar
+        if is_educadora(request.user) or is_coordenacao(request.user):
             pode_iniciar = True
+            pode_visualizar = False
+            pode_editar = False
+    
+    print(f"🔍 DEBUG FINAL - pode_iniciar: {pode_iniciar}, ja_tem_frequencia: {frequencia_hoje is not None}")
+
 
     ct = ContentType.objects.get_for_model(Turma)
     logs = AppLog.objects.filter(content_type=ct, object_id=turma.id).order_by('-criado_em')
+    
     context = {
         'turma': turma,
         'logs': logs,
@@ -1227,13 +1269,17 @@ def turma_detail(request, turma_id):
         'pode_editar': pode_editar,
         'pode_visualizar': pode_visualizar,
         'pode_iniciar': pode_iniciar,
-        'is_coordenacao': is_coordenacao,
-        'is_educadora': is_educadora,
+        'is_coordenacao': coordenacao_status,
+        'is_educadora': educadora_status,
         'total_alunos_turma': total_alunos_turma,
-        'pode_adicionar_alunos': pode_adicionar_alunos,
+        'pode_adicionar_alunos': coordenacao_status,
+        'pode_mover_alunos': coordenacao_status,
+        'pode_editar_alunos': coordenacao_status,  
         'aniversariantes_mes': aniversariantes_mes,
+        'aniversariantes_dia': aniversariantes_dia,
     }
     return render(request, 'AppLSD/turma_detail.html', context)
+
 
 def get_tipo_perfil(user):
     """

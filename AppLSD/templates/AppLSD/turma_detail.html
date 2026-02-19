@@ -13,15 +13,16 @@ Detalhes da Turma - {{ turma.sala }}
 
   <!-- DEBUG: Mostrar informações de permissão -->
   {% if user.is_superuser %}
-  <div class="alert alert-warning">
-    <strong>DEBUG INFO:</strong><br>
+  <!-- DEBUG: Mostrar informações de permissão - PARA TODOS -->
+  <div class="alert alert-info">
+    <strong>DEBUG TEMPLATE INFO (TODOS):</strong><br>
     Usuário: {{ user.username }}<br>
+    É superuser: {{ user.is_superuser }}<br>
     É coordenação: {{ is_coordenacao }}<br>
     É educadora: {{ is_educadora }}<br>
-    Pode editar: {{ pode_editar }}<br>
-    Pode visualizar: {{ pode_visualizar }}<br>
-    Pode iniciar: {{ pode_iniciar }}<br>
-    Já tem frequência: {{ ja_tem_frequencia }}
+    pode_adicionar_alunos: {{ pode_adicionar_alunos }}<br>
+    pode_editar_alunos: {{ pode_editar_alunos }}<br>
+    pode_mover_alunos: {{ pode_mover_alunos }}
   </div>
   {% endif %}
 
@@ -68,6 +69,7 @@ Detalhes da Turma - {{ turma.sala }}
          aria-labelledby="tab-resumo">
 
       <h2 class="text-center mt-4">Alunos da Turma</h2>
+      
       <div class="col-md-2 mb-2">
             <div class="alert alert-info mb-0">
                 Alunos na Turma: {{ total_alunos_turma }}
@@ -94,8 +96,11 @@ Detalhes da Turma - {{ turma.sala }}
             <td>
                <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">Visualizar</a>
 
-                  {% if pode_editar %}
+                  {% if pode_editar_alunos %}
                     <a href="{% url 'aluno_edit' aluno.id %}" class="btn btn-primary btn-sm">Editar</a>
+                  {% endif %}
+                  
+                  {% if pode_mover_alunos %}
                     <a href="{% url 'mover_aluno' aluno.id %}" class="btn btn-warning btn-sm">Mover aluno</a>
                   {% endif %}
                 
@@ -112,15 +117,10 @@ Detalhes da Turma - {{ turma.sala }}
       <!-- BOTÕES DE FREQUÊNCIA -->
       <div class="mt-4">
         {% if ja_tem_frequencia %}
+          {# Frequência JÁ foi iniciada #}
           <div class="alert alert-info">
             Frequência de hoje já foi iniciada.
           </div>
-
-          {% if pode_editar %}
-          <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
-            <i class="fas fa-edit"></i> Editar Frequência de Hoje
-          </a>
-          {% endif %}
 
           {% if pode_visualizar %}
           <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
@@ -128,7 +128,14 @@ Detalhes da Turma - {{ turma.sala }}
           </a>
           {% endif %}
 
+          {% if pode_editar %}
+          <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
+            <i class="fas fa-edit"></i> Editar Frequência de Hoje
+          </a>
+          {% endif %}
+
         {% else %}
+          {# Frequência NÃO foi iniciada #}
           {% if pode_iniciar %}
           <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
             <i class="fas fa-play"></i> Iniciar Frequência
