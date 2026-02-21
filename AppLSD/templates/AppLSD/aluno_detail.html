@@ -87,180 +87,278 @@
       </div>
     </div>
 
-    <h4 class="text-center">Turma Inserida</h4>
-    <table class="table table-bordered">
-      <thead>
-        <tr class="text-center">
-          <th>Educadora</th>
-          <th>Turma</th>
-          <th>Sala</th>
-          <th>Turno</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if aluno.turma %}
-          <tr class="text-center">
-            <td>{{ aluno.turma.educadora }}</td>
-            <td>{{ aluno.turma.faixa_etaria }}</td>
-            <td>{{ aluno.turma.sala }}</td>
-            <td>{{ aluno.turma.turno }}</td>
-          </tr>
-        {% else %}
-          <tr>
-            <td colspan="4" class="text-center">Nenhuma turma matriculada.</td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
-
-    <h4 class="text-center">Atividades Inseridas</h4>
-    <table class="table table-bordered">
-      <thead>
-        <tr class="text-center">
-          <th>Atividade</th>
-          <th>Turno</th>
-          <th>Facilitador(a)</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for activity in aluno.atividades.all %}
-          <tr class="text-center">
-            <td>{{ activity.atividade }}</td>
-            <td>{{ activity.turno|default:"-" }}</td>
-            <td>{{ activity.facilitador }}</td>
-            <td>
-              <button type="button"
-                      class="btn btn-danger btn-sm"
-                      data-bs-toggle="modal"
-                      data-bs-target="#modalRemoverAtividade-{{ activity.id }}">
-                Remover desta atividade
-              </button>
-              
-            </td>
-          </tr>
-          <tr>
-           <td colspan="4"> 
-              <div class="modal fade" id="modalRemoverAtividade-{{ activity.id }}" tabindex="-1"
-            aria-labelledby="modalRemoverAtividadeLabel-{{ activity.id }}" aria-hidden="true">
-                <div class="modal-dialog">
-                  <div class="modal-content">
-                    <form method="post"
-                          action="{% url 'remover_aluno_por_aluno' aluno.id activity.id %}">
-                      {% csrf_token %}
-                      <div class="modal-header">
-                        <h5 class="modal-title"
-                            id="modalRemoverAtividadeLabel-{{ activity.id }}">
-                          Remover {{ aluno.name }} da atividade {{ activity.atividade }}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                aria-label="Close"></button>
-                      </div>
-
-                      <div class="modal-body">
-                        <div class="mb-3">
-                          <label for="motivo-{{ activity.id }}" class="form-label">
-                            Motivo da remoção / desistência
-                          </label>
-                          <textarea name="motivo" id="motivo-{{ activity.id }}"
-                                    class="form-control" rows="3" required></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                          <label for="senha-{{ activity.id }}" class="form-label">
-                            Confirme sua senha
-                          </label>
-                          <input type="password" name="senha" id="senha-{{ activity.id }}"
-                                class="form-control" required>
-                        </div>
-                      </div>
-
-                      <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary"
-                                data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger">
-                          Confirmar remoção
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-           </td>
-          </tr>
-        
-          {% empty %}
-          <tr>
-            <td colspan="3" class="text-center">Nenhuma atividade matriculada.</td>
-          </tr>
-
-        
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <h4 class="text-center">Histórico de Turmas</h4>
-    <table class="table table-bordered">
-      <thead>
-        <tr class="text-center">
-          <th>Data</th>
-          <th>Turma de Origem</th>
-          <th>Turma Atual</th>
-          <th>Motivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for mov in historico_turmas %}
-      <tr class="text-center">
-        <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
-        <td>{{ mov.turma_origem }}</td>
-        <td>
-          {% if mov.turma_destino %}
-            {{ mov.turma_destino }}
+    <!-- TURMA INSERIDA -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 mx-auto">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0 text-center">Turma Inserida</h5>
+        </div>
+        <div class="card-body">
+          {% if aluno.turma %}
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr class="text-center">
+                  <th>Educadora</th>
+                  <th>Turma</th>
+                  <th>Sala</th>
+                  <th>Turno</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="text-center">
+                  <td>{{ aluno.turma.educadora }}</td>
+                  <td>{{ aluno.turma.faixa_etaria }}</td>
+                  <td>{{ aluno.turma.sala }}</td>
+                  <td>{{ aluno.turma.turno }}</td>
+                </tr>
+              </tbody>
+            </table>
           {% else %}
-            Sem turma
+            <p class="text-center text-muted">Nenhuma turma matriculada.</p>
           {% endif %}
-        </td>
-        <td>{{ mov.motivo }}</td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4" class="text-center">Nenhuma movimentação registrada.</td>
-      </tr>
-    {% endfor %}
-      </tbody>
-    </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <h4 class="text-center">Ocorrências</h4>
-    <table class="table table-bordered table-striped">
-      <thead>
-        <tr class="text-center">
-          <th>Data</th>
-          <th>Tipo</th>
-          <th>Descrição</th>
-          <th>Responsável</th>
-          <th>Observações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ocorrencia in aluno.ocorrencias.all %}
-          <tr>
-            <td>{{ ocorrencia.data|date:"d/m/Y" }}</td>
-            <td>{{ ocorrencia.tipo }}</td>
-            <td>{{ ocorrencia.descricao }}</td>
-            <td>{{ ocorrencia.responsavel }}</td>
-            <td>{{ ocorrencia.observacoes }}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="5" class="text-center">Nenhuma ocorrência registrada.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<!-- ATIVIDADES INSERIDAS -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 mx-auto">
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0 text-center">Atividades Inseridas</h5>
+        </div>
+        <div class="card-body">
+          {% if aluno.atividades.all %}
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr class="text-center">
+                  <th>Atividade</th>
+                  <th>Turno</th>
+                  <th>Facilitador(a)</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in aluno.atividades.all %}
+                  <tr class="text-center">
+                    <td>{{ activity.atividade }}</td>
+                    <td>{{ activity.turno|default:"-" }}</td>
+                    <td>{{ activity.facilitador }}</td>
+                    <td>
+                      <button type="button"
+                              class="btn btn-danger btn-sm"
+                              data-bs-toggle="modal"
+                              data-bs-target="#modalRemoverAtividade-{{ activity.id }}">
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-center text-muted">Nenhuma atividade matriculada.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <a href="{% url 'adicionar_ocorrencia' aluno.pk %}" class="btn btn-success btn-sm">Registrar Ocorrência</a>
+<!-- HISTÓRICO DE TURMAS -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 mx-auto">
+      <div class="card">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0 text-center">Histórico de Turmas</h5>
+        </div>
+        <div class="card-body">
+          {% if historico_turmas %}
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr class="text-center">
+                  <th>Data</th>
+                  <th>Turma de Origem</th>
+                  <th>Turma Atual</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for mov in historico_turmas %}
+                <tr class="text-center">
+                  <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+                  <td>{{ mov.turma_origem }}</td>
+                  <td>
+                    {% if mov.turma_destino %}
+                      {{ mov.turma_destino }}
+                    {% else %}
+                      <span class="badge bg-secondary">Sem turma</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ mov.motivo }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-center text-muted">Nenhuma movimentação registrada.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE REMOÇÃO DE ATIVIDADE (fora do loop) -->
+{% for activity in aluno.atividades.all %}
+<div class="modal fade" id="modalRemoverAtividade-{{ activity.id }}" tabindex="-1"
+     aria-labelledby="modalRemoverAtividadeLabel-{{ activity.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post"
+            action="{% url 'remover_aluno_por_aluno' aluno.id activity.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"
+              id="modalRemoverAtividadeLabel-{{ activity.id }}">
+            Remover {{ aluno.name }} da atividade?
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="motivo-{{ activity.id }}" class="form-label">
+              Motivo da remoção / desistência
+            </label>
+            <textarea name="motivo" id="motivo-{{ activity.id }}"
+                      class="form-control" rows="3" required></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label for="senha-{{ activity.id }}" class="form-label">
+              Confirme sua senha
+            </label>
+            <input type="password" name="senha" id="senha-{{ activity.id }}"
+                  class="form-control" required placeholder="Digite sua senha">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-danger">
+            Confirmar remoção
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+    <!-- HISTÓRICO DE ATIVIDADES -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 mx-auto">
+      <div class="card">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0 text-center">Histórico de Atividades</h5>
+        </div>
+        <div class="card-body">
+          {% if logs %}
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>Data / Hora</th>
+                  <th>Ação</th>
+                  <th>Descrição</th>
+                  <th>Registrado por</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in logs %}
+                <tr>
+                  <td>{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+                  <td>
+                    {% if 'removido' in log.acao %}
+                      <span class="badge bg-danger">Removido</span>
+                    {% elif 'adicionado' in log.acao %}
+                      <span class="badge bg-success">Adicionado</span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ log.acao }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ log.descricao }}</td>
+                  <td>{{ log.criado_por.username|default:"Sistema" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-center text-muted">Nenhuma movimentação registrada.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OCORRÊNCIAS -->
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 mx-auto">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0 text-center">Ocorrências</h5>
+        </div>
+        <div class="card-body">
+          {% if aluno.ocorrencias.all %}
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr class="text-center">
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Responsável</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ocorrencia in aluno.ocorrencias.all %}
+                  <tr class="text-center">
+                    <td>{{ ocorrencia.data|date:"d/m/Y" }}</td>
+                    <td>
+                      <span class="badge bg-danger">{{ ocorrencia.tipo }}</span>
+                    </td>
+                    <td>{{ ocorrencia.descricao }}</td>
+                    <td>{{ ocorrencia.responsavel }}</td>
+                    <td>{{ ocorrencia.observacoes|default:"-" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-center text-muted">Nenhuma ocorrência registrada.</p>
+          {% endif %}
+        </div>
+        <div class="card-footer bg-light">
+          <a href="{% url 'adicionar_ocorrencia' aluno.pk %}" class="btn btn-success btn-sm">
+            <i class="fas fa-plus"></i> Registrar Ocorrência
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
     <div class="mt-3 no-print">
         {% load perfil_tags %} {# se usuario_tem_perfil for um template tag, senão não precisa #}

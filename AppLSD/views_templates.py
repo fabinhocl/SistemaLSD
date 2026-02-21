@@ -13,6 +13,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -308,12 +309,15 @@ def home_educadora(request):
          # ✅ Usando Aluno.objects.filter em vez de turma.aluno_set
         total_alunos = Aluno.objects.filter(turma=turma).count()
         
-        # ✅ Alunos presentes hoje
-        alunos_presentes_hoje = FrequenciaTurma.objects.filter(
-            turma=turma,
-            data=hoje,
-            presente=True
-        ).count()
+        # DEBUG: Verificar se FrequenciaAluno existe
+        freq_alunos = FrequenciaAluno.objects.filter(
+            chamada__turma=turma,
+            chamada__data=hoje
+        )
+        
+        alunos_presentes_hoje = freq_alunos.filter(presente=True).count()
+
+       
         
         turmas_com_status.append({
             'turma': turma,
@@ -1138,51 +1142,76 @@ def aluno_delete_confirm(request, pk):
         'error': error,
     })
 
-#Remover Aluno da atividade através do aluno_detail
-@login_required
-def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
-    aluno = get_object_or_404(Aluno, id=aluno_id)
-    atividade = get_object_or_404(Activity, id=activity_id)
 
-    if not (request.user.is_superuser or
-            request.user.groups.filter(name='Coordenacao').exists()):
+def _remover_aluno_da_atividade_logic(request, aluno, atividade):
+    """
+    Lógica comum para remover aluno de atividade com validação de senha.
+    """
+    if not (request.user.is_superuser or is_coordenacao(request.user)):
         return HttpResponseForbidden('Sem permissão')
 
     if request.method == 'POST':
-        form = RemoverAlunoAtividadeForm(request.POST)
-        if form.is_valid():
-            senha = form.cleaned_data['senha']
-            motivo = form.cleaned_data['motivo']
-
-            user = authenticate(username=request.user.username, password=senha)
-            if user is None:
-                messages.error(request, 'Senha incorreta.')
-            else:
-                atividade.alunos.remove(aluno)
-
-                registrar_log(
-                    request.user,
-                    atividade,
-                    'aluno_removido_da_atividade',
-                    f'Aluno {aluno.name} removido da atividade '
-                    f'"{atividade.atividade}". Motivo: {motivo}.'
-                )
-
-                registrar_log(
-                    request.user,
-                    aluno,
-                    'aluno_removido_atividade',
-                    (
-                        f'Aluno removido da atividade "{atividade.atividade}". '
-                        f'Motivo: {motivo}.'
-                    ),
-                )
-
-                messages.success(request, 'Aluno removido da atividade.')
-
+        # ✅ Validar senha
+        senha = request.POST.get('senha', '')
+        if not senha:
+            messages.error(request, 'Senha obrigatória!')
+            return False
         
+        if not check_password(senha, request.user.password):
+            messages.error(request, 'Senha incorreta!')
+            return False
 
-    # em qualquer caso (sucesso ou erro) volta para a página do aluno
+        motivo = request.POST.get('motivo', '').strip()
+
+        atividade.alunos.remove(aluno)
+
+        # Log na atividade
+        registrar_log(
+            request.user,
+            atividade,
+            'aluno_removido_da_atividade',
+            f'Aluno {aluno.name} removido da atividade '
+            f'"{atividade.atividade}". Motivo: {motivo or "não informado"}.'
+        )
+
+        # Log no aluno
+        registrar_log(
+            request.user,
+            aluno,
+            'aluno_removido_atividade',
+            f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo or "não informado"}.'
+        )
+
+        messages.success(request, 'Aluno removido da atividade.')
+        return True
+    return False
+
+@login_required
+def remover_aluno_da_atividade(request, activity_id, aluno_id):
+    """
+    Remove aluno da atividade - chamada da tela de DETALHES DA ATIVIDADE
+    """
+    atividade = get_object_or_404(Activity, id=activity_id)
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+
+    if _remover_aluno_da_atividade_logic(request, aluno, atividade):
+        return redirect('activity_detail', activity_id=atividade.id)
+    
+    return redirect('activity_detail', activity_id=atividade.id)
+
+
+@login_required
+def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
+    """
+    Remove aluno da atividade - chamada da tela de DETALHES DO ALUNO
+    URL: /alunos/<aluno_id>/remover-da-atividade/<activity_id>/
+    """
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+    atividade = get_object_or_404(Activity, id=activity_id)
+
+    if _remover_aluno_da_atividade_logic(request, aluno, atividade):
+        return redirect('aluno_detail', pk=aluno.id)
+    
     return redirect('aluno_detail', pk=aluno.id)
 
 
@@ -1550,9 +1579,10 @@ def activity_detail(request, activity_id):
         'atividade': atividade,
         'tem_frequencia_hoje': tem_frequencia_hoje,
         # se tiver controle de permissão, algo como:
-        'is_coordenacao': request.user.groups.filter(name='Coordenacao').exists(),
         'logs': logs,
         'alunos_atividade': alunos_atividade,
+        'is_coordenacao': is_coordenacao(request.user), 
+        
     }
     return render(request, 'AppLSD/activity_detail.html', context)
     
@@ -1573,7 +1603,8 @@ def activity_list(request):
     if facilitador_id:
         atividades = atividades.filter(facilitador_id=facilitador_id)
     if dia_semana:
-        atividades = atividades.filter(dia_semana__contains=f"'{dia_semana}'")
+        # ✅ CORRIGIDO: Usar icontains sem as aspas
+        atividades = atividades.filter(dia_semana__icontains=dia_semana)
     if turno:
         atividades = atividades.filter(turno=turno)
     if tipo:
@@ -1581,21 +1612,19 @@ def activity_list(request):
 
     atividades = atividades.order_by('atividade')
 
-    # aqui é o ajuste importante: pegar os facilitadores via Activity
-    # listas para os selects
+    # Listas para os selects
     facilitadores = User.objects.filter(
         id__in=Activity.objects.values('facilitador_id')
     ).order_by('first_name').distinct()
 
-     
     nomes_atividades = (
         Activity.objects.order_by('atividade')
         .values_list('atividade', flat=True)
         .distinct()
     )
 
-    tipos_atividades = Activity.TIPO_CHOICES              # <--- aqui
-    dias_semana_choices = Activity.DIAS_SEMANAS_CHOICES   # <--- e aqui
+    tipos_atividades = Activity.TIPO_CHOICES
+    dias_semana_choices = Activity.DIAS_SEMANAS_CHOICES
 
     turnos = (
         Activity.objects.order_by('turno')
@@ -1619,8 +1648,11 @@ def activity_list(request):
         'filtro_dia_semana': dia_semana,
         'filtro_turno': turno,
         'filtro_tipo': tipo,
+        'is_coordenacao': is_coordenacao(request.user),  
+        'is_educadora': is_educadora(request.user),
     }
     return render(request, 'AppLSD/activity_list.html', context)
+
 
 
 @login_required
@@ -2026,41 +2058,8 @@ def activity_add_alunos(request, activity_id):
         {"atividade": atividade, "form": form, "filtro": filtro},
     )
 
-# views.py
-@login_required
-def remover_aluno_da_atividade(request, activity_id, aluno_id):
-    atividade = get_object_or_404(Activity, id=activity_id)
-    aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    if not (request.user.is_superuser or
-            request.user.groups.filter(name='Coordenacao').exists()):
-        return HttpResponseForbidden('Sem permissão')
 
-    if request.method == 'POST':
-        motivo = request.POST.get('motivo', '').strip()
-
-        atividade.alunos.remove(aluno)  # ou aluno.atividades.remove(atividade)
-
-        # log na atividade
-        registrar_log(
-            request.user,
-            atividade,
-            'aluno_removido_da_atividade',
-            f'Aluno {aluno.name} removido da atividade '
-            f'"{atividade.atividade}". Motivo: {motivo or "não informado"}.'
-        )
-
-        # log no aluno (para aparecer no histórico do aluno)
-        registrar_log(
-            request.user,
-            aluno,
-            'aluno_removido_atividade',
-            f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo or "não informado"}.'
-        )
-
-        messages.success(request, 'Aluno removido da atividade.')
-
-    return redirect('activity_detail', activity_id=atividade.id)
 
 @login_required
 def relatorio_presenca_turma(request, turma_id, data=None):

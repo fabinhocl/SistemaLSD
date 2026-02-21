@@ -9,8 +9,40 @@
     <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
     
-        
+      
+    <!-- Resumo -->
+     <div>
+            {% with presentes=presencas|presentes_count faltas=presencas|faltas_count %}
+                <div class="row mt-4">
+                    <div class="col">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h4>Presentes</h4>
+                                <span style="font-size:2em">{{ presentes }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h4>Faltas</h4>
+                                <span style="font-size:2em">{{ faltas }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h4>Total</h4>
+                                <span style="font-size:2em">{{ alunos_turma|length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endwith %}
+        </div>
     <div class="card">
+        
         <div class="card-header">
             <h4 class="text-center">Lista de Presença</h4>
         </div>
@@ -51,35 +83,7 @@
                 </tbody>
             </table>
             
-            <!-- Resumo -->
-            {% with presentes=presencas|presentes_count faltas=presencas|faltas_count %}
-    <div class="row mt-4">
-        <div class="col">
-            <div class="card bg-success text-white">
-                <div class="card-body text-center">
-                    <h4>Presentes</h4>
-                    <span style="font-size:2em">{{ presentes }}</span>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card bg-danger text-white">
-                <div class="card-body text-center">
-                    <h4>Faltas</h4>
-                    <span style="font-size:2em">{{ faltas }}</span>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card bg-info text-white">
-                <div class="card-body text-center">
-                    <h4>Total</h4>
-                    <span style="font-size:2em">{{ alunos_turma|length }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-{% endwith %}
+           
 
   
     

@@ -58,12 +58,17 @@ Detalhes da Atividade - {{ atividade.atividade }}
             <td>{{ aluno.idade }}</td>
             <td>{{ aluno.turma }}</td>
             <td>
+              <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">
+                Visualizar
+              {% if is_coordenacao or user.is_superuser %}
               <button type="button"
                       class="btn btn-danger btn-sm"
                       data-bs-toggle="modal"
                       data-bs-target="#modalRemoverAlunoAtividade-{{ aluno.id }}">
                 Remover
               </button>
+              {% endif %}
+
             </td>
           </tr>
           {% empty %}
@@ -75,7 +80,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
       </table>
       {% for aluno in alunos_atividade %}
         <div class="modal fade" id="modalRemoverAlunoAtividade-{{ aluno.id }}" tabindex="-1"
-            aria-labelledby="modalRemoverAlunoAtividadeLabel-{{ aluno.id }}" aria-hidden="true">
+      aria-labelledby="modalRemoverAlunoAtividadeLabel-{{ aluno.id }}" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
               <form method="post"
@@ -83,7 +88,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
                 {% csrf_token %}
                 <div class="modal-header">
                   <h5 class="modal-title" id="modalRemoverAlunoAtividadeLabel-{{ aluno.id }}">
-                    Remover {{ aluno.name }} desta atividade?
+                    Remover {{ aluno.name }} da atividade?
                   </h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal"
                           aria-label="Close"></button>
@@ -96,6 +101,15 @@ Detalhes da Atividade - {{ atividade.atividade }}
                     </label>
                     <textarea name="motivo" id="motivo-{{ aluno.id }}"
                               class="form-control" rows="3" required></textarea>
+                  </div>
+
+                  <!-- ✅ NOVO: Campo de senha -->
+                  <div class="mb-3">
+                    <label for="senha-{{ aluno.id }}" class="form-label">
+                      Confirme sua senha
+                    </label>
+                    <input type="password" name="senha" id="senha-{{ aluno.id }}"
+                          class="form-control" required placeholder="Digite sua senha">
                   </div>
                 </div>
 

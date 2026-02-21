@@ -95,8 +95,11 @@
                 <td>{{ activity.horario_inicio }} - {{ activity.horario_fim }}</td>
                 <td>
                     <a href="{% url 'activity_detail' activity.pk %}" class="btn btn-info btn-sm">Visualizar</a>
-                    <a href="{% url 'activity_edit' activity.pk %}" class="btn btn-primary btn-sm">Editar</a>
-                    <a href="{% url 'activity_delete' activity.pk %}" class="btn btn-danger btn-sm">Excluir</a>
+                    
+                    {% if is_coordenacao or user.is_superuser %}
+                        <a href="{% url 'activity_edit' activity.pk %}" class="btn btn-primary btn-sm">Editar</a>
+                        <a href="{% url 'activity_delete' activity.pk %}" class="btn btn-danger btn-sm">Excluir</a>
+                    {% endif %}
                 </td>
             </tr>
         {% empty %}
