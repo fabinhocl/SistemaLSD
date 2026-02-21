@@ -80,6 +80,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'AppLSD.middleware.ThreadLocalUserMiddleware',
 ]
 
 ROOT_URLCONF = 'larsaodomingos.urls'

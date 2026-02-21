@@ -18,6 +18,7 @@ from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
+from django.db import transaction
 from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef, IntegerField
 from django.db.models.functions import Cast
 from django.forms.models import inlineformset_factory
@@ -1142,6 +1143,81 @@ def aluno_delete_confirm(request, pk):
         'error': error,
     })
 
+def desativar_familia(request, familia_id):
+    """
+    Desativa uma família e todos os seus assistidos.
+    Remove alunos de turmas e atividades, registrando no histórico.
+    """
+    familia = get_object_or_404(Family, id=familia_id)
+    
+    if request.method == 'POST':
+        with transaction.atomic():
+            # 1. Buscar todos os alunos da família
+            alunos = Aluno.objects.filter(family=familia)
+            
+            # 2. Para cada aluno
+            for aluno in alunos:
+                # Remover de todas as atividades
+                atividades = Activity.objects.filter(alunos=aluno)
+                for atividade in atividades:
+                    atividade.alunos.remove(aluno)
+                    
+                    # Registrar no histórico da atividade
+                    registrar_log(
+                        request.user,
+                        atividade,
+                        'aluno_removido_familia_desativada',
+                        f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" '
+                        f'por desativação da família {familia.name}.'
+                    )
+                
+                # Registrar no histórico do aluno
+                registrar_log(
+                    request.user,
+                    aluno,
+                    'aluno_removido_atividade',
+                    f'Removido de todas as atividades por desativação da família.'
+                )
+                
+                # Remover de todas as turmas (se aplicável)
+                turma_atual = aluno.turma
+                if turma_atual:
+                    aluno.turma = None
+                    aluno.save()
+                    
+                    # Registrar no histórico da turma
+                    registrar_log(
+                        request.user,
+                        turma_atual,
+                        'aluno_removido_familia_desativada',
+                        f'Aluno {aluno.name} removido por desativação da família {familia.name}.'
+                    )
+                
+                # Desativar o aluno
+                aluno.ativo = False
+                aluno.save()
+                
+                # Registrar no histórico do aluno
+                registrar_log(
+                    request.user,
+                    aluno,
+                    'aluno_desativado',
+                    f'Aluno desativado por desativação da família {familia.name}.'
+                )
+            
+            # 3. Desativar a família
+            familia.ativo = False
+            familia.save()
+            
+            messages.success(
+                request, 
+                f'Família {familia.name} desativada. '
+                f'{alunos.count()} aluno(s) removido(s) de turmas e atividades.'
+            )
+            
+            return redirect('familia_list')
+    
+    return render(request, 'desativar_familia.html', {'familia': familia})
 
 def _remover_aluno_da_atividade_logic(request, aluno, atividade):
     """
