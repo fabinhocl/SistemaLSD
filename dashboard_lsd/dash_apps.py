@@ -1,4 +1,5 @@
 import dash
+import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
 from dash import dcc, html, dash, dash_table
 from dash.dependencies import Input, Output
@@ -68,6 +69,70 @@ def get_family_data():
 app = DjangoDash("LSDDashboard")
 
 @app.callback(
+    Output("conteudo-aba", "children"),
+    Input("tabs-dashboard", "value"),
+    Input("interval-component", "n_intervals"),
+)
+def renderizar_conteudo_aba(tab, n):
+    df_family = get_family_dataframe()
+
+    if tab == "tab-familias":
+        if df_family.empty:
+            return html.Div("Sem dados de famílias")
+
+        cadastradas = len(df_family)
+        ativas = df_family[df_family["status"] == "ativo"].shape[0]
+        inativas = df_family[df_family["status"] != "ativo"].shape[0]
+
+        fig_status = px.pie(df_family, names="status", title="Status: Ativas/Inativas")
+        fig_salario = create_family_figure(df_family)
+        fig_educacao = px.bar(df_family, x="education", title="Escolaridade")
+
+        return html.Div(
+            [
+                html.Div(
+                    [
+                        html.Div(f"Famílias cadastradas: {cadastradas}",
+                                 className="kpi-card"),
+                        html.Div(f"Famílias ativas: {ativas}",
+                                 className="kpi-card"),
+                        html.Div(f"Famílias inativas: {inativas}",
+                                 className="kpi-card"),
+                    ],
+                    style={
+                        "display": "flex",
+                        "gap": "16px",
+                        "flexWrap": "wrap",
+                        "marginBottom": "24px",
+                    },
+                ),
+                html.Div(
+                    [
+                        dcc.Graph(figure=fig_status,
+                                  style={"flex": "1", "minWidth": "300px"}),
+                        dcc.Graph(figure=fig_salario,
+                                  style={"flex": "1", "minWidth": "300px"}),
+                    ],
+                    style={"display": "flex", "gap": "24px", "flexWrap": "wrap"},
+                ),
+                dcc.Graph(figure=fig_educacao),
+            ]
+        )
+
+    elif tab == "tab-alunos":
+        # aqui você monta os gráficos dos ALUNOS
+        return html.Div("Gráficos de alunos (a implementar)")
+
+    elif tab == "tab-adultos":
+        return html.Div("Gráficos de adultos (a implementar)")
+
+    elif tab == "tab-turmas":
+        return html.Div("Gráficos de turmas (a implementar)")
+
+    elif tab == "tab-atividades":
+        return html.Div("Gráficos de atividades (a implementar)")
+
+@app.callback(
     Output('status-familias', 'children'),
     Input('interval-component', 'n_intervals')
 )
@@ -86,32 +151,36 @@ def atualizar_status_familias(n):
     ]
 
 app.layout = html.Div([
-    html.H2("Dashboard de Famílias"),
-    dcc.Interval(
-        id='interval-component',
-        interval=30*1000,  # a cada 30 segundos
-        n_intervals=0
-    ),
+    html.H2("Dashboard Integra+Lar"),
 
-    html.Div(id='status-familias'),
-    dcc.Graph(
-        id="grafico_status"
-    ),
-    
-    dcc.Graph(
-        id="grafico_salario"
-    ),
-    dcc.Graph(
-        id="grafico_educacao"
-    ),
-], style={
-    'display': 'flex',
-    'flexDirection': 'column',
-    'alignItems': 'center',
-    'gap': '24px',
-    'padding': '50px',
-    'paddingTop': '12px',
-})
+        dcc.Tabs(
+            id="tabs-dashboard",
+            value="tab-familias",
+            children=[
+                dcc.Tab(label="Famílias", value="tab-familias"),
+                dcc.Tab(label="Alunos", value="tab-alunos"),
+                dcc.Tab(label="Adultos", value="tab-adultos"),
+                dcc.Tab(label="Turmas", value="tab-turmas"),
+                dcc.Tab(label="Atividades", value="tab-atividades"),
+            ],
+            # opcional: estilos
+        ),
+
+        dcc.Interval(
+            id="interval-component",
+            interval=30 * 1000,
+            n_intervals=0
+        ),
+
+        html.Div(id="conteudo-aba")   # aqui entra o conteúdo dinâmico
+    ],
+    style={
+        "padding": "40px",
+        "maxWidth": "1200px",
+        "minWidth": "500px",
+        "margin": "0 auto",
+    },
+)
 
 @app.callback(
     Output('grafico_status', 'figure'),
