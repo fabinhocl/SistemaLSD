@@ -9,7 +9,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
 from .validators import cpf_validator
 from datetime import date
-from multiselectfield.forms.fields import MultiSelectFormField
+#from multiselectfield.forms.fields import MultiSelectFormField
+#from django_multiselectfield import MultiSelectFormField
 import re
 
 

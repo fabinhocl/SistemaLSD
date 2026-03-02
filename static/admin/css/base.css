@@ -1178,3 +1178,35 @@ a.deletelink:focus, a.deletelink:hover {
     color: var(--body-fg);
     background-color: var(--body-bg);
 }
+
+/* aumenta a área onde o Dash é renderizado */
+.django-plotly-dash.django-plotly-dash-application,
+.django-plotly-dash {
+    width: 100% !important;
+    min-height: 600px !important;   /* ajuste a altura que preferir */
+}
+
+/* se estiver vindo como iframe */
+iframe.django-plotly-dash {
+    width: 100% !important;
+    min-height: 600px !important;
+    border: none;
+}
+
+/* força altura no wrapper interno gerado pelo django-plotly-dash */
+/* base.css */
+
+#dashboard-plotly-wrapper > div {
+    position: relative !important;
+    padding-bottom: 0 !important;
+    height: 80vh !important;      /* ou 80vh */
+    overflow: visible !important;
+}
+
+#dashboard-plotly-wrapper iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}

@@ -2471,9 +2471,7 @@ def export_family_excel(request):
 def export_aluno_excel(request):
     campos = request.GET.getlist('campos')
     
-    if not campos:
-        campos = ['criado_em','inscricao', 'name', 'cpf', 'birth_date', 'school', 'ensino', 'serie']
-    
+       
     alunos = Aluno.objects.select_related('family', 'turma').all().order_by('name')
     
     wb = Workbook()
@@ -2485,19 +2483,29 @@ def export_aluno_excel(request):
         'criado_em': {'label': 'Criado em'},  # novo
         'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
         'name': {'label': 'Nome', 'field': 'name'},
+        'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
         'cpf': {'label': 'CPF', 'field': 'cpf'},
         'nis': {'label': 'NIS', 'field': 'nis'},
         'birth_date': {'label': 'Data de Nascimento', 'field': 'birth_date'},
         'idade': {'label': 'Idade', 'field': 'idade'},
         'sex': {'label': 'Sexo', 'field': 'sex'},
+        'rede_ensino': {'label': 'Rede de Ensino', 'field': 'rede_ensino'},
         'school': {'label': 'Escola', 'field': 'school'},
         'ensino': {'label': 'Ensino', 'field': 'ensino'},
         'serie': {'label': 'Série', 'field': 'serie'},
         'turno': {'label': 'Turno', 'field': 'turno'},
-        'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
+        'health_problem': {'label': 'Tem Problema de Saúde?', 'field': 'health_problem'},
+        'special_need': {'label': 'Qual problema de Saúde?', 'field': 'special_need'},
+        'uso_medicacao': {'label': 'Faz uso de Medicação?', 'field': 'uso_medicacao'},
+        'qual_medicacao': {'label': 'Qual Medicação?', 'field': 'qual_medicacao'},
+        'frequencia_tipo': {'label': 'Tipo de Frequência', 'field': 'frequencia_tipo'},
+        'dias_semana': {'label': 'Dias da Semana', 'field': 'dias_semana'},
         'status_lsd': {'label': 'Status LSD', 'field': 'status_lsd'},
         'turma': {'label': 'Turma', 'field': 'turma__name'},
     }
+
+    if not campos:
+        campos = list(campos_info.keys())  # se não vier campos, exporta todos os campos disponíveis
     
     # Cabeçalhos NA ORDEM dos campos selecionados
     headers = []
