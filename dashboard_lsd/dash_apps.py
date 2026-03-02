@@ -705,7 +705,7 @@ def renderizar_conteudo_aba(tab, n):
                 html.Div(
                     [
                         #dcc.Graph(figure=fig_sexo, style={"flex": "1", "minWidth": "300px"}),
-                        dcc.Graph(figure=fig_alunos_faixa, style={"flex": "1", "minWidth": "300px"}),
+                        #dcc.Graph(figure=fig_alunos_faixa, style={"flex": "1", "minWidth": "300px"}),
                     ],
                     style={"display": "flex", "gap": "24px", "flexWrap": "wrap"},
                 ),
