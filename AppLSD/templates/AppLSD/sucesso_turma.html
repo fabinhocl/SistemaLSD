@@ -7,7 +7,7 @@
 </head>
 <body class="container mt-4">
     <h1 class="text-success">Chamada salva com sucesso!</h1>
-    <p>A frequência da turma <strong>{{ turma.sala }}</strong> foi registrada para o dia {{ data|date:"d/m/Y" }}.</p>
+    <p>A frequência da turma <strong>{{ turma.grupo }}</strong> foi registrada para o dia {{ data|date:"d/m/Y" }}.</p>
 
     <a href="{% url 'relatorio_presenca_turma' turma.id %}" class="btn btn-primary">Ver Relatório de Presença</a>
     <a href="{% url 'turma_detail' turma.id %}" class="btn btn-secondary">Voltar para Turma</a>

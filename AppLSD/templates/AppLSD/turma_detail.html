@@ -2,12 +2,12 @@
 {% load static %}
 
 {% block title %}
-Detalhes da Turma - {{ turma.sala }}
+Detalhes da Turma - {{ turma.grupo }}
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-  <h1 class="text-center">Turma: {{ turma.educadora.first_name }} - {{ turma.sala }}</h1>
+  <h1 class="text-center">Turma: {{ turma.educadora.first_name }} - {{ turma.grupo }}</h1>
   <h3 class="text-center"><strong>Faixa etária:</strong> {{ turma.faixa_etaria }} - <strong>Turno:</strong> {{ turma.turno }}</h3>
   
 
@@ -75,6 +75,60 @@ Detalhes da Turma - {{ turma.sala }}
                 Alunos na Turma: {{ total_alunos_turma }}
             </div>
         </div>
+      <!-- BOTÕES DE FREQUÊNCIA -->
+        <div class="mt-4">
+          {% if ja_tem_frequencia %}
+            {# Frequência JÁ foi iniciada #}
+            <div class="alert alert-info">
+              Frequência de hoje já foi iniciada.
+            </div>
+
+            {% if pode_visualizar %}
+            <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
+              <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
+            </a>
+            {% endif %}
+
+            {% if pode_editar %}
+            <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
+              <i class="fas fa-edit"></i> Editar Frequência de Hoje
+            </a>
+            {% endif %}
+
+          {% else %}
+            {# Frequência NÃO foi iniciada #}
+            {% if pode_iniciar %}
+            <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
+              <i class="fas fa-play"></i> Iniciar Frequência
+            </a>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <div class="mt-4">
+      {% if pode_adicionar_alunos %}
+        <a href="{% url 'turma_add_alunos' turma.id %}"
+          class="btn btn-success">
+          Adicionar alunos
+        </a>
+      {% endif %}
+      
+      <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
+      
+        {% if is_educadora %}
+          {# educadora: volta para a home específica #}
+          <a href="{% url 'home_educadora' %}" class="btn btn-secondary">
+            Voltar para Home
+          </a>
+        {% else %}
+          {# demais usuários: volta para lista de turmas #}
+          <a href="{% url 'turma_list' %}" class="btn btn-secondary">
+            Voltar para lista de turmas
+          </a>
+        {% endif %}
+      
+    </div>
+
       
       <table class="table table-striped">
         <thead>
@@ -114,59 +168,7 @@ Detalhes da Turma - {{ turma.sala }}
         </tbody>
       </table>
 
-      <!-- BOTÕES DE FREQUÊNCIA -->
-      <div class="mt-4">
-        {% if ja_tem_frequencia %}
-          {# Frequência JÁ foi iniciada #}
-          <div class="alert alert-info">
-            Frequência de hoje já foi iniciada.
-          </div>
-
-          {% if pode_visualizar %}
-          <a href="{% url 'frequencia_visualizar' frequencia_hoje.id %}" class="btn btn-info">
-            <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
-          </a>
-          {% endif %}
-
-          {% if pode_editar %}
-          <a href="{% url 'frequencia_editar' frequencia_hoje.id %}" class="btn btn-warning">
-            <i class="fas fa-edit"></i> Editar Frequência de Hoje
-          </a>
-          {% endif %}
-
-        {% else %}
-          {# Frequência NÃO foi iniciada #}
-          {% if pode_iniciar %}
-          <a href="{% url 'frequencia_turma_iniciar' turma.id %}" class="btn btn-success">
-            <i class="fas fa-play"></i> Iniciar Frequência
-          </a>
-          {% endif %}
-        {% endif %}
-      </div>
-
-      <div class="mt-4">
-    {% if pode_adicionar_alunos %}
-      <a href="{% url 'turma_add_alunos' turma.id %}"
-        class="btn btn-success">
-        Adicionar alunos
-      </a>
-    {% endif %}
-    
-    <button onclick="window.print()" class="btn btn-secondary">Imprimir</button>
-    
-      {% if is_educadora %}
-        {# educadora: volta para a home específica #}
-        <a href="{% url 'home_educadora' %}" class="btn btn-secondary">
-          Voltar para Home
-        </a>
-      {% else %}
-        {# demais usuários: volta para lista de turmas #}
-        <a href="{% url 'turma_list' %}" class="btn btn-secondary">
-          Voltar para lista de turmas
-        </a>
-      {% endif %}
-    
-  </div>
+      
 
       <!-- CARD DE AUDITORIA DA TURMA -->
       <div class="container mt-4">

@@ -59,7 +59,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
             <td>{{ aluno.turma }}</td>
             <td>
               <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">
-                Visualizar
+                Visualizar</a>
               {% if is_coordenacao or user.is_superuser %}
               <button type="button"
                       class="btn btn-danger btn-sm"

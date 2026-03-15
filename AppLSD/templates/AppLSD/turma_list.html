@@ -46,8 +46,11 @@
         <option value="">Todas faixas</option>
         <option value="06-07 anos" {% if request.GET.faixa_etaria == "06-07 anos" %}selected{% endif %}>06-07 anos</option>
         <option value="08-09 anos" {% if request.GET.faixa_etaria == "08-09 anos" %}selected{% endif %}>08-09 anos</option>
+        <option value="08-10 anos" {% if request.GET.faixa_etaria == "08-10 anos" %}selected{% endif %}>08-10 anos</option>
         <option value="10-12 anos" {% if request.GET.faixa_etaria == "10-12 anos" %}selected{% endif %}>10-12 anos</option>
+        <option value="13-14 anos" {% if request.GET.faixa_etaria == "13-14 anos" %}selected{% endif %}>13-14 anos</option>
         <option value="13-17 anos" {% if request.GET.faixa_etaria == "13-17 anos" %}selected{% endif %}>13-17 anos</option>
+        <option value="15-17 anos" {% if request.GET.faixa_etaria == "15-17 anos" %}selected{% endif %}>15-17 anos</option>
       </select>
     </div>
 
@@ -62,7 +65,7 @@
         <thead>
             <tr class="text-center">
                 <th>Educadora</th>
-                <th>Sala</th>
+                <th>Grupo</th>
                 <th>Turno</th>
                 <th>Faixa Etária</th>
                 <th>Qtd Alunos</th>
@@ -74,7 +77,7 @@
         {% for turma in page_obj %}
             <tr class="text-center">
                 <td>{{ turma.educadora.first_name }}</td>
-                <td>{{ turma.sala }}</td>
+                <td>{{ turma.grupo }}</td>
                 <td>{{ turma.turno }}</td>
                 <td>{{ turma.faixa_etaria }}</td>
                 <td>{{ turma.alunos.count }}

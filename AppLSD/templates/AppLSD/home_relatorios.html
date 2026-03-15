@@ -4,85 +4,296 @@
 {% block title %}Relatórios de Frequência{% endblock %}
 
 {% block content %}
-    <h2 class="text-center">Frequência - Resumo</h2>
 
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-primary">{{ total_alunos }}</h3>
-                    <p>Total de Alunos</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-success">{{ presentes_hoje }}</h3>
-                    <p>Presentes Hoje</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-danger">{{ faltas_hoje }}</h3>
-                    <p>Faltas Hoje</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h3 class="text-info">{{ turmas_ativas }}</h3>
-                    <p>Turmas Ativas</p>
-                </div>
-            </div>
-        </div>
-    </div>
+<h2 class="text-center mb-4">Relatórios de Frequência</h2>
 
-    <h2 class="text-center mb-4">Turmas</h2>
-    <div class="row">
-        {% for turma in turmas %}
-        <div class="col-lg-4 col-md-6 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="text-center card-title">{{ turma.educadora.first_name }} - {{ turma.sala }}</h5>
-                    <h5 class="text-center card-title">{{ turma.turno }}</h5>
-                    <div class="d-flex justify-content-center"><a href="{% url 'relatorio_presenca_turma' turma.id %}" class="text-center btn btn-primary">Ver Relatório</a></div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
+{# ===================== RESUMO TOPO ===================== #}
+<div class="row mb-4">
+  <div class="col-md-3 mb-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h3 class="text-primary">{{ total_alunos }}</h3>
+        <p class="mb-0">Total de Alunos</p>
+      </div>
     </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h3 class="text-success">{{ presentes_hoje_manha }}</h3>
+        <p class="mb-0">Presentes Hoje (Manhã)</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h3 class="text-success">{{ presentes_hoje_tarde }}</h3>
+        <p class="mb-0">Presentes Hoje (Tarde)</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h3 class="text-danger">{{ faltas_hoje }}</h3>
+        <p class="mb-0">Faltas Hoje</p>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <h2 class="mb-4 mt-5">Atividades</h2>
-    <div class="row">
-        {% for atividade in atividades %}
-        <div class="col-lg-4 col-md-6 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="text-center card-title">{{ atividade.atividade }} - {{ atividade.facilitador.first_name }}</h5>
-                    <h5 class="text-center card-title">{{ atividade.turno }}</h5>
-                    <div class="d-flex justify-content-center"><a href="{% url 'relatorio_presenca_activity' atividade.id %}" class="text-center btn btn-primary">Ver Relatório</a></div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
+{# ===================== BLOCO DE FILTROS ===================== #}
+<div class="card mb-4">
+  <div class="card-header">
+    <strong>Filtros de Relatório</strong>
+  </div>
+  <div class="card-body">
 
-    <h3 class="mt-4">Relatório Mensal do Aluno</h3>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <a href="{% url 'relatorio_mensal_aluno' %}" class="btn btn-primary w-100">Ver Relatório Mensal</a>
-                </div>
-                
-            </div>
+    <form id="filtro-relatorios" method="get" action="">
+
+      <div class="row mb-3">
+        <div class="col-md-3 mb-3">
+          <label for="tipo_relatorio" class="form-label">Tipo de Relatório</label>
+          <select id="tipo_relatorio" name="tipo_relatorio" class="form-select">
+            <option value="turma">Relatório por Turma</option>
+            <option value="aluno">Relatório Mensal do Aluno</option>
+            <option value="atividade">Relatório por Atividade</option>
+          </select>
         </div>
-    </div>
+
+        <div class="col-md-3 mb-3" id="campo_turma">
+          <label for="turma_id" class="form-label">Turma</label>
+          <select id="turma_id" name="turma_id" class="form-select">
+            <option value="">Selecione...</option>
+            {% for turma in turmas %}
+              <option value="{{ turma.id }}">
+                {{ turma.educadora.first_name }} - {{ turma.grupo }} ({{ turma.turno }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_aluno">
+          <label for="aluno_id" class="form-label">Aluno</label>
+          <select id="aluno_id" name="aluno_id" class="form-select">
+            <option value="">Selecione...</option>
+            {% for aluno in alunos %}
+              <option value="{{ aluno.id }}">
+                {{ aluno.nome }} - {{ aluno.turma.grupo }} ({{ aluno.turma.turno }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_atividade">
+          <label for="atividade_id" class="form-label">Atividade</label>
+          <select id="atividade_id" name="atividade_id" class="form-select">
+            <option value="">Selecione...</option>
+            {% for atividade in atividades %}
+              <option value="{{ atividade.id }}">
+                {{ atividade.atividade }} - {{ atividade.facilitador.first_name }} ({{ atividade.turno }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-3 mb-3">
+          <label for="tipo_periodo" class="form-label">Período</label>
+          <select id="tipo_periodo" name="tipo_periodo" class="form-select">
+            <option value="diario">Diário</option>
+            <option value="mensal">Mensal</option>
+          </select>
+        </div>
+
+        <div class="col-md-3 mb-3" id="campo_data">
+          <label for="data" class="form-label">Data</label>
+          <input type="date" id="data" name="data" class="form-control">
+        </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_mes">
+          <label for="mes" class="form-label">Mês</label>
+          <input type="month" id="mes" name="mes" class="form-control">
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+        <button type="button" id="btn-gerar-relatorio" class="btn btn-primary">
+          Gerar Relatório
+        </button>
         <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
-        <a href="{% url 'dashboard_presenca' %}" class="btn btn-primary">Dashboard Turmas</a>
+        <a href="{% url 'dashboard_presenca' %}" class="btn btn-outline-secondary">Dashboard Turmas</a>
+      </div>
 
-{% endblock %}
+    </form>
+  </div>
+</div>
+
+{# ===================== ATALHOS RÁPIDOS (OPCIONAIS) ===================== #}
+<div class="row">
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <div>
+          <h5 class="card-title text-center">Relatório Turma (últimos 7 dias)</h5>
+          <p class="text-muted small text-center mb-3">
+            Médias de presença por turma nos últimos 7 dias.
+          </p>
+        </div>
+        <a href="{% url 'dashboard_presenca' %}" class="btn btn-primary w-100">
+          Ver Turmas
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <div>
+          <h5 class="card-title text-center">Relatório Atividades</h5>
+          <p class="text-muted small text-center mb-3">
+            Frequência nas atividades dos últimos 7 dias.
+          </p>
+        </div>
+        {% comment %} URL base para JS, não para clique direto {% endcomment %}
+        <a href="javascript:void(0)" id="link-base-atividade"
+            data-url-base="{% url 'relatorio_presenca_activity' 0 %}"
+            class="btn btn-primary w-100">
+            Ver Atividades
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <div>
+          <h5 class="card-title text-center">Relatório Mensal do Aluno</h5>
+          <p class="text-muted small text-center mb-3">
+            Frequência detalhada do aluno por mês.
+          </p>
+        </div>
+        <a href="{% url 'relatorio_mensal_aluno' %}" class="btn btn-primary w-100">
+          Selecionar Aluno
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('JS de relatórios carregado');
+
+  const tipoRelatorio   = document.getElementById('tipo_relatorio');
+  const tipoPeriodo     = document.getElementById('tipo_periodo');
+  const turmaSelect     = document.getElementById('turma_id');
+  const alunoSelect     = document.getElementById('aluno_id');
+  const atividadeSelect = document.getElementById('atividade_id');
+  const dataInput       = document.getElementById('data');
+  const mesInput        = document.getElementById('mes');
+
+  const campoTurma     = document.getElementById('campo_turma');
+  const campoAluno     = document.getElementById('campo_aluno');
+  const campoAtividade = document.getElementById('campo_atividade');
+  const campoData      = document.getElementById('campo_data');
+  const campoMes       = document.getElementById('campo_mes');
+
+  const urlTurmaBase = "{% url 'relatorio_presenca_turma' 0 %}";
+  const urlAtivBase  = "{% url 'relatorio_presenca_activity' 0 %}";
+  const urlAlunoBase = "{% url 'relatorio_mensal_aluno' %}";
+
+  function toggleEntidade() {
+    const tipo = tipoRelatorio.value;
+    console.log('Tipo de relatório:', tipo);
+
+    campoTurma.classList.add('d-none');
+    campoAluno.classList.add('d-none');
+    campoAtividade.classList.add('d-none');
+
+    if (tipo === 'turma') {
+      campoTurma.classList.remove('d-none');
+    } else if (tipo === 'aluno') {
+      campoAluno.classList.remove('d-none');
+    } else if (tipo === 'atividade') {
+      campoAtividade.classList.remove('d-none');
+    }
+  }
+
+  function togglePeriodo() {
+    const tipo = tipoPeriodo.value;
+    console.log('Tipo de período:', tipo);
+
+    if (tipo === 'diario') {
+      campoData.classList.remove('d-none');
+      campoMes.classList.add('d-none');
+    } else {
+      campoData.classList.add('d-none');
+      campoMes.classList.remove('d-none');
+    }
+  }
+
+  document.getElementById('btn-gerar-relatorio').addEventListener('click', function () {
+    const tipo    = tipoRelatorio.value;
+    const periodo = tipoPeriodo.value;
+
+    let url    = null;
+    let params = [];
+
+    if (tipo === 'turma') {
+      const turmaId = turmaSelect.value;
+      if (!turmaId) {
+        alert('Selecione uma turma.');
+        return;
+      }
+      url = urlTurmaBase.replace('/0/', '/' + turmaId + '/');
+    } else if (tipo === 'aluno') {
+      const alunoId = alunoSelect.value;
+      if (!alunoId) {
+        alert('Selecione um aluno.');
+        return;
+      }
+      url = urlAlunoBase;
+      params.push('aluno_id=' + alunoId);
+    } else if (tipo === 'atividade') {
+      const atividadeId = atividadeSelect.value;
+      if (!atividadeId) {
+        alert('Selecione uma atividade.');
+        return;
+      }
+      url = urlAtivBase.replace('/0/', '/' + atividadeId + '/');
+    } else {
+      alert('Selecione o tipo de relatório.');
+      return;
+    }
+
+    if (periodo === 'diario' && dataInput.value) {
+      params.push('data=' + dataInput.value);
+    } else if (periodo === 'mensal' && mesInput.value) {
+      params.push('mes=' + mesInput.value);
+    }
+
+    if (params.length) {
+      url += '?' + params.join('&');
+    }
+
+    console.log('Redirecionando para:', url);
+    window.location.href = url;
+  });
+
+  tipoRelatorio.addEventListener('change', toggleEntidade);
+  tipoPeriodo.addEventListener('change', togglePeriodo);
+
+  toggleEntidade();
+  togglePeriodo();
+});
+</script>
+{% endblock extra_js %}

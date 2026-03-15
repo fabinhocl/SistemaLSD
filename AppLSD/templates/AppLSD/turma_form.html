@@ -8,7 +8,17 @@
     
     <form method="post" class="mb-4">
         {% csrf_token %}
-        {{ form|crispy }}
+        <div class="row mb-3">
+                    <div class="col-md-4">{{ form.educadora|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.grupo|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.turno|as_crispy_field }}</div>
+                <div class="row mb-3">
+                    <div class="col-md-4">{{ form.faixa_etaria|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.ano_letivo|as_crispy_field }}</div>
+                    
+                </div>
+                
+            </div>    
         <button type="submit" class="btn btn-primary">
             {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
         </button>

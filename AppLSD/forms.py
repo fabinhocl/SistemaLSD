@@ -576,7 +576,7 @@ class TurmaForm(forms.ModelForm):
 
     class Meta:
         model = Turma
-        fields = ['educadora', 'sala', 'turno', 'faixa_etaria', 'ano_letivo']
+        fields = ['educadora', 'grupo', 'turno', 'faixa_etaria', 'ano_letivo']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

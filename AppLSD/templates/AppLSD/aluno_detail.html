@@ -101,16 +101,16 @@
               <thead>
                 <tr class="text-center">
                   <th>Educadora</th>
+                  <th>Grupo</th>
                   <th>Turma</th>
-                  <th>Sala</th>
                   <th>Turno</th>
                 </tr>
               </thead>
               <tbody>
                 <tr class="text-center">
-                  <td>{{ aluno.turma.educadora }}</td>
+                  <td>{{ aluno.turma.educadora.first_name }}</td>
+                  <td>{{ aluno.turma.grupo }}</td>
                   <td>{{ aluno.turma.faixa_etaria }}</td>
-                  <td>{{ aluno.turma.sala }}</td>
                   <td>{{ aluno.turma.turno }}</td>
                 </tr>
               </tbody>

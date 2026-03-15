@@ -80,6 +80,7 @@
                 <th>Dia da Semana</th>
                 <th>Turno</th>
                 <th>Horário</th>
+                <th>Qtd Alunos</th>
                 <th>Ações</th>
                 
             </tr>
@@ -93,6 +94,7 @@
                 <td>{{ activity.get_dia_semana_display }}</td>
                 <td>{{ activity.turno }}</td>
                 <td>{{ activity.horario_inicio }} - {{ activity.horario_fim }}</td>
+                <td>{{ activity.alunos.count }}</td>
                 <td>
                     <a href="{% url 'activity_detail' activity.pk %}" class="btn btn-info btn-sm">Visualizar</a>
                     

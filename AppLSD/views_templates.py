@@ -444,10 +444,20 @@ def home_adm(request):
 def dashboard_completo(request):
     today = timezone.now().date()
 
-    # ===== DASHBOARD DE PRESENÇA =====
-    total_alunos = Aluno.objects.count()
+    turmas = Turma.objects.all()
+    atividades = Activity.objects.all()
+    alunos = Aluno.objects.all()
 
-    presentes_hoje = FrequenciaAluno.objects.filter(
+    total_alunos = Aluno.objects.filter(status_lsd='Frequentando').count()
+
+    presentes_hoje_manha = FrequenciaAluno.objects.filter(
+        aluno__turma__turno='Manhã',
+        chamada__data=today,
+        presente=True
+    ).count()
+
+    presentes_hoje_tarde = FrequenciaAluno.objects.filter(
+        aluno__turma__turno='Tarde',
         chamada__data=today,
         presente=True
     ).count()
@@ -458,11 +468,9 @@ def dashboard_completo(request):
     ).count()
 
     turmas_ativas = Turma.objects.count()
+    atividades_ativas = Activity.objects.count()
 
-    # ===== RELATÓRIOS =====
-    turmas = Turma.objects.all()
-
-    # Frequência por turma
+    # médias últimos 7 dias (se ainda quiser usar nos atalhos)
     turmas_com_frequencia = []
     for turma in Turma.objects.annotate(total_alunos=Count("alunos")):
         if turma.total_alunos > 0:
@@ -477,10 +485,6 @@ def dashboard_completo(request):
             )
             turma.media_presenca = media_presenca * 100
             turmas_com_frequencia.append(turma)
-
-    # Atividades
-    atividades_ativas = Activity.objects.count()
-    atividades = Activity.objects.all()
 
     atividades_com_frequencia = []
     for atividade in Activity.objects.annotate(total_alunos=Count("alunos")):
@@ -497,11 +501,10 @@ def dashboard_completo(request):
             atividade.media_presenca = media_presenca * 100
             atividades_com_frequencia.append(atividade)
 
-    alunos = Aluno.objects.all()
-
     context = {
         "total_alunos": total_alunos,
-        "presentes_hoje": presentes_hoje,
+        "presentes_hoje_manha": presentes_hoje_manha,
+        "presentes_hoje_tarde": presentes_hoje_tarde,
         "faltas_hoje": faltas_hoje,
         "turmas_ativas": turmas_ativas,
         "atividades_ativas": atividades_ativas,
@@ -512,6 +515,7 @@ def dashboard_completo(request):
         "alunos": alunos,
     }
     return render(request, "AppLSD/home_relatorios.html", context)
+
     
 #Tela para Educadora e Facilitador
 @login_required
@@ -1422,7 +1426,7 @@ class TurmaListView(ListView):
     paginate_by = 20                          # mesmo valor do Paginator
 
     def get_queryset(self):
-        qs = Turma.objects.all().order_by('educadora', 'sala', 'turno')
+        qs = Turma.objects.all().order_by('educadora', 'grupo', 'turno')
 
         turno = self.request.GET.get("turno")
         ano = self.request.GET.get("ano")
@@ -1453,7 +1457,7 @@ def turma_create(request):
                 request.user,
                 turma,
                 'turma_criada',
-                f'Turma {turma.sala} criada para o turno {turma.turno}.'
+                f'Turma {turma.grupo} criada para o turno {turma.turno}.'
             )
             return redirect('turma_list')
     else:
@@ -1473,7 +1477,7 @@ def turma_edit(request, pk):
                 request.user,
                 turma,
                 'turma_editada',
-                f'Turma {turma.sala} editada para o turno {turma.turno}.'
+                f'Turma {turma.grupo} editada para o turno {turma.turno}.'
             )
             return redirect('turma_list')
     else:

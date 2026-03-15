@@ -599,9 +599,25 @@ class Aluno(AuditModel):
 
 class Turma(AuditModel):
     educadora = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='turmas')
-    FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('10-12 anos', '10 a 12 anos'),('13-17 anos', '13 a 17 anos')]
+    FAIXAS_ETARIAS = [('06-07 anos', '06 a 07 anos'),('08-09 anos', '08 a 09 anos'),('08-10 anos', '08 a 10 anos'),('10-12 anos', '10 a 12 anos'),('13-14 anos', '13 a 14 anos'),('13-17 anos', '13 a 17 anos'),('15-17 anos', '15 a 17 anos')]
     faixa_etaria = models.CharField(max_length=15, choices=FAIXAS_ETARIAS, verbose_name="Faixa Etária", default="Selecione a faixa  etária")
-    sala = models.CharField(max_length=100)
+    #sala = models.CharField(max_length=100)
+    ESCOLHA_GRUPO = [
+    ('', '---------'),  # Django usa por padrão esse rótulo se vazio
+    ('Grupo Criança Feliz', 'Grupo Criança Feliz'),
+    ('Grupo Primeira Infância', 'Grupo Primeira Infância'),
+    ('Grupo Brincar e Aprender', 'Grupo Brincar e Aprender'),
+    ('Grupo Pequenos Aventureiros', 'Grupo Pequenos Aventureiros'),
+    ('Grupo Pequenos Talentos', 'Grupo Pequenos Talentos'),
+    ('Grupo Crescer e Desenvolver', 'Grupo Crescer e Desenvolver'),
+    ('Grupo Jovens Criativos', 'Grupo Jovens Criativos'),
+    ('Grupo Jovens Sonhadores', 'Grupo Jovens Sonhadores'),
+    ('Grupo Pensando no Futuro', 'Grupo Pensando no Futuro'),
+    ('Grupo Futuro Brilhante', 'Grupo Futuro Brilhante'),
+    ('Grupo Nova Geração', 'Grupo Nova Geração'),
+
+    ]
+    grupo = models.CharField(max_length=100,choices=ESCOLHA_GRUPO, blank=True, null=True)
     ESCOLHA_TURNO = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('Matutino', 'Matutino'),
@@ -611,7 +627,7 @@ class Turma(AuditModel):
     ano_letivo = models.IntegerField(default=timezone.now().year)
 
     def __str__(self):
-        return f"{self.sala} - Educadora: {self.educadora.first_name} - {self.turno}"
+        return f"{self.grupo} - Educadora: {self.educadora.first_name} - {self.turno}"
 
 
 
