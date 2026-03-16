@@ -382,7 +382,7 @@ def home_facilitador(request):
 
 @login_required
 def home_assist(request):
-    print(">>> ENTROU NA HOME_ASSIST")
+    #print(">>> ENTROU NA HOME_ASSIST")
     servicosocial = request.user
     hoje = timezone.now().date()
     data_corte = date(hoje.year - 60, hoje.month, hoje.day)
