@@ -80,7 +80,7 @@
             <option value="">Selecione...</option>
             {% for aluno in alunos %}
               <option value="{{ aluno.id }}">
-                {{ aluno.nome }} - {{ aluno.turma.grupo }} ({{ aluno.turma.turno }})
+                {{ aluno.family.registration_number }} - {{ aluno.name }} - ({{ aluno.turma.turno }})
               </option>
             {% endfor %}
           </select>
@@ -207,10 +207,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const campoData      = document.getElementById('campo_data');
   const campoMes       = document.getElementById('campo_mes');
 
-  const urlTurmaBase = "{% url 'relatorio_presenca_turma' 0 %}";
-  const urlAtivBase  = "{% url 'relatorio_presenca_activity' 0 %}";
-  const urlAlunoBase = "{% url 'relatorio_mensal_aluno' %}";
-
   function toggleEntidade() {
     const tipo = tipoRelatorio.value;
     console.log('Tipo de relatório:', tipo);
@@ -254,31 +250,52 @@ document.addEventListener('DOMContentLoaded', function () {
         alert('Selecione uma turma.');
         return;
       }
-      url = urlTurmaBase.replace('/0/', '/' + turmaId + '/');
-    } else if (tipo === 'aluno') {
+
+      if (periodo === 'mensal') {
+        // RELATÓRIO MENSAL (planilha)
+        url = "{% url 'relatorio_turma_mensal_html' 0 %}".replace('/0/', '/' + turmaId + '/');
+        if (mesInput.value) {
+          params.push('mes=' + mesInput.value);  // YYYY-MM
+        }
+      } else {
+        // RELATÓRIO DIÁRIO (chamada)
+        url = "{% url 'relatorio_presenca_turma_pdf' 0 %}".replace('/0/', '/' + turmaId + '/');
+        if (dataInput.value) {
+          params.push('data=' + dataInput.value); // YYYY-MM-DD
+        }
+      }
+    }
+
+    else if (tipo === 'aluno') {
       const alunoId = alunoSelect.value;
       if (!alunoId) {
         alert('Selecione um aluno.');
         return;
       }
-      url = urlAlunoBase;
+      url = "{% url 'relatorio_mensal_aluno' %}";
       params.push('aluno_id=' + alunoId);
-    } else if (tipo === 'atividade') {
+      if (mesInput.value) {
+        params.push('mes=' + mesInput.value);
+      }
+    }
+
+    else if (tipo === 'atividade') {
       const atividadeId = atividadeSelect.value;
       if (!atividadeId) {
         alert('Selecione uma atividade.');
         return;
       }
-      url = urlAtivBase.replace('/0/', '/' + atividadeId + '/');
-    } else {
-      alert('Selecione o tipo de relatório.');
-      return;
+      url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
+      if (periodo === 'diario' && dataInput.value) {
+        params.push('data=' + dataInput.value);
+      } else if (periodo === 'mensal' && mesInput.value) {
+        params.push('mes=' + mesInput.value);
+      }
     }
 
-    if (periodo === 'diario' && dataInput.value) {
-      params.push('data=' + dataInput.value);
-    } else if (periodo === 'mensal' && mesInput.value) {
-      params.push('mes=' + mesInput.value);
+    else {
+      alert('Selecione o tipo de relatório.');
+      return;
     }
 
     if (params.length) {
@@ -292,8 +309,18 @@ document.addEventListener('DOMContentLoaded', function () {
   tipoRelatorio.addEventListener('change', toggleEntidade);
   tipoPeriodo.addEventListener('change', togglePeriodo);
 
+  // estado inicial
   toggleEntidade();
   togglePeriodo();
+
+  // === ATIVA SELECT2 NO CAMPO DE ALUNO ===
+  $('#aluno_id').select2({
+    width: '100%',
+    placeholder: 'Busque pelo nome ou inscrição',
+    allowClear: true,
+    language: 'pt-BR'
+  });
 });
+
 </script>
 {% endblock extra_js %}

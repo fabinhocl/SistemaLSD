@@ -4,11 +4,11 @@ from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, Frequ
 from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm, RemoverAlunoAtividadeForm
+from calendar import monthrange
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -16,6 +16,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.db import transaction
@@ -24,6 +25,7 @@ from django.db.models.functions import Cast
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
 from django.views.generic import ListView
+from django_xhtml2pdf.utils import generate_pdf
 from datetime import date, timedelta, datetime
 from .permissoes import require_perfil
 # Concatena e ordena por data
@@ -374,6 +376,7 @@ def home_educadora(request):
         'alunos_presentes_hoje': alunos_presentes_hoje,
     }
     return render(request, 'AppLSD/home_educadora.html', context)
+
     
 @login_required
 def home_facilitador(request):
@@ -451,13 +454,13 @@ def dashboard_completo(request):
     total_alunos = Aluno.objects.filter(status_lsd='Frequentando').count()
 
     presentes_hoje_manha = FrequenciaAluno.objects.filter(
-        aluno__turma__turno='Manhã',
+        aluno__turma__turno='Matutino',
         chamada__data=today,
         presente=True
     ).count()
 
     presentes_hoje_tarde = FrequenciaAluno.objects.filter(
-        aluno__turma__turno='Tarde',
+        aluno__turma__turno='Vespertino',
         chamada__data=today,
         presente=True
     ).count()
@@ -1297,78 +1300,50 @@ def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
 
 @login_required
 def turma_detail(request, turma_id):
-    """
-    Exibe detalhes da turma com verificação de frequência do dia
-    """
     turma = get_object_or_404(Turma, id=turma_id)
     alunos = Aluno.objects.filter(turma=turma).order_by('name')
-    
     total_alunos_turma = alunos.count()
 
-    # Use as funções do utils.py! ✅
     coordenacao_status = is_coordenacao(request.user)
     educadora_status = is_educadora(request.user)
 
-    # DEBUG
-    print(f"===== DEBUG TURMA DETAIL =====")
-    print(f"Usuário: {request.user.username}")
-    print(f"É coordenação (via utils): {coordenacao_status}")
-    print(f"É educadora (via utils): {educadora_status}")
-    
-    print(f"==============================\n")
-
-    # Regras de permissão
-    pode_adicionar_alunos = is_coordenacao
-    pode_mover_alunos = is_coordenacao  # ← Agora usa a mesma lógica
-    pode_editar_alunos = is_coordenacao  # ← Novo
+    # ✅ Educadora só pode mover se for a educadora DESTA turma
+    is_educadora_desta_turma = (
+        educadora_status and turma.educadora == request.user
+    )
 
     today = timezone.now().date()
-    
-    # Aniversariantes do mês atual
+
     aniversariantes_mes = alunos.filter(
         birth_date__month=today.month
     ).order_by('birth_date', 'name')
 
-    # aniversariantes do dia (subset do anterior)
     aniversariantes_dia = aniversariantes_mes.filter(birth_date__day=today.day)
 
-    # Verificar se já existe frequência para hoje
     frequencia_hoje = FrequenciaTurma.objects.filter(
         turma=turma,
         data=today
     ).first()
 
-       # Lógica de permissões para frequência
     pode_editar = False
     pode_visualizar = False
-    pode_iniciar = False  # Começa como False por segurança
-    
-    if frequencia_hoje:
-        # Frequência já existe: ninguém pode iniciar de novo
-        pode_iniciar = False
+    pode_iniciar = False
 
-        if is_coordenacao(request.user):
-            # Coordenação: pode TUDO (editar e visualizar)
+    if frequencia_hoje:
+        pode_iniciar = False
+        if coordenacao_status:
             pode_editar = True
             pode_visualizar = True
-        elif is_educadora(request.user):
-            # Educadora: só pode visualizar após iniciada
+        elif educadora_status:
             pode_visualizar = True
             pode_editar = False
     else:
-        # Frequência NÃO existe:
-        # Educadora ou Coordenação podem iniciar
-        if is_educadora(request.user) or is_coordenacao(request.user):
+        if educadora_status or coordenacao_status:
             pode_iniciar = True
-            pode_visualizar = False
-            pode_editar = False
-    
-    print(f"🔍 DEBUG FINAL - pode_iniciar: {pode_iniciar}, ja_tem_frequencia: {frequencia_hoje is not None}")
-
 
     ct = ContentType.objects.get_for_model(Turma)
     logs = AppLog.objects.filter(content_type=ct, object_id=turma.id).order_by('-criado_em')
-    
+
     context = {
         'turma': turma,
         'logs': logs,
@@ -1382,8 +1357,9 @@ def turma_detail(request, turma_id):
         'is_educadora': educadora_status,
         'total_alunos_turma': total_alunos_turma,
         'pode_adicionar_alunos': coordenacao_status,
-        'pode_mover_alunos': coordenacao_status,
-        'pode_editar_alunos': coordenacao_status,  
+        'pode_editar_alunos': coordenacao_status,
+        # ✅ Coordenação OU educadora desta turma podem mover
+        'pode_mover_alunos': coordenacao_status or is_educadora_desta_turma,
         'aniversariantes_mes': aniversariantes_mes,
         'aniversariantes_dia': aniversariantes_dia,
     }
@@ -2018,21 +1994,30 @@ def turma_add_alunos(request, turma_id):
     )
 
 
+@login_required
 def mover_aluno(request, aluno_id):
-    aluno = Aluno.objects.get(pk=aluno_id)
+    aluno = get_object_or_404(Aluno, pk=aluno_id)
+
+    # ✅ Proteção real na view (independente do template)
+    is_educadora_da_turma = (
+        is_educadora(request.user)
+        and aluno.turma is not None
+        and aluno.turma.educadora == request.user
+    )
+
+    if not (is_coordenacao(request.user) or is_educadora_da_turma):
+        raise PermissionDenied
 
     if request.method == "POST":
         form = MoverAlunoForm(request.POST)
         if form.is_valid():
             turma_antiga = aluno.turma
-            turma_nova = form.cleaned_data.get('turma_destino')  # pode ser None
+            turma_nova = form.cleaned_data.get('turma_destino')
             motivo = form.cleaned_data.get('motivo')
 
-            # Atualiza a turma do aluno (None = remove da turma)
             aluno.turma = turma_nova
             aluno.save()
 
-            # Cria registro no histórico (permite turma_nova ou None)
             MovimentacaoTurmaAluno.objects.create(
                 aluno=aluno,
                 turma_origem=turma_antiga,
@@ -2139,107 +2124,307 @@ def activity_add_alunos(request, activity_id):
     )
 
 
-
-
-@login_required
-def relatorio_presenca_turma(request, turma_id, data=None):
+def get_contexto_relatorio_turma(request, turma_id, data=None):
     turma = Turma.objects.get(id=turma_id)
     alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
-    # Busca data filtrada via URL (GET)
+    # data vinda por GET sobrescreve o parâmetro da URL
     data_get = request.GET.get('data')
     if data_get:
         data = data_get
 
     chamada = None
     presencas_dict = {}
+
     if data:
         chamada = FrequenciaTurma.objects.filter(turma=turma, data=data).first()
     else:
-        chamada = FrequenciaTurma.objects.filter(turma=turma).order_by('-data').first()
+        chamada = (
+            FrequenciaTurma.objects
+            .filter(turma=turma)
+            .order_by('-data')
+            .first()
+        )
         data = chamada.data if chamada else None
 
     if chamada:
         presencas = FrequenciaAluno.objects.filter(chamada=chamada)
         presencas_dict = {p.aluno_id: p for p in presencas}
 
-    return render(request, 'AppLSD/relatorio_presenca_turma.html', {
+    context = {
         'turma': turma,
         'alunos': alunos,
         'chamada': chamada,
         'data': data,
         'presencas_dict': presencas_dict,
-    })
+    }
+    return context
+
+@login_required
+def relatorio_presenca_turma(request, turma_id, data=None):
+    context = get_contexto_relatorio_turma(request, turma_id, data)
+    return render(request, 'AppLSD/relatorio_presenca_turma.html', context)
 
 
 @login_required
-def relatorio_presenca_activity(request, activity_id, data=None):
-    atividade = Activity.objects.get(id=activity_id)
-    alunos = Aluno.objects.filter(atividades=atividade).order_by('name')
+def relatorio_presenca_turma_pdf(request, turma_id, data=None):
+    context = get_contexto_relatorio_turma(request, turma_id, data)
 
-    # Primeiro verifica se há data passada por URL (GET)
+    response = HttpResponse(content_type='application/pdf')
+    # se quiser forçar download, use também:
+    # response['Content-Disposition'] = f'attachment; filename="relatorio_turma_{turma_id}.pdf"'
+
+    return generate_pdf(
+        'AppLSD/relatorio_presenca_turma.html',
+        file_object=response,
+        context=context,
+    )
+
+
+def get_contexto_relatorio_turma_mensal(request, turma_id):
+    turma = Turma.objects.get(id=turma_id)
+    alunos = list(Aluno.objects.filter(turma=turma).order_by('name'))
+
+    mes = request.GET.get('mes')
+    if not mes:
+        hoje = date.today()
+        mes = f"{hoje.year}-{hoje.month:02d}"
+
+    ano, mes_num = mes.split('-')
+    ano = int(ano)
+    mes_num = int(mes_num)
+
+    primeiro_dia = date(ano, mes_num, 1)
+    ultimo_dia_num = monthrange(ano, mes_num)[1]
+    ultimo_dia = date(ano, mes_num, ultimo_dia_num)
+
+    # todos os dias do mês
+    todos_dias = [primeiro_dia + timedelta(days=i)
+                  for i in range((ultimo_dia - primeiro_dia).days + 1)]
+    # apenas dias úteis (segunda a sexta)
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    # chamadas e frequências no mês todo (não precisa filtrar aqui por dia útil)
+    chamadas = (FrequenciaTurma.objects
+                .filter(turma=turma, data__range=(primeiro_dia, ultimo_dia)))
+    chamadas_por_data = {c.data: c for c in chamadas}
+
+    frequencias = (FrequenciaAluno.objects
+                   .filter(
+                       aluno__turma=turma,
+                       chamada__data__range=(primeiro_dia, ultimo_dia),
+                   )
+                   .select_related('aluno', 'chamada'))
+
+    freq_dict = {
+        (f.aluno_id, f.chamada.data): f
+        for f in frequencias
+    }
+
+    linhas = []
+    for aluno in alunos:
+        linha_status = []
+        faltas = 0
+
+        # percorrendo apenas dias_mes (só dias úteis)
+        for dia in dias_mes:
+            f = freq_dict.get((aluno.id, dia))
+            if f is None:
+                status = ''
+            else:
+                if f.presente:
+                    status = 'P'
+                else:
+                    status = 'F'
+                    faltas += 1
+            linha_status.append(status)
+
+        linhas.append({
+            'aluno': aluno,
+            'status_por_dia': linha_status,
+            'faltas': faltas,  # só conta F em dias úteis
+        })
+
+    return {
+        'turma': turma,
+        'mes': mes,
+        'ano': ano,
+        'mes_num': mes_num,
+        'dias_mes': dias_mes,
+        'linhas': linhas,
+    }
+
+
+@login_required
+def relatorio_turma_mensal_html(request, turma_id):
+    context = get_contexto_relatorio_turma_mensal(request, turma_id)
+    return render(request, 'AppLSD/relatorio_turma_mensal.html', context)
+
+
+@login_required
+def relatorio_turma_mensal_pdf(request, turma_id):
+    context = get_contexto_relatorio_turma_mensal(request, turma_id)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="relatorio_turma_mensal_{turma_id}.pdf"'
+    return generate_pdf(
+        'AppLSD/relatorio_turma_mensal_pdf.html',
+        file_object=response,
+        context=context,
+    )
+
+def get_contexto_relatorio_atividade(request, activity_id, data=None):
+    activity = Activity.objects.get(id=activity_id)
+
     data_get = request.GET.get('data')
     if data_get:
         data = data_get
 
-    if data:
-        chamadas = FrequenciaAtividade.objects.filter(atividade=atividade, data=data)
-    else:
-        chamada_recente = FrequenciaAtividade.objects.filter(atividade=atividade).order_by('-data').first()
-        data = chamada_recente.data if chamada_recente else None
-        chamadas = FrequenciaAtividade.objects.filter(atividade=atividade, data=data) if data else []
+    chamada = None
+    presencas = []
 
-    return render(request, 'AppLSD/relatorio_presenca_activity.html', {
-        'atividade': atividade,
-        'alunos': alunos,
-        'chamadas': chamadas,
+    if data:
+        chamada = FrequenciaTurma.objects.filter(activity=activity, data=data).first()
+    else:
+        chamada = (
+            FrequenciaTurma.objects
+            .filter(activity=activity)
+            .order_by('-data')
+            .first()
+        )
+        data = chamada.data if chamada else None
+
+    if chamada:
+        presencas = FrequenciaAluno.objects.filter(chamada=chamada)
+
+    context = {
+        'activity': activity,
         'data': data,
-    })
+        'chamada': chamada,
+        'presencas': presencas,
+    }
+    return context
 
 @login_required
-def relatorio_mensal_aluno(request):
+def relatorio_presenca_activity(request, activity_id, data=None):
+    context = get_contexto_relatorio_atividade(request, activity_id, data)
+    return render(request, 'AppLSD/relatorio_presenca_activity.html', context)
+
+
+@login_required
+def relatorio_presenca_activity_pdf(request, activity_id, data=None):
+    context = get_contexto_relatorio_atividade(request, activity_id, data)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="relatorio_atividade_{activity_id}.pdf"'
+    return generate_pdf(
+        'AppLSD/relatorio_presenca_activity.html',
+        file_object=response,
+        context=context,
+    )
+
+def get_contexto_relatorio_aluno_mensal(request):
     aluno_id = request.GET.get('aluno_id')
-    mes = request.GET.get('mes')  # formato "YYYY-MM"
-    if not aluno_id:
-        alunos = Aluno.objects.all()
-        return render(request, 'AppLSD/relatorio_busca_aluno.html', {'alunos': alunos, 'erro': 'Selecione um aluno.'})
-    tipo = request.GET.get('tipo', 'analitico')
-    aluno = get_object_or_404(Aluno, pk=aluno_id)
-    ano, mes_val = (int(x) for x in mes.split('-'))
+    mes = request.GET.get('mes')  # YYYY-MM
 
-    registros_turma = FrequenciaTurma.objects.filter(
-    aluno=aluno, data__year=ano, data__month=mes_val)
-    registros_turma_lista = [
-        {
-            'data': reg.data,
-            'presente': reg.presente,
-            'tipo': "Turma",
-        }
-        for reg in registros_turma
-    ]
-    
-    registros_atividade = FrequenciaAtividade.objects.filter(
-    aluno=aluno, data__year=ano, data__month=mes_val).select_related('atividade')
+    aluno = get_object_or_404(Aluno, id=aluno_id)
 
-# Monte a lista anotando o nome da atividade em cada registro
-    registros_atividade_lista = [
-    {
-        'data': reg.data,
-        'presente': reg.presente,
-        'tipo': f"Atividade: {reg.atividade.atividade}" if reg.atividade else "Atividade",
-    }
-    for reg in registros_atividade
-    ]
-    
-    registros = sorted(registros_turma_lista + registros_atividade_lista, key=lambda x: x['data'])
+    # se não vier mês, você pode defaultar para mês atual
+    if not mes:
+        hoje = date.today()
+        mes = f"{hoje.year}-{hoje.month:02d}"
 
-    return render(request, 'AppLSD/relatorio_mensal_aluno.html', {
+    ano, mes_num = mes.split('-')
+    ano = int(ano)
+    mes_num = int(mes_num)
+
+    primeiro_dia = date(ano, mes_num, 1)
+    ultimo_dia_num = monthrange(ano, mes_num)[1]
+    ultimo_dia = date(ano, mes_num, ultimo_dia_num)
+
+     # --------- DIAS ÚTEIS DO MÊS (segunda a sexta) ----------
+    todos_dias = [primeiro_dia + timedelta(days=i)
+                  for i in range((ultimo_dia - primeiro_dia).days + 1)]
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    # --------- FREQUÊNCIA EM TURMA (planilha P/F) ----------
+    freq_qs = (FrequenciaAluno.objects
+               .filter(
+                   aluno=aluno,
+                   chamada__data__range=(primeiro_dia, ultimo_dia),
+               )
+               .select_related('chamada'))
+
+    # dict data -> registro de frequência
+    freq_dict = {f.chamada.data: f for f in freq_qs}
+
+    status_por_dia = []
+    faltas = 0
+
+    for dia in dias_mes:
+        f = freq_dict.get(dia)
+        if f is None:
+            status = ''
+        else:
+            if f.presente:
+                status = 'P'
+            else:
+                status = 'F'
+                faltas += 1
+        status_por_dia.append(status)
+
+    # --------- FREQUÊNCIA EM ATIVIDADES ----------
+    atividades_freq = (
+        FrequenciaAtividade.objects
+        .filter(
+            aluno=aluno,
+            data__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related('atividade')
+        .order_by('data', 'atividade__atividade')
+    )
+
+    # --------- MOVIMENTAÇÕES ENTRE TURMAS ----------
+    movs = MovimentacaoTurmaAluno.objects.filter(
+        aluno=aluno,
+        data__date__range=(primeiro_dia, ultimo_dia),
+    ).select_related('turma_origem', 'turma_destino').order_by('data')
+
+    # --------- OCORRÊNCIAS ----------
+    ocorrencias = OcorrenciaAluno.objects.filter(
+        aluno=aluno,
+        data__range=(primeiro_dia, ultimo_dia),
+    ).order_by('data')
+
+    context = {
         'aluno': aluno,
         'mes': mes,
-        'registros': registros,
-        'tipo': tipo,
-    })
+        'ano': ano,
+        'mes_num': mes_num,
+        'dias_mes': dias_mes,
+        'status_por_dia': status_por_dia,
+        'faltas': faltas,
+        'atividades_freq': atividades_freq,
+        'movimentacoes': movs,
+        'ocorrencias': ocorrencias,
+    }
+    return context
 
+ 
+@login_required
+def relatorio_mensal_aluno(request):
+    context = get_contexto_relatorio_aluno_mensal(request)
+    return render(request, 'AppLSD/relatorio_mensal_aluno.html', context)
+
+
+@login_required
+def relatorio_mensal_aluno_pdf(request):
+    context = get_contexto_relatorio_aluno_mensal(request)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="relatorio_aluno_{context["aluno"].id}.pdf"'
+    return generate_pdf(
+        'AppLSD/relatorio_mensal_aluno_pdf.html',  # <-- novo template
+        file_object=response,
+        context=context,
+    )
 
 
 #@login_required

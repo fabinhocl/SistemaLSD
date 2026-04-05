@@ -1,16 +1,22 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
 {% block content %}
-<h2>Mover aluno: {{ aluno.nome }}</h2>
+<h2>Mover aluno: {{ aluno.name }}</h2>
+<h3>Turma atual: {{ aluno.turma.grupo }}</h3>
+<h3>Educadora atual: {{ aluno.turma.educadora.first_name }}</h3>
 <form method="post">
   {% csrf_token %}
   <div class="mb-3">
-    {{ form.turma_destino.label_tag }}
-    {{ form.turma_destino }}
+    <div class="col-md-6">
+      {{ form.turma_destino.label_tag }}
+      {{ form.turma_destino }}
+    </div>
   </div>
   <div class="mb-3">
-    {{ form.motivo.label_tag }}
-    {{ form.motivo }}
+    <div class="col-md-6">
+      {{ form.motivo.label_tag }}
+      {{ form.motivo }}
+    </div>
   </div>
   <button type="submit" class="btn btn-primary">Salvar movimentação</button>
   <a href="{% url 'aluno_detail' aluno.pk %}" class="btn btn-secondary">Cancelar</a>

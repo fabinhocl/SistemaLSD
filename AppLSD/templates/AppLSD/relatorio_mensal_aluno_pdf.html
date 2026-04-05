@@ -1,39 +1,76 @@
-{% extends 'AppLSD/base.html' %}
-{% block title %}Relatório Mensal - {{ aluno.name }}{% endblock %}
+{% load tz %}
 
-{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+<style>
+    @page {
+        size: A4 landscape;
+        margin: 1.2cm;
+    }
+    body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 9px;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 7px;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 1px 1px;
+        text-align: center;
+    }
+    th.aluno-col, td.aluno-col {
+        text-align: left;
+        width: 18%;  /* reduz um pouco para sobrar mais espaço para os dias */
+    }
+    th.faltas-col, td.faltas-col {
+        width: 4%;
+    }
+    th.th-dia {
+        font-size: 6px;
+        line-height: 1.0;
+        padding: 1px 1px;
+        white-space: nowrap;   /* impede quebra de linha dentro do cabeçalho */
+    }
+</style>
 
-<h2>Relatório Mensal - {{ aluno.name }}</h2>
-<h2>{{ turma.educadora.first_name }} - {{ turma.grupo }} ({{ turma.turno }})</h2>
-<p><strong>Mês:</strong> {{ mes }}</p>
+</head>
+<body>
+
+<h3>Relatório Mensal - {{ aluno.name }}</h3>
+<p>Mês: {{ mes }}</p>
 
 <h4>Frequência na Turma</h4>
-<table class="table table-bordered table-sm" style="font-size: 12px;">
+<table>
   <thead>
     <tr>
-      <th>Aluno</th>
+      <th class="aluno-col">Aluno</th>
       {% for dia in dias_mes %}
-        <th class="th-dia">
-          {{ dia|date:"d" }}<br>
+        <th class="th-dia" style="text-align: center;">
+          {{ dia|date:"d" }} <br>
           {{ dia|date:"D" }}
         </th>
       {% endfor %}
-      <th>Faltas</th>
+      <th class="faltas-col">Faltas</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>{{ aluno.name }}</td>
+      <td class="aluno-col">{{ aluno.name }}</td>
       {% for status in status_por_dia %}
-        <td style="text-align:center;">{{ status }}</td>
+        <td>{{ status }}</td>
       {% endfor %}
-      <td style="text-align:center; font-weight:bold;">{{ faltas }}</td>
+      <td class="faltas-col"><strong>{{ faltas }}</strong></td>
     </tr>
   </tbody>
 </table>
 
-<h4 class="mt-4">Participação em Atividades</h4>
-<table class="table table-bordered table-sm">
+<h4>Participação em Atividades</h4>
+<table>
   <thead>
     <tr>
       <th>Data</th>
@@ -50,7 +87,7 @@
         <td>{{ reg.atividade.atividade }}</td>
         <td>{{ reg.atividade.turno }}</td>
         <td>{{ reg.atividade.facilitador }}</td>
-        <td>{% if reg.presente %}Presente{% else %}Falta{% endif %}</td>
+        <td>{% if reg.presente %}P{% else %}F{% endif %}</td>
       </tr>
     {% empty %}
       <tr><td colspan="5">Nenhuma participação em atividades neste mês.</td></tr>
@@ -58,9 +95,8 @@
   </tbody>
 </table>
 
-
-<h4 class="mt-4">Histórico de Movimentações de Turma</h4>
-<table class="table table-bordered table-sm">
+<h4>Histórico de Movimentações de Turma</h4>
+<table>
   <thead>
     <tr>
       <th>Data</th>
@@ -73,20 +109,8 @@
     {% for mov in movimentacoes %}
       <tr>
         <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
-        <td>
-          {% if mov.turma_origem %}
-            {{ mov.turma_origem.sala }} ({{ mov.turma_origem.turno }})
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          {% if mov.turma_destino %}
-            {{ mov.turma_destino.sala }} ({{ mov.turma_destino.turno }})
-          {% else %}
-            -
-          {% endif %}
-        </td>
+        <td>{% if mov.turma_origem %}{{ mov.turma_origem.grupo }} ({{ mov.turma_origem.turno }}){% else %}-{% endif %}</td>
+        <td>{% if mov.turma_destino %}{{ mov.turma_destino.grupo }} ({{ mov.turma_destino.turno }}){% else %}-{% endif %}</td>
         <td>{{ mov.motivo }}</td>
       </tr>
     {% empty %}
@@ -95,8 +119,8 @@
   </tbody>
 </table>
 
-<h4 class="mt-4">Ocorrências</h4>
-<table class="table table-bordered table-sm">
+<h4>Ocorrências</h4>
+<table>
   <thead>
     <tr>
       <th>Data</th>
@@ -121,7 +145,5 @@
   </tbody>
 </table>
 
-<a href="{% url 'relatorio_busca_aluno' %}" class="btn btn-secondary">Voltar à Busca</a>
-<button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
-
-{% endblock %}
+</body>
+</html>

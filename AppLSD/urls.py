@@ -73,7 +73,10 @@ urlpatterns = [
     path('turma/<int:turma_id>/', views_templates.turma_detail, name='turma_detail'),
     path('turmas/<int:turma_id>/adicionar-alunos/', views_templates.turma_add_alunos, name='turma_add_alunos'),
     path('turma/<int:turma_id>/relatorio-presenca/', views_templates.relatorio_presenca_turma, name='relatorio_presenca_turma'),
-
+    path('turma/<int:turma_id>/relatorio-presenca/pdf/', views_templates.relatorio_presenca_turma_pdf, name='relatorio_presenca_turma_pdf'),
+    path('turma/<int:turma_id>/relatorio-mensal/html/', views_templates.relatorio_turma_mensal_html, name='relatorio_turma_mensal_html'),
+    path('turma/<int:turma_id>/relatorio-mensal/pdf/', views_templates.relatorio_turma_mensal_pdf, name='relatorio_turma_mensal_pdf'),
+    
     #Atividades
     path('activities/', views_templates.activity_list, name='activity_list'),
     path('activities/new/', views_templates.activity_create, name='activity_create'),
@@ -82,6 +85,7 @@ urlpatterns = [
     path('activities/<int:activity_id>/', views_templates.activity_detail, name='activity_detail'),
     path('activities/<int:activity_id>/adicionar-alunos/', views_templates.activity_add_alunos, name='activity_add_alunos'),
     path('activities/<int:activity_id>/relatorio-presenca/', views_templates.relatorio_presenca_activity, name='relatorio_presenca_activity'),
+    path('activities/<int:activity_id>/relatorio-presenca/pdf/', views_templates.relatorio_presenca_activity_pdf, name='relatorio_presenca_activity_pdf'),
     
     path('family-autocomplete/', views.FamilyAutocomplete.as_view(), name='family-autocomplete'),
     path('educadora/turmas/', views_templates.home_educadora, name='home_educadora'),
@@ -112,6 +116,7 @@ urlpatterns = [
     path('relatorio/aluno/grafico/', views_templates.relatorio_grafico_mensal_aluno, name='relatorio_grafico_mensal_aluno'),
     path('relatorio/aluno/export_excel/', views_templates.exportar_frequencia_mensal_aluno_excel, name='exportar_frequencia_mensal_aluno_excel'),
     path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
+    path('relatorio/aluno/mensal/pdf/', views_templates.relatorio_mensal_aluno_pdf, name='relatorio_mensal_aluno_pdf'),
     path('relatorio/aluno/busca/', views_templates.relatorio_busca_aluno, name='relatorio_busca_aluno'),
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
     path('families/export/', views_templates.export_family_excel, name='export_family_excel'),
