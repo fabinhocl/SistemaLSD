@@ -737,23 +737,30 @@ def family_create(request):
         formset = AlunoInlineFormSet(request.POST, request.FILES or None)
 
         try:
-            is_form_valid = form.is_valid()
-            is_formset_valid = formset.is_valid()
+            form_ok = form.is_valid()
+            formset_ok = formset.is_valid()
 
-            logger.warning("family_create | usuário=%s | form_valid=%s | form_errors=%s",
-                           request.user, is_form_valid, form.errors)
-            logger.warning("family_create | usuário=%s | formset_valid=%s | formset_errors=%s | non_form_errors=%s",
-                           request.user, is_formset_valid, formset.errors, formset.non_form_errors())
+            logger.warning("family_create start | user=%s | form_ok=%s | formset_ok=%s",
+                           request.user, form_ok, formset_ok)
 
-            if is_form_valid and is_formset_valid:
+            if form_ok and formset_ok:
                 with transaction.atomic():
+                    logger.warning("step 1: form.save(commit=False)")
                     family = form.save(commit=False)
+
+                    logger.warning("step 2: set criado_por")
                     family.criado_por = request.user
+
+                    logger.warning("step 3: family.save()")
                     family.save()
 
+                    logger.warning("step 4: set formset.instance")
                     formset.instance = family
+
+                    logger.warning("step 5: formset.save()")
                     formset.save()
 
+                    logger.warning("step 6: registrar_log()")
                     registrar_log(
                         request.user,
                         family,
@@ -764,31 +771,17 @@ def family_create(request):
                 messages.success(request, 'Família cadastrada com sucesso.')
                 return redirect('family_detail', pk=family.pk)
 
-            messages.error(
-                request,
-                'Não foi possível salvar o cadastro. Verifique os campos destacados e tente novamente.'
-            )
+            messages.error(request, 'Não foi possível salvar. Verifique os campos.')
 
-        except Exception as e:
-            logger.exception(
-                "Erro inesperado ao criar família | usuário=%s | erro=%s",
-                request.user,
-                str(e)
-            )
-            messages.error(
-                request,
-                'Ocorreu um erro interno ao salvar a família. Tente novamente. Se o problema continuar, contate o suporte.'
-            )
+        except Exception:
+            logger.exception("Erro inesperado em family_create | user=%s", request.user)
+            messages.error(request, 'Erro interno ao salvar a família.')
 
     else:
         form = FamilyForm()
         formset = AlunoInlineFormSet()
 
-    return render(
-        request,
-        'AppLSD/family_form.html',
-        {'form': form, 'formset': formset}
-    )
+    return render(request, 'AppLSD/family_form.html', {'form': form, 'formset': formset})
 
 @login_required
 def family_update(request, pk):
