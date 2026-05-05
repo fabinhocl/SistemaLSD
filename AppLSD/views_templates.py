@@ -1,7 +1,7 @@
 from pyexpat.errors import messages
 from dal import autocomplete
 from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia    
-from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario # ✅ Importar as funções
+from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario, pode_editar_frequencia_turma # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm, RemoverAlunoAtividadeForm
 from calendar import monthrange
@@ -1345,14 +1345,10 @@ def turma_detail(request, turma_id):
 
     if frequencia_hoje:
         pode_iniciar = False
-        if coordenacao_status:
-            pode_editar = True
-            pode_visualizar = True
-        elif educadora_status:
-            pode_visualizar = True
-            pode_editar = False
+        pode_visualizar = coordenacao_status or educadora_status
+        pode_editar = pode_editar_frequencia_turma(request.user, turma)
     else:
-        if educadora_status or coordenacao_status:
+        if coordenacao_status or is_educadora_desta_turma:
             pode_iniciar = True
 
     ct = ContentType.objects.get_for_model(Turma)
@@ -1488,16 +1484,31 @@ def iniciar_frequencia_turma(request, turma_id):
     """
     Inicia uma nova frequência para a turma.
     Só cria/salva frequência no POST.
+    Permite iniciar frequência em uma data informada.
     """
     turma = get_object_or_404(Turma, id=turma_id)
-    hoje = timezone.now().date()
+
+    if not (is_coordenacao(request.user) or (is_educadora(request.user) and turma.educadora == request.user)):
+        raise PermissionDenied("Você não tem permissão para iniciar a frequência desta turma.")
+
+    data_param = request.GET.get('data') or request.POST.get('data')
+
+    if data_param:
+        try:
+            data_referencia = datetime.strptime(data_param, '%Y-%m-%d').date()
+        except ValueError:
+            data_referencia = timezone.now().date()
+    else:
+        data_referencia = timezone.now().date()
+
+    
     alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
     if request.method == "POST":
         # cria/obtém a chamada SOMENTE aqui
         chamada, created = FrequenciaTurma.objects.get_or_create(
             turma=turma,
-            data=hoje,
+            data=data_referencia,
             defaults={
                 'presente': True,      # se ainda usar esse campo
                 'criado_por': request.user,
@@ -1523,7 +1534,7 @@ def iniciar_frequencia_turma(request, turma_id):
             request.user,
             turma,
             'frequencia_criada',
-            f'Frequência do dia {hoje.strftime("%d/%m/%Y")} registrada pela educadora '
+            f'Frequência do dia {data_referencia.strftime("%d/%m/%Y")} registrada pela educadora '
             f'{request.user.get_full_name() or request.user.username}.',
         )
         return redirect('frequencia_visualizar', frequencia_id=chamada.id)
@@ -1535,7 +1546,7 @@ def iniciar_frequencia_turma(request, turma_id):
         {
             'turma': turma,
             'alunos': alunos,
-            'data_hoje': hoje,
+            'data_hoje': data_referencia,
         }
     )
 
@@ -1543,23 +1554,73 @@ def iniciar_frequencia_turma(request, turma_id):
 def visualizar_frequencia_turma(request, frequencia_id):
     """
     Visualiza a frequência em modo somente leitura
+    Permite pesquisar outra chamada da mesma turma por data.
+    Se não existir, oferece opção de iniciar frequência para aquela data.
     """
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
+
+    data_busca = request.GET.get('data')
+    chamada_nao_encontrada = False
+    data_pesquisada = None
+    data_pesquisada_br = None
+
+    if data_busca:
+        try:
+            data_obj = datetime.strptime(data_busca, '%Y-%m-%d').date()
+        except ValueError:
+            data_obj = None
+
+        if data_obj:
+            chamada_data = FrequenciaTurma.objects.filter(
+                turma=chamada.turma,
+                data=data_obj
+            ).first()
+
+            if chamada_data:
+                return redirect('frequencia_visualizar', frequencia_id=chamada_data.id)
+            else:
+                chamada_nao_encontrada = True
+                data_pesquisada = data_obj.strftime('%Y-%m-%d')
+                data_pesquisada_br = data_obj.strftime('%d/%m/%Y')
+                messages.warning(request, 'Não foi encontrada chamada para a data informada.')
+    
     presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
     
     # Buscar alunos da turma
     alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
     
-    
+    # contadores padrão da chamada atual
+    presentes = presencas.filter(presente=True).count()
+    faltas = presencas.filter(presente=False).count()
+    total = alunos_turma.count()
+
+    # se não há chamada para a data pesquisada, zera contadores
+    if chamada_nao_encontrada:
+        presentes = 0
+        faltas = 0
+
     # Verificar permissão
-    is_coordenadora = request.user.groups.filter(name='Coordenadora').exists() or request.user.is_superuser
-    
+    #is_coordenadora = request.user.groups.filter(name='Coordenadora').exists() or request.user.is_superuser
+    pode_editar = pode_editar_frequencia_turma(request.user, chamada.turma)
+    pode_iniciar_data = (
+        is_coordenacao(request.user) or
+        (is_educadora(request.user) and chamada.turma.educadora == request.user)
+    )
+
     context = {
         'chamada': chamada,
         'presencas': presencas,
         'alunos_turma': alunos_turma,
         'modo_visualizacao': True,
-        'pode_editar': is_coordenadora,
+        'pode_editar': pode_editar,
+        'data_busca': data_pesquisada or chamada.data.strftime('%Y-%m-%d'),
+        'chamada_nao_encontrada': chamada_nao_encontrada,
+        'data_pesquisada': data_pesquisada,
+        'data_pesquisada_br': data_pesquisada_br,
+        'pode_iniciar_data': pode_iniciar_data,
+        'presentes': presentes,
+        'faltas': faltas,
+        'total_alunos': total,
     }
     
     return render(request, 'AppLSD/frequencia_turma_visualizar.html', context)
@@ -1568,12 +1629,17 @@ def is_coordenacao(user):
     return user.groups.filter(name='Coordenacao').exists() or user.is_superuser
 """
 
-@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
+#@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
+@login_required
 def editar_frequencia_turma(request, frequencia_id):
     """
-    Edita a frequência - apenas coordenadoras
+    Edita a frequência - apenas coordenadoras e educadoras (alterado dia 04/05/2026)
     """
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
+
+    if not pode_editar_frequencia_turma(request.user, chamada.turma):
+        raise PermissionDenied("Você não tem permissão para editar esta frequência.")
+    
     presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
     alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
     
@@ -1606,6 +1672,8 @@ def editar_frequencia_turma(request, frequencia_id):
                 }
             )
         messages.success(request, 'Frequência atualizada com sucesso!')
+
+        perfil_editor = 'coordenação' if is_coordenacao(request.user) else 'educadora'
 
         registrar_log(
             request.user,

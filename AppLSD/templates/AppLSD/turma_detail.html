@@ -143,10 +143,10 @@ Detalhes da Turma - {{ turma.grupo }}
         <tbody>
           {% for aluno in alunos %}
           <tr>
-            <td>{{ aluno.family.registration_number }}</td>
-            <td>{{ aluno.name }}</td>
-            <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
-            <td>{{ aluno.idade }}</td>
+            <td class="text-center">{{ aluno.family.registration_number }}</td>
+            <td class="text-justify">{{ aluno.name|upper }}</td>
+            <td class="text-center">{{ aluno.birth_date|date:"d/m/Y" }}</td>
+            <td class="text-center">{{ aluno.idade }}</td>
             <td>
                <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">Visualizar</a>
 

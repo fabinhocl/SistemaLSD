@@ -9,10 +9,47 @@
     <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
     
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="data" class="form-label"><strong>Pesquisar chamada por data</strong></label>
+                    <input
+                        type="date"
+                        name="data"
+                        id="data"
+                        class="form-control"
+                        value="{{ data_busca }}"
+                    >
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Pesquisar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if chamada_nao_encontrada and data_pesquisada and pode_iniciar_data %}
+    <div class="alert alert-info mt-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <div>
+                Não existe chamada cadastrada para <strong>{{ data_pesquisada_br }}</strong>.
+            </div>
+            <div>
+                <a href="{% url 'frequencia_turma_iniciar' chamada.turma.id %}?data={{ data_pesquisada }}" class="btn btn-success">
+                    <i class="fas fa-plus-circle"></i> Iniciar frequência desta data
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
       
     <!-- Resumo -->
      <div>
-            {% with presentes=presencas|presentes_count faltas=presencas|faltas_count %}
+            
                 <div class="row mt-4">
                     <div class="col">
                         <div class="card bg-success text-white">
@@ -34,12 +71,12 @@
                         <div class="card bg-info text-white">
                             <div class="card-body text-center">
                                 <h4>Total</h4>
-                                <span style="font-size:2em">{{ alunos_turma|length }}</span>
+                                <span style="font-size:2em">{{ total_alunos }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            {% endwith %}
+            
         </div>
     <div class="card">
         
@@ -57,29 +94,49 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for presenca in presencas %}
-                    <tr class="text-center">
-                        <td>{{ presenca.aluno.family.registration_number }}</td>
-                        <td>{{ presenca.aluno }}</td>
-                        <td class="text-center">
-                            {% if presenca and presenca.presente %}Presente
-                                {% elif presenca %}Falta
-                                {% else %}-
+                    {% if chamada_nao_encontrada %}
+                        {# Não há chamada para a data pesquisada: lista alunos com status em branco #}
+                        {% for aluno in alunos_turma %}
+                        <tr class="text-center">
+                            <td>{{ aluno.family.registration_number }}</td>
+                            <td>{{ aluno.name|upper }}</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Nenhum aluno inscrito nesta turma.</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        {# Há chamada: usa as presenças da chamada normalmente #}
+                        {% for presenca in presencas %}
+                        <tr>
+                            <td class="text-center">{{ presenca.aluno.family.registration_number }}</td>
+                            <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
+                            <td class="text-center">
+                                {% if presenca and presenca.presente %}
+                                    Presente
+                                {% elif presenca %}
+                                    Falta
+                                {% else %}
+                                    -
                                 {% endif %}
-                        </td>
-                        <td>
-                            {% if not presenca.presente and presenca.motivo_falta %}
-                                {{ presenca.motivo_falta }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
-                    </tr>
-                    {% endfor %}
+                            </td>
+                            <td>
+                                {% if not presenca.presente and presenca.motivo_falta %}
+                                    {{ presenca.motivo_falta }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
             

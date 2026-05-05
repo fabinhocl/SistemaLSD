@@ -133,3 +133,17 @@ def registrar_log(user, objeto, acao, descricao):
         descricao=descricao,
         criado_por=user,
     )
+
+
+def pode_editar_frequencia_turma(user, turma):
+    """
+    Coordenação pode editar qualquer frequência.
+    Educadora pode editar frequência apenas da própria turma.
+    """
+    if is_coordenacao(user):
+        return True
+
+    if is_educadora(user) and turma.educadora == user:
+        return True
+
+    return False
