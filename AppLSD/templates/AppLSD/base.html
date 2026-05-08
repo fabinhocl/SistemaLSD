@@ -98,6 +98,7 @@
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             line-height: 24px;
         }
+        
 
         .form-control,
         input[type="text"],
@@ -224,12 +225,33 @@
 
        
         <div class="d-flex align-items-center">
-            {% if user.is_authenticated %}
-                <span class="me-2 fw-semibold text-secondary">Olá, {{ user.get_full_name|default:user.username }}</span>
-                <form action="{% url 'logout' %}" method="post" class="mb-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary">Sair</button>
-                </form>
+           {% if request.user.is_authenticated %}
+            <div class="dropdown">
+                <button class="btn btn-light border d-flex align-items-center gap-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                        style="width: 36px; height: 36px; font-weight: 600;">
+                        {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
+                    </div>
+                    <span>Olá, {{ request.user.first_name|default:request.user.username }}</span>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'editar_meu_perfil' %}">
+                            Editar perfil
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'logout' %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-danger">
+                                Sair
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -303,6 +325,8 @@
         });
         });
     </script>
+
+
 
     {% endblock %}
 </body>

@@ -23,9 +23,43 @@ urlpatterns = [
     # rotas para views com templates (front-end simples)
     path('', views_templates.root_redirect, name='root_redirect'),
     path('admin/', admin.site.urls),
-    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
-    path('home/', views_templates.home, name='home'),
+    path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
+    
+    # Rotas para recuperação de senha usando as views genéricas do Django
+    path(
+        'senha/esqueci/',
+        auth_views.PasswordResetView.as_view(
+            template_name='registration/password_reset_form.html',
+            email_template_name='registration/password_reset_email.html',
+            subject_template_name='registration/password_reset_subject.txt'
+        ),
+        name='password_reset'
+    ),
+    path(
+        'senha/esqueci/enviado/',
+        auth_views.PasswordResetDoneView.as_view(
+            template_name='registration/password_reset_done.html'
+        ),
+        name='password_reset_done'
+    ),
+    path(
+        'senha/redefinir/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='registration/password_reset_confirm.html'
+        ),
+        name='password_reset_confirm'
+    ),
+    path(
+        'senha/redefinir/concluido/',
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name='registration/password_reset_complete.html'
+        ),
+        name='password_reset_complete'
+    ),
+    
+    #path('home/', views_templates.home, name='home'),  # rota para a view home em views_templates.py
+    path('home/', views_templates.home, name='home'),
     path('dashboard/', include('dashboard_lsd.urls')), # dashboard integrado
     path('events/', include('events.urls', namespace='events')),
     path('assistencia/', views_templates.home_assist, name='home_assist'),
@@ -92,16 +126,19 @@ urlpatterns = [
     path('educadora/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
     path('facilitador/atividades/', views_templates.home_facilitador, name='home_facilitador'),
     path('facilitador/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/presenca/', views_templates.dashboard_presenca, name='dashboard_presenca'),
 
     #Gerenciamento de Usuários (Admin)
     path('usuarios/gerenciar/', views_templates.usuarios_gerenciar, name='usuarios_gerenciar'),
     path('usuarios/cadastrar/', views_templates.cadastrar_usuario, name='cadastrar_usuario'),
-    path('usuarios/editar/<int:usuario_id>/', views_templates.editar_usuario, name='editar_usuario'),
+    path('usuarios/editar/<int:usuario_id>/editar/', views_templates.editar_usuario, name='editar_usuario'),
     path('usuarios/<int:usuario_id>/editar_perfis/', views_templates.editar_perfis_usuario, name='editar_perfis_usuario'),
     path('usuarios/<int:usuario_id>/resetar_senha/', views_templates.resetar_senha_usuario, name='resetar_senha_usuario'),
+    
+    #Perfil do Usuário
+    #path('perfil/', views_templates.perfil_usuario, name='perfil_usuario'),
+    path('perfil/editar/', views_templates.editar_meu_perfil, name='editar_meu_perfil'),
+    path('meu-perfil/', views_templates.editar_meu_perfil, name='editar_meu_perfil'),
     
     #Frequência de Turmas e Atividades
     path('frequencia/turma/<int:turma_id>/', views_templates.iniciar_frequencia_turma, name='frequencia_turma_iniciar'),
@@ -123,7 +160,8 @@ urlpatterns = [
     path('alunos/export/', views_templates.export_aluno_excel, name='export_aluno_excel'),
     path('adults/export/', views_templates.export_adult_excel, name='export_adult_excel'),
 
-    
+    #select2 no formulário de Atividade para selecionar os facilitador de forma mais amigável
+    #path("select2/", include("django_select2.urls")),
     
    #path('families/autocomplete/', views_templates.family_autocomplete, name="family_autocomplete"),
 

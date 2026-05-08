@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'channels',          # Necessário para websocket no Dash
     'dpd_static_support', # Para servir assets do Dash
+    #'django_select2',
     #'django_multiselectfield',
 ]
 
@@ -93,6 +94,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
+        #'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -216,3 +218,18 @@ CHANNEL_LAYERS = {
 }
 
 X_FRAME_OPTIONS = 'ALLOWALL'
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.titan.email'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'suporte@infralyze.com.br'
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_USE_SSL = False
+EMAIL_USE_TLS = True
+
+
+DEFAULT_FROM_EMAIL = 'suporte@infralyze.com.br'
+SERVER_EMAIL = 'suporte@infralyze.com.br'
+
+EMAIL_TIMEOUT = 30

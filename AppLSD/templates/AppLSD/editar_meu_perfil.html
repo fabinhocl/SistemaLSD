@@ -1,0 +1,21 @@
+{% extends "AppLSD/base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Editar Meu Perfil</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="row mb-3">
+            <div class="col-md-6">{{ form.first_name|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.email|as_crispy_field }}</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'home' %}" class="btn btn-secondary ms-2">Voltar</a>
+    </form>
+</div>
+
+{% endblock %}

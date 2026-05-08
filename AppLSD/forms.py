@@ -1,6 +1,7 @@
 from django import forms
 from .models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult
 from dal import autocomplete
+from django.db.models.functions import Lower
 from django.core.validators import RegexValidator
 from django.forms.models import inlineformset_factory
 from django.forms import DateInput
@@ -12,6 +13,7 @@ from datetime import date
 #from multiselectfield.forms.fields import MultiSelectFormField
 #from django_multiselectfield import MultiSelectFormField
 import re
+import ast
 
 
 
@@ -602,7 +604,13 @@ class ActivityForm(forms.ModelForm):
     )
     tipo = forms.ChoiceField(choices=TIPO_CHOICES, label='Tipo')
     DIAS_SEMANAS_CHOICES = Activity.DIAS_SEMANAS_CHOICES
-    dia_semana = forms.MultipleChoiceField(choices=DIAS_SEMANAS_CHOICES, widget=forms.CheckboxSelectMultiple, label='Dias da Semana', )
+    dia_semana = forms.MultipleChoiceField(
+        choices=DIAS_SEMANAS_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label='Dias da Semana',
+        required=False,
+    )
+
     class Meta:
         model = Activity
         fields = ['facilitador','atividade', 'tipo', 'dia_semana', 'turno', 'horario_inicio', 'horario_fim']
@@ -617,6 +625,11 @@ class ActivityForm(forms.ModelForm):
                     format="%H:%M",
                     attrs={"type": "time", "class": "form-control"}
                 ),
+                # widget com busca para o facilitador
+                'facilitador': forms.Select(attrs={
+                'class': 'form-control select2',
+                'style': 'width: 100%;'
+                }),
                 
             }
     def __init__(self, *args, **kwargs):
@@ -625,26 +638,23 @@ class ActivityForm(forms.ModelForm):
         # filtrar facilitadores
         self.fields["facilitador"].queryset = User.objects.filter(
             perfis__tipo_perfil="facilitador"
-        )
+        ).distinct().order_by(Lower('first_name'), Lower('last_name'))
+        
+        self.fields["facilitador"].empty_label = "Selecione ou pesquise um facilitador"
 
-       # quando editar, transformar o texto salvo em lista para o campo MultipleChoiceField
-        if self.instance and self.instance.dia_semana:
-            try:
-                dias = ast.literal_eval(self.instance.dia_semana)
-                if isinstance(dias, list):
-                    self.initial['dia_semana'] = dias
-                else:
-                    # caso antigo: 'segunda,quarta'
-                    self.initial['dia_semana'] = [
-                        d.strip() for d in str(self.instance.dia_semana).split(',')
-                    ]
-            except Exception:
-                self.initial['dia_semana'] = []
+       # carregar dias salvos no formato "segunda,quarta"
+        if self.instance and self.instance.pk and self.instance.dia_semana:
+            dias = [
+                d.strip() for d in self.instance.dia_semana.split(',')
+                if d.strip()
+            ]
+            self.initial['dia_semana'] = dias
+
 
     def clean_dia_semana(self):
-        dias = self.cleaned_data.get('dia_semana')  # lista de códigos
+        dias = self.cleaned_data.get('dia_semana', [])  # lista de códigos
         # salva sempre como string de lista Python
-        return str(dias)
+        return ', '.join(dias)
 
 class AddAlunosToTurmaForm(forms.Form):
     alunos = forms.ModelMultipleChoiceField(
@@ -703,13 +713,13 @@ class OcorrenciaAlunoForm(forms.ModelForm):
         model = OcorrenciaAluno
         fields = ['tipo', 'descricao', 'responsavel', 'observacoes']
 
-class UsuarioForm(forms.ModelForm):
+class UsuarioCadastroForm(forms.ModelForm):
     STATUS_CHOICES = (
         ('ativo', 'Ativo'),
         ('inativo', 'Inativo'),
     )
-    senha = forms.CharField(label='Senha', widget=forms.PasswordInput)
-    status = forms.ChoiceField(choices=STATUS_CHOICES, label='Status', initial='ativo')
+    senha = forms.CharField(label='Senha', widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    status = forms.ChoiceField(choices=STATUS_CHOICES, label='Status', initial='ativo', widget=forms.Select(attrs={'class': 'form-select'}))
 
     class Meta:
         model = User
@@ -721,16 +731,52 @@ class UsuarioForm(forms.ModelForm):
             'username': 'Usuário',
             'first_name': 'Nome',
             'email': 'Email',
-            'senha': 'Senha',
+        }
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            
         }
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['senha'])
-        status = self.cleaned_data.get('status')
+        user.is_active = self.cleaned_data['status'] == 'ativo'
         if commit:
             user.save()
         return user
 
+
+class UsuarioEdicaoForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'email', 'is_active']
+        help_texts = {'username': ''}
+        labels = {
+            'username': 'Usuário',
+            'first_name': 'Nome completo',
+            'email': 'Email',
+            'is_active': 'Ativo',
+        }
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class MeuPerfilForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'email']
+        labels = {
+            'first_name': 'Nome completo',
+            'email': 'Email',
+        }
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
 
 

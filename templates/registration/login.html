@@ -1,0 +1,55 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="height: 80vh;">
+    <div class="card shadow p-4" style="width: 360px;">
+        <h2 class="text-center mb-4">Entrar no Sistema</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="id_username" class="form-label">Usuário</label>
+                <input type="text" class="form-control" id="id_username" name="username" autofocus required>
+            </div>
+            <div class="mb-3">
+                <label for="id_password" class="form-label">Senha</label>
+                <input type="password" class="form-control" id="id_password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+            </form>
+
+            <div class="mt-2 text-end">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#modalEsqueciSenha">
+                    Esqueceu sua senha?
+                </a>
+            </div>
+            <div class="modal fade" id="modalEsqueciSenha" tabindex="-1" aria-labelledby="modalEsqueciSenhaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'password_reset' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEsqueciSenhaLabel">Recuperar senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="id_email" class="form-label">Informe seu e-mail</label>
+                    <input type="email" name="email" class="form-control" id="id_email" required>
+                    <div class="form-text">
+                        Você receberá um link para redefinir sua senha.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Enviar link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+        
+{% endblock %}

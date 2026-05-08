@@ -3,7 +3,7 @@ from dal import autocomplete
 from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia    
 from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario, pode_editar_frequencia_turma # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
-from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioForm, RemoverAlunoAtividadeForm
+from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioCadastroForm, UsuarioEdicaoForm, RemoverAlunoAtividadeForm, MeuPerfilForm
 from calendar import monthrange
 from django import forms
 from django.core.exceptions import PermissionDenied
@@ -192,39 +192,50 @@ def editar_perfis_usuario(request, usuario_id):
 @require_perfil('admin')
 def editar_usuario(request, usuario_id):
     usuario = get_object_or_404(User, id=usuario_id)
-    tipo_perfil_choices = TIPOS_PERFIL_VALIDOS
+    #tipo_perfil_choices = TIPOS_PERFIL_VALIDOS
     perfis_do_usuario = list(usuario.perfis.values_list('tipo_perfil', flat=True))
 
     if request.method == "POST":
-        usuario.first_name = request.POST.get('nome')
-        usuario.email = request.POST.get('email')
-        usuario.is_active = request.POST.get('is_active') == 'true'
-        usuario.save()
+        form = UsuarioEdicaoForm(request.POST, instance=usuario)
+        if form.is_valid():
+            usuario = form.save()
 
-        novos_perfis = request.POST.getlist('tipo_perfil')
-        novos_perfis = [tp for tp in novos_perfis if tp in TIPOS_PERFIL_VALIDOS]
+            novos_perfis = request.POST.getlist('tipo_perfil')
+            novos_perfis = [tp for tp in novos_perfis if tp in TIPOS_PERFIL_VALIDOS]
 
-        usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
+            usuario.perfis.exclude(tipo_perfil__in=novos_perfis).delete()
 
-        for tipo in novos_perfis:
-            if not usuario.perfis.filter(tipo_perfil=tipo).exists():
-                PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
+            for tipo in novos_perfis:
+                if not usuario.perfis.filter(tipo_perfil=tipo).exists():
+                    PerfilUsuario.objects.create(user=usuario, tipo_perfil=tipo)
 
-        if not usuario.perfis.exists():
-            PerfilUsuario.objects.create(user=usuario, tipo_perfil='colaborador')
+            if not usuario.perfis.exists():
+                PerfilUsuario.objects.create(user=usuario, tipo_perfil='colaborador')
 
-        sincronizar_grupos_usuario(usuario)
-        return redirect('usuarios_gerenciar')
+            sincronizar_grupos_usuario(usuario)
+            return redirect('usuarios_gerenciar')
+    else:
+        form = UsuarioEdicaoForm(instance=usuario)
 
-    return render(
-        request,
-        'AppLSD/editar_usuario.html',
-        {
-            'usuario': usuario,
-            'tipo_perfil_choices': tipo_perfil_choices,
-            'perfis_do_usuario': perfis_do_usuario,
-        },
-    )
+    return render(request, 'AppLSD/editar_usuario.html', {
+        'form': form,
+        'usuario': usuario,
+        'tipo_perfil_choices': TIPOS_PERFIL_VALIDOS,
+        'perfis_do_usuario': perfis_do_usuario,
+    })
+
+@login_required
+def editar_meu_perfil(request):
+    if request.method == 'POST':
+        form = MeuPerfilForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('home')
+    else:
+        form = MeuPerfilForm(instance=request.user)
+
+    return render(request, 'AppLSD/editar_meu_perfil.html', {'form': form})
+
 
 
 @require_perfil('admin')
@@ -240,24 +251,28 @@ def resetar_senha_usuario(request, usuario_id):
 @require_perfil('admin')
 def cadastrar_usuario(request):
     if request.method == 'POST':
-        form = UsuarioForm(request.POST)
+        form = UsuarioCadastroForm(request.POST)
         if form.is_valid():
             user = form.save()
             perfis = request.POST.getlist("perfis")  # nomes do tipo_perfil
-            for perfil in perfis:
-                PerfilUsuario.objects.create(user=user, tipo_perfil=perfil)
-            # se não marcou nada, cria padrão colaborador
-            if not perfis:
+            perfis = [p for p in perfis if p in TIPOS_PERFIL_VALIDOS]
+            
+            if perfis:
+                for perfil in perfis:
+                    PerfilUsuario.objects.create(user=user, tipo_perfil=perfil)
+            else:
                 PerfilUsuario.objects.create(user=user, tipo_perfil='colaborador')
             sincronizar_grupos_usuario(user)
             return redirect('usuarios_gerenciar')
     else:
-        form = UsuarioForm()
+        form = UsuarioCadastroForm()
     return render(
         request,
         'AppLSD/cadastrar_usuario.html',
         {"form": form, "tipo_perfil": TIPOS_PERFIL_VALIDOS},
     )
+
+
 
 @login_required
 def home(request):
@@ -1821,13 +1836,14 @@ def activity_edit(request, pk):
             atividade = form.save(commit=False)
             atividade.editado_por = request.user        # auditoria
             atividade.save()
+            form.save_m2m()
             registrar_log(
                 request.user,
                 atividade,
                 'atividade_editada',
                 f'Atividade {atividade.atividade} editada.'
             )
-            form.save_m2m()
+            
             return redirect('activity_list')
     else:
         form = ActivityForm(instance=atividade)

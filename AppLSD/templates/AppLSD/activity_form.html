@@ -22,7 +22,7 @@
                     <div class="col-md-6">{{ form.facilitador|as_crispy_field }}</div>
                 </div>
             </div>    
-                
+        
         <button type="submit" class="btn btn-primary">
             {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
         </button>
@@ -31,4 +31,20 @@
         <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">Home</a>
     </form>
 </div>
+
+<script>
+    jQuery(document).ready(function($) {
+        console.log('jQuery versão:', jQuery.fn.jquery);
+        console.log('Select2 existe?:', typeof jQuery.fn.select2);
+
+        $('#id_facilitador').select2({
+            placeholder: 'Selecione ou pesquise um facilitador',
+            allowClear: true,
+            width: '100%',
+            language: 'pt-BR'
+        });
+    });
+</script>
 {% endblock %}
+
+
