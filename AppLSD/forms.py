@@ -1,5 +1,5 @@
 from django import forms
-from .models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult
+from .models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult, DocumentoFamilia
 from dal import autocomplete
 from django.db.models.functions import Lower
 from django.core.validators import RegexValidator
@@ -778,5 +778,11 @@ class MeuPerfilForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
+
+
+class DocumentoFamiliaForm(forms.ModelForm):
+    class Meta:
+        model = DocumentoFamilia
+        fields = ['tipo', 'arquivo']
 
 
