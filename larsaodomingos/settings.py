@@ -10,8 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 
@@ -221,7 +221,10 @@ CHANNEL_LAYERS = {
 X_FRAME_OPTIONS = 'ALLOWALL'
 
 # Carrega variáveis do arquivo .env
-load_dotenv(BASE_DIR / '.env')
+#load_dotenv(BASE_DIR / '.env')
+
+dotenv_path = BASE_DIR / '.env'
+load_dotenv(dotenv_path=dotenv_path, override=True)
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.titan.email')
