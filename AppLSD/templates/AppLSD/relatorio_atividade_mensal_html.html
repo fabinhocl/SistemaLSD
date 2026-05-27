@@ -3,7 +3,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Relatório Mensal - {{ turma.grupo }} ({{ turma.turno }})</title>
+  <title>Relatório Mensal - {{ activity.atividade }}</title>
   <style>
     @page {
       size: A4 landscape;
@@ -165,10 +165,11 @@
 
     <div class="topo">
       <div>
-        <h1>Relatório Mensal - {{ turma.grupo }} ({{ turma.turno }})</h1>
+        <h1>Relatório Mensal - {{ activity.atividade }}</h1>
         <div class="meta">
           Mês: {{ mes }} |
-          Educadora: {{ turma.educadora.first_name }} {{ turma.educadora.last_name }}
+          Facilitador: {{ activity.facilitador.first_name }} {{ activity.facilitador.last_name }} |
+          Turno: {{ activity.turno }}
         </div>
       </div>
       <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
@@ -191,13 +192,17 @@
       <tbody>
         {% for linha in linhas %}
         <tr>
-          <td class="col-aluno">{{ linha.aluno.name|upper }}</td>
+          <td class="col-aluno">{{ linha.aluno.name }}</td>
           {% for status in linha.status_por_dia %}
             <td>{{ status }}</td>
           {% endfor %}
           <td class="col-faltas">{{ linha.faltas }}</td>
           <td class="col-percentual">{{ linha.percentual_presenca }}</td>
           <td class="col-justificativas">{{ linha.justificativas }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ dias_mes|length|add:4 }}">Nenhum aluno vinculado à atividade.</td>
         </tr>
         {% endfor %}
       </tbody>

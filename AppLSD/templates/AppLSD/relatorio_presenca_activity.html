@@ -9,25 +9,36 @@
     <input type="date" id="data" name="data" value="{{ request.GET.data }}">
     <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
 </form>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Inscrição</th>
-            <th>Aluno</th>
-            <th>Situação</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for chamada in chamadas %}
+<h2>Relatório de Atividade</h2>
+<p><strong>Atividade:</strong> {{ activity.atividade }}</p>
+<p><strong>Facilitador:</strong> {{ activity.facilitador.first_name }} {{ activity.facilitador.last_name }}</p>
+<p><strong>Data:</strong> {{ data }}</p>
+<p><strong>Presentes:</strong> {{ total_presentes }} | <strong>Faltas:</strong> {{ total_faltas }}</p>
+
+<table>
+  <thead>
     <tr>
-        <td>{{ chamada.aluno.family.registration_number }}</td>
-        <td>{{ chamada.aluno.name }}</td>
-        <td>{% if chamada.presente %}Presente{% else %}Falta{% endif %}</td>
+      <th>Aluno</th>
+      <th>Presença</th>
+      <th>Motivo da Falta</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in presencas %}
+    <tr>
+      <td>{{ item.aluno.name }}</td>
+      <td>{% if item.presente %}P{% else %}F{% endif %}</td>
+      <td>{{ item.motivo_falta }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="3">Nenhum registro encontrado para a data informada.</td>
     </tr>
     {% endfor %}
+  </tbody>
 </table>
 <div class="no-print">
-        <a href="{% url 'frequencia_activity_iniciar' atividade.pk %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
+        
         <a href="{% url 'activity_list' %}" class="btn btn-secondary">Voltar</a>
         <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>

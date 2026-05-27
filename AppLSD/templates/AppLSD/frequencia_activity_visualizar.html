@@ -7,10 +7,34 @@
     <div class="container mt-4">
     <h1>Frequência da Atividade: {{ atividade.atividade }} </h1>
     <h2>Facilitador(a): {{ atividade.facilitador }}</h2>
+    <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
+    <p><strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }}</p>
+    <p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
     <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
-    <p><strong>Turno:</strong> {{ atividade.turno }}</p>
+  
     
-    
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="data" class="form-label"><strong>Pesquisar chamada por data</strong></label>
+                    <input
+                        type="date"
+                        name="data"
+                        id="data"
+                        class="form-control"
+                        value="{{ data_busca }}"
+                    >
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Pesquisar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     
     <div class="card">
         <!-- Resumo -->

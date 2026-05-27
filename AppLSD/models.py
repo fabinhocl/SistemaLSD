@@ -784,7 +784,10 @@ class FrequenciaAluno(models.Model):
     chamada = models.ForeignKey(FrequenciaTurma, on_delete=models.CASCADE, related_name='presencas')
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE)
     presente = models.BooleanField(default=True)
-    motivo_falta = models.CharField(max_length=100, blank=True)
+    MOTIVO_FALTA_CHOICES = [
+        ('SJ', 'Sem Justificativa'), ('AM', 'Atestado Médico'), ('DM', 'Declaração Médica'), ('OT', 'Outro')
+    ]
+    motivo_falta = models.CharField(max_length=100  , choices=MOTIVO_FALTA_CHOICES, blank=True)
 
     def __str__(self):
         return f"{self.aluno.name} ({'P' if self.presente else 'F'})"

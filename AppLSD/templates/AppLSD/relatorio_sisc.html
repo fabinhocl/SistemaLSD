@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>{{ titulo }}</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+
+    body { font-family: Arial, sans-serif; margin: 0; color: #222; }
+    .container { padding: 18px; }
+    .acoes { margin-bottom: 18px; }
+    .acoes button, .acoes a {
+      padding: 10px 14px;
+      border: none;
+      background: #6c757d;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 8px;
+      display: inline-block;
+    }
+
+    .topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .topo img { height: 62px; }
+    h1 { margin: 0 0 8px 0; font-size: 24px; }
+    .meta { font-size: 16px; margin-bottom: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    th, td {
+      border: 1px solid #222;
+      padding: 4px 3px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #0b7a6b;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .col-aluno {
+      width: 260px;
+      white-space: nowrap;
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .dia {
+      width: 28px;
+    }
+
+    .col-faltas { width: 70px; }
+    .col-percentual { width: 80px; }
+    .col-just { width: 250px; text-align: left; }
+
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    td, th { word-wrap: break-word; }
+
+    @media print {
+      .acoes, .navbar, .sidebar, .menu, .btn { display:none !important; }
+      .container { padding: 0; }
+      body { margin: 0; }
+      table { font-size: 11px; }
+      .col-aluno {
+        white-space: nowrap;
+        overflow: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="acoes">
+      <button onclick="window.print()">Imprimir / Salvar em PDF</button>
+      <a href="{% url 'home_relatorios' %}">Voltar para Relatórios</a>
+    </div>
+
+    <div class="topo">
+      <div>
+        <h1>{{ titulo }}</h1>
+        <div class="meta">Mês: {{ mes }} | Educadora: {{ educadora_texto }}</div>
+      </div>
+      <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="col-aluno">Assistido</th>
+          {% for dia in dias_mes %}
+            <th class="dia">{{ dia|date:"d" }}<br>{{ dia|date:"D" }}</th>
+          {% endfor %}
+          <th class="col-faltas">Total Faltas</th>
+          <th class="col-percentual">% Presença</th>
+          <th class="col-just">Justificativas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in linhas %}
+        <tr>
+          <td class="col-aluno">{{ linha.aluno }}</td>
+          {% for status in linha.status_por_dia %}
+            <td class="dia">{{ status }}</td>
+          {% endfor %}
+          <td class="col-faltas">{{ linha.faltas }}</td>
+          <td class="col-percentual">{{ linha.percentual }}</td>
+          <td class="col-just">{{ linha.justificativas }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

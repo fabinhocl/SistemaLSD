@@ -2,12 +2,13 @@
 {% load static %}
 
 {% block title %}
-Detalhes da Turma - {{ turma.grupo }}
+Detalhes do Grupo - {{ turma.grupo }}
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-  <h1 class="text-center">Turma: {{ turma.educadora.first_name }} - {{ turma.grupo }}</h1>
+  <h1 class="text-center">{{ turma.grupo }}</h1>
+  <h2 class="text-center">Educadora: {{ turma.educadora.first_name }}</h2>
   <h3 class="text-center"><strong>Faixa etária:</strong> {{ turma.faixa_etaria }} - <strong>Turno:</strong> {{ turma.turno }}</h3>
   
 
@@ -68,11 +69,11 @@ Detalhes da Turma - {{ turma.grupo }}
     <div class="tab-pane fade show active" id="pane-resumo" role="tabpanel"
          aria-labelledby="tab-resumo">
 
-      <h2 class="text-center mt-4">Alunos da Turma</h2>
+      <h2 class="text-center mt-4">Alunos do Grupo</h2>
       
       <div class="col-md-2 mb-2">
             <div class="alert alert-info mb-0">
-                Alunos na Turma: {{ total_alunos_turma }}
+                Alunos no Grupo: {{ total_alunos_turma }}
             </div>
         </div>
       <!-- BOTÕES DE FREQUÊNCIA -->

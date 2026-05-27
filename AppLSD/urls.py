@@ -120,7 +120,10 @@ urlpatterns = [
     path('activities/<int:activity_id>/adicionar-alunos/', views_templates.activity_add_alunos, name='activity_add_alunos'),
     path('activities/<int:activity_id>/relatorio-presenca/', views_templates.relatorio_presenca_activity, name='relatorio_presenca_activity'),
     path('activities/<int:activity_id>/relatorio-presenca/pdf/', views_templates.relatorio_presenca_activity_pdf, name='relatorio_presenca_activity_pdf'),
-    
+    path('activities/<int:activity_id>/relatorio-mensal/', views_templates.relatorio_atividade_mensal_html, name='relatorio_atividade_mensal_html'),
+    path('activities/<int:activity_id>/relatorio-mensal/pdf/', views_templates.relatorio_atividade_mensal_pdf, name='relatorio_atividade_mensal_pdf'),
+
+
     path('family-autocomplete/', views.FamilyAutocomplete.as_view(), name='family-autocomplete'),
     path('educadora/turmas/', views_templates.home_educadora, name='home_educadora'),
     path('educadora/dashboard/', views_templates.dashboard_presenca, name='dashboard_presenca'),
@@ -159,7 +162,10 @@ urlpatterns = [
     path('families/export/', views_templates.export_family_excel, name='export_family_excel'),
     path('alunos/export/', views_templates.export_aluno_excel, name='export_aluno_excel'),
     path('adults/export/', views_templates.export_adult_excel, name='export_adult_excel'),
-
+    path("relatorios/semds/busca-ativa/", views_templates.relatorio_busca_ativa, name="relatorio_busca_ativa"),
+    path("relatorios/semds/busca-ativa/html/", views_templates.relatorio_busca_ativa_html, name="relatorio_busca_ativa_html"),
+    path("relatorios/semds/sisc/", views_templates.relatorio_sisc, name="relatorio_sisc"),
+    path("relatorios/semds/sisc/html/", views_templates.relatorio_sisc_html, name="relatorio_sisc_html"),
     #select2 no formulário de Atividade para selecionar os facilitador de forma mais amigável
     #path("select2/", include("django_select2.urls")),
     

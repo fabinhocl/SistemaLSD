@@ -6,94 +6,201 @@
 {% block content %}
 
 
-<h2>Dashboard de Presença</h2>
+<h1 class="mb-4 text-center">Resumo de Presenças</h1>
 
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-primary">{{ total_alunos }}</h3>
-                <p>Total de Alunos</p>
-            </div>
-        </div>
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <h2 class="text-primary">{{ total_alunos }}</h2>
+        <p class="mb-0">Total de Alunos</p>
+      </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-success">{{ presentes_hoje }}</h3>
-                <p>Presentes Hoje</p>
-            </div>
-        </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <h2 class="text-info">{{ turmas_ativas }}</h2>
+        <p class="mb-0">Turmas Ativas</p>
+      </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-danger">{{ faltas_hoje }}</h3>
-                <p>Faltas Hoje</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-info">{{ turmas_ativas }}</h3>
-                <p>Turmas Ativas</p>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
-<h3>Frequência por Turma (Últimos 7 dias)</h3>
-<table class="table table-striped">
-    <thead>
-        <tr class="text-center" >
-            <th>Turma</th>
-            <th>Alunos Inseridos</th>
-            <th>Média de Presença</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for turma in turmas_com_frequencia %}
-        <tr class="text-center">
-            <td>{{ turma.educadora.first_name }} - {{ turma.faixa_etaria }}</td>
-            <td>{{ turma.total_alunos }}</td>
-            <td>{{ turma.media_presenca|floatformat:1 }}%</td>
-            <td>
-                <a href="{% url 'turma_detail' turma.pk %}" class="btn btn-sm btn-info">Ver Detalhes</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="row g-4 mb-5">
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <h4 class="mb-3">Manhã</h4>
+        <div class="row">
+          <div class="col-6">
+            <h2 class="text-success">{{ presentes_manha }}</h2>
+            <p class="mb-0">Presentes Hoje</p>
+          </div>
+          <div class="col-6">
+            <h2 class="text-danger">{{ faltas_manha }}</h2>
+            <p class="mb-0">Faltas Hoje</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<h3>Frequência por Atividades (Últimos 7 dias)</h3>
-<table class="table table-striped">
-    <thead>
-        <tr class="text-center">
-            <th>Atividades</th>
-            <th>Facilitador</th>
-            <th>Alunos Matriculados</th>
-            <th>Média de Presença</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for atividade in atividades_com_frequencia %}
-    <tr class="text-center">
-        <td>{{ atividade.atividade }}</td>
-        <td>{{ atividade.facilitador.first_name }}</td>
-        <td>{{ atividade.total_alunos }}</td>
-        <td>{{ atividade.media_presenca }}%</td>
-        <td>
-            <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-info">Ver Detalhes</a>
-        </td>
-    </tr>
-        {% empty %}
-            <tr><td colspan="5">Nenhuma atividade registrada nos últimos 7 dias.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <h4 class="mb-3">Tarde</h4>
+        <div class="row">
+          <div class="col-6">
+            <h2 class="text-success">{{ presentes_tarde }}</h2>
+            <p class="mb-0">Presentes Hoje</p>
+          </div>
+          <div class="col-6">
+            <h2 class="text-danger">{{ faltas_tarde }}</h2>
+            <p class="mb-0">Faltas Hoje</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="resumoTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button
+      class="nav-link active"
+      id="grupos-tab"
+      data-bs-toggle="tab"
+      data-bs-target="#grupos-pane"
+      type="button"
+      role="tab"
+      aria-controls="grupos-pane"
+      aria-selected="true">
+      Grupos
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button
+      class="nav-link"
+      id="atividades-tab"
+      data-bs-toggle="tab"
+      data-bs-target="#atividades-pane"
+      type="button"
+      role="tab"
+      aria-controls="atividades-pane"
+      aria-selected="false">
+      Atividades
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content" id="resumoTabsContent">
+  <div
+    class="tab-pane fade show active"
+    id="grupos-pane"
+    role="tabpanel"
+    aria-labelledby="grupos-tab"
+    tabindex="0">
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="text-center mb-4">Frequência por Grupo</h2>
+
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Turno</th>
+                <th>Educadora</th>
+                <th>Assistidos Inseridos</th>
+                <th>Presentes Hoje</th>
+                <th>Faltas Hoje</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for turma in turmas_com_frequencia %}
+              <tr>
+                <td>{{ turma.grupo }}</td>
+                <td>{{ turma.turno }}</td>
+                <td>{{ turma.educadora }}</td>
+                <td class="text-center">{{ turma.total_alunos }}</td>
+                <td class="text-center">{{ turma.presentes_hoje }}</td>
+                <td class="text-center">{{ turma.faltas_hoje }}</td>
+                <td>
+                  <a href="{% url 'turma_detail' turma.id %}" class="btn btn-info btn-sm">
+                    Ver Detalhes
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="8" class="text-center">Nenhum grupo com assistidos cadastrados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="tab-pane fade"
+    id="atividades-pane"
+    role="tabpanel"
+    aria-labelledby="atividades-tab"
+    tabindex="0">
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="text-center mb-4">Frequência por Atividade</h2>
+
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Atividade</th>
+                <th>Tipo</th>
+                <th>Turno</th>
+                <th>Facilitador</th>
+                <th>Assistidos Inseridos</th>
+                <th>Presentes Hoje</th>
+                <th>Faltas Hoje</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for atividade in atividades_com_frequencia %}
+              <tr>
+                <td>{{ atividade.atividade }}</td>
+                <td>{{ atividade.get_tipo_display }}</td>
+                <td>{{ atividade.turno }}</td>
+                <td>{{ atividade.facilitador }}</td>
+                <td class="text-center">{{ atividade.total_alunos }}</td>
+                <td class="text-center">{{ atividade.presentes_hoje }}</td>
+                <td class="text-center">{{ atividade.faltas_hoje }}</td>
+                <td>
+                  <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-info btn-sm">
+                    Ver Detalhes
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="8" class="text-center">Nenhuma atividade com assistidos cadastrados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+        
+    
 <div class="no-print">
     <a href="{% url 'home' %}" class="btn btn-secondary">Voltar ao Início</a>
     <a href="{% url 'home_relatorios' %}" class="btn btn-primary">Voltar Relatórios</a>

@@ -1,14 +1,16 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
 {% load frequencia_filters %}
+
 {% block content %}
 
-
 <div class="container mt-4">
-    <h1>Frequência da Turma: {{ chamada.turma.educadora.first_name }} - {{ chamada.turma.faixa_etaria }}</h1>
+    <h1>Frequência: {{ chamada.turma.grupo }}</h1>
+    <h3>Faixa Etária: {{ chamada.turma.faixa_etaria }}</h3>
+    <h2>Educadora: {{ chamada.turma.educadora.first_name }}</h2>
     <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
-    
+
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
@@ -46,43 +48,40 @@
     </div>
     {% endif %}
 
-      
-    <!-- Resumo -->
-     <div>
-            
-                <div class="row mt-4">
-                    <div class="col">
-                        <div class="card bg-success text-white">
-                            <div class="card-body text-center">
-                                <h4>Presentes</h4>
-                                <span style="font-size:2em">{{ presentes }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-danger text-white">
-                            <div class="card-body text-center">
-                                <h4>Faltas</h4>
-                                <span style="font-size:2em">{{ faltas }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-info text-white">
-                            <div class="card-body text-center">
-                                <h4>Total</h4>
-                                <span style="font-size:2em">{{ total_alunos }}</span>
-                            </div>
-                        </div>
+    <div>
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h4>Presentes</h4>
+                        <span style="font-size:2em">{{ presentes }}</span>
                     </div>
                 </div>
-            
+            </div>
+            <div class="col">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h4>Faltas</h4>
+                        <span style="font-size:2em">{{ faltas }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h4>Total</h4>
+                        <span style="font-size:2em">{{ total_alunos }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
-    <div class="card">
-        
+    </div>
+
+    <div class="card mt-3">
         <div class="card-header">
             <h4 class="text-center">Lista de Presença</h4>
         </div>
+
         <div class="card-body">
             <table class="table table-striped">
                 <thead>
@@ -90,12 +89,11 @@
                         <th>Inscrição</th>
                         <th>Nome do Aluno</th>
                         <th>Status</th>
-                        <th>Justificativa</th>
+                        <th>Motivo da Falta</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if chamada_nao_encontrada %}
-                        {# Não há chamada para a data pesquisada: lista alunos com status em branco #}
                         {% for aluno in alunos_turma %}
                         <tr class="text-center">
                             <td>{{ aluno.family.registration_number }}</td>
@@ -109,23 +107,24 @@
                         </tr>
                         {% endfor %}
                     {% else %}
-                        {# Há chamada: usa as presenças da chamada normalmente #}
                         {% for presenca in presencas %}
                         <tr>
                             <td class="text-center">{{ presenca.aluno.family.registration_number }}</td>
                             <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
                             <td class="text-center">
-                                {% if presenca and presenca.presente %}
+                                {% if presenca.presente %}
                                     Presente
-                                {% elif presenca %}
-                                    Falta
                                 {% else %}
-                                    -
+                                    Falta
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="text-center">
                                 {% if not presenca.presente and presenca.motivo_falta %}
-                                    {{ presenca.motivo_falta }}
+                                    {% if presenca.motivo_falta == 'SJ' or presenca.motivo_falta == 'AM' or presenca.motivo_falta == 'DM' or presenca.motivo_falta == 'OT' %}
+                                        {{ presenca.get_motivo_falta_display }}
+                                    {% else %}
+                                        {{ presenca.motivo_falta }}
+                                    {% endif %}
                                 {% else %}
                                     -
                                 {% endif %}
@@ -139,32 +138,32 @@
                     {% endif %}
                 </tbody>
             </table>
-            
-           
 
-  
-    
-    <!-- Botões -->
-    <div class="mt-4">
-        {% if pode_editar %}
-        <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
-            <i class="fas fa-edit"></i> Editar Frequência
-        </a>
-        {% endif %}
-        
-        <button onclick="window.print()" class="btn btn-secondary">
-            <i class="fas fa-print"></i> Imprimir
-        </button>
-        
-        <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Voltar para Turma
-        </a>
+            <div class="mt-4">
+                {% if pode_editar and not chamada_nao_encontrada %}
+                <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Editar Frequência
+                </a>
+                {% endif %}
+
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+
+                <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar para Turma
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
 @media print {
-    .btn, .alert { display: none; }
+    .btn, .alert {
+        display: none;
+    }
 }
 </style>
+
 {% endblock %}

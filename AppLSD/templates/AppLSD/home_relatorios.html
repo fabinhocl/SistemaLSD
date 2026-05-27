@@ -7,7 +7,6 @@
 
 <h2 class="text-center mb-4">Relatórios de Frequência</h2>
 
-{# ===================== RESUMO TOPO ===================== #}
 <div class="row mb-4">
   <div class="col-md-3 mb-3">
     <div class="card text-center h-100">
@@ -43,7 +42,6 @@
   </div>
 </div>
 
-{# ===================== BLOCO DE FILTROS ===================== #}
 <div class="card mb-4">
   <div class="card-header">
     <strong>Filtros de Relatório</strong>
@@ -56,9 +54,20 @@
         <div class="col-md-3 mb-3">
           <label for="tipo_relatorio" class="form-label">Tipo de Relatório</label>
           <select id="tipo_relatorio" name="tipo_relatorio" class="form-select">
+            <option value="">Selecione...</option>
             <option value="turma">Relatório por Turma</option>
             <option value="aluno">Relatório Mensal do Aluno</option>
             <option value="atividade">Relatório por Atividade</option>
+            <option value="semds">Relatório SEMDS</option>
+          </select>
+        </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_subtipo_semds">
+          <label for="subtipo_semds" class="form-label">Relatório SEMDS</label>
+          <select id="subtipo_semds" name="subtipo_semds" class="form-select">
+            <option value="">Selecione...</option>
+            <option value="busca_ativa">Relatório Busca Ativa</option>
+            <option value="sisc">Relatório SISC</option>
           </select>
         </div>
 
@@ -100,7 +109,7 @@
       </div>
 
       <div class="row mb-3">
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3 mb-3" id="campo_tipo_periodo">
           <label for="tipo_periodo" class="form-label">Período</label>
           <select id="tipo_periodo" name="tipo_periodo" class="form-select">
             <option value="diario">Diário</option>
@@ -131,102 +140,82 @@
   </div>
 </div>
 
-{# ===================== ATALHOS RÁPIDOS (OPCIONAIS) ===================== #}
-<div class="row">
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body d-flex flex-column justify-content-between">
-        <div>
-          <h5 class="card-title text-center">Relatório Turma (últimos 7 dias)</h5>
-          <p class="text-muted small text-center mb-3">
-            Médias de presença por turma nos últimos 7 dias.
-          </p>
-        </div>
-        <a href="{% url 'dashboard_presenca' %}" class="btn btn-primary w-100">
-          Ver Turmas
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body d-flex flex-column justify-content-between">
-        <div>
-          <h5 class="card-title text-center">Relatório Atividades</h5>
-          <p class="text-muted small text-center mb-3">
-            Frequência nas atividades dos últimos 7 dias.
-          </p>
-        </div>
-        {% comment %} URL base para JS, não para clique direto {% endcomment %}
-        <a href="javascript:void(0)" id="link-base-atividade"
-            data-url-base="{% url 'relatorio_presenca_activity' 0 %}"
-            class="btn btn-primary w-100">
-            Ver Atividades
-        </a>
-
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-body d-flex flex-column justify-content-between">
-        <div>
-          <h5 class="card-title text-center">Relatório Mensal do Aluno</h5>
-          <p class="text-muted small text-center mb-3">
-            Frequência detalhada do aluno por mês.
-          </p>
-        </div>
-        <a href="{% url 'relatorio_mensal_aluno' %}" class="btn btn-primary w-100">
-          Selecionar Aluno
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
 {% endblock content %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  console.log('JS de relatórios carregado');
+  const tipoRelatorio = document.getElementById('tipo_relatorio');
+  const subtipoSemds = document.getElementById('subtipo_semds');
+  const tipoPeriodo = document.getElementById('tipo_periodo');
 
-  const tipoRelatorio   = document.getElementById('tipo_relatorio');
-  const tipoPeriodo     = document.getElementById('tipo_periodo');
-  const turmaSelect     = document.getElementById('turma_id');
-  const alunoSelect     = document.getElementById('aluno_id');
+  const turmaSelect = document.getElementById('turma_id');
+  const alunoSelect = document.getElementById('aluno_id');
   const atividadeSelect = document.getElementById('atividade_id');
-  const dataInput       = document.getElementById('data');
-  const mesInput        = document.getElementById('mes');
+  const dataInput = document.getElementById('data');
+  const mesInput = document.getElementById('mes');
 
-  const campoTurma     = document.getElementById('campo_turma');
-  const campoAluno     = document.getElementById('campo_aluno');
+  const campoTurma = document.getElementById('campo_turma');
+  const campoAluno = document.getElementById('campo_aluno');
   const campoAtividade = document.getElementById('campo_atividade');
-  const campoData      = document.getElementById('campo_data');
-  const campoMes       = document.getElementById('campo_mes');
+  const campoSubtipo = document.getElementById('campo_subtipo_semds');
+  const campoTipoPeriodo = document.getElementById('campo_tipo_periodo');
+  const campoData = document.getElementById('campo_data');
+  const campoMes = document.getElementById('campo_mes');
 
-  function toggleEntidade() {
-    const tipo = tipoRelatorio.value;
-    console.log('Tipo de relatório:', tipo);
-
+  function esconderTudo() {
     campoTurma.classList.add('d-none');
     campoAluno.classList.add('d-none');
     campoAtividade.classList.add('d-none');
+    campoSubtipo.classList.add('d-none');
+    campoData.classList.add('d-none');
+    campoMes.classList.add('d-none');
+    campoTipoPeriodo.classList.add('d-none');
+  }
+
+  function toggleEntidade() {
+    const tipo = tipoRelatorio.value;
+    esconderTudo();
 
     if (tipo === 'turma') {
       campoTurma.classList.remove('d-none');
+      campoTipoPeriodo.classList.remove('d-none');
+      togglePeriodo();
     } else if (tipo === 'aluno') {
       campoAluno.classList.remove('d-none');
+      campoTipoPeriodo.classList.remove('d-none');
+      campoMes.classList.remove('d-none');
+      tipoPeriodo.value = 'mensal';
     } else if (tipo === 'atividade') {
       campoAtividade.classList.remove('d-none');
+      campoTipoPeriodo.classList.remove('d-none');
+      togglePeriodo();
+    } else if (tipo === 'semds') {
+      campoSubtipo.classList.remove('d-none');
+      if (subtipoSemds.value) {
+        campoMes.classList.remove('d-none');
+      }
     }
   }
 
   function togglePeriodo() {
     const tipo = tipoPeriodo.value;
-    console.log('Tipo de período:', tipo);
+
+    if (tipoRelatorio.value === 'semds') {
+      campoData.classList.add('d-none');
+      if (subtipoSemds.value) {
+        campoMes.classList.remove('d-none');
+      } else {
+        campoMes.classList.add('d-none');
+      }
+      return;
+    }
+
+    if (tipoRelatorio.value === 'aluno') {
+      campoData.classList.add('d-none');
+      campoMes.classList.remove('d-none');
+      return;
+    }
 
     if (tipo === 'diario') {
       campoData.classList.remove('d-none');
@@ -237,11 +226,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  document.getElementById('btn-gerar-relatorio').addEventListener('click', function () {
-    const tipo    = tipoRelatorio.value;
-    const periodo = tipoPeriodo.value;
+  function toggleSubtipoSemds() {
+    if (tipoRelatorio.value === 'semds' && subtipoSemds.value) {
+      campoMes.classList.remove('d-none');
+    } else if (tipoRelatorio.value === 'semds') {
+      campoMes.classList.add('d-none');
+    }
+  }
 
-    let url    = null;
+  document.getElementById('btn-gerar-relatorio').addEventListener('click', function () {
+    const tipo = tipoRelatorio.value;
+    const periodo = tipoPeriodo.value;
+    let url = null;
     let params = [];
 
     if (tipo === 'turma') {
@@ -252,17 +248,11 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       if (periodo === 'mensal') {
-        // RELATÓRIO MENSAL (planilha)
         url = "{% url 'relatorio_turma_mensal_html' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (mesInput.value) {
-          params.push('mes=' + mesInput.value);  // YYYY-MM
-        }
+        if (mesInput.value) params.push('mes=' + mesInput.value);
       } else {
-        // RELATÓRIO DIÁRIO (chamada)
         url = "{% url 'relatorio_presenca_turma_pdf' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (dataInput.value) {
-          params.push('data=' + dataInput.value); // YYYY-MM-DD
-        }
+        if (dataInput.value) params.push('data=' + dataInput.value);
       }
     }
 
@@ -272,25 +262,60 @@ document.addEventListener('DOMContentLoaded', function () {
         alert('Selecione um aluno.');
         return;
       }
+
+      if (!mesInput.value) {
+        alert('Selecione o mês do relatório.');
+        return;
+      }
+
       url = "{% url 'relatorio_mensal_aluno' %}";
       params.push('aluno_id=' + alunoId);
-      if (mesInput.value) {
-        params.push('mes=' + mesInput.value);
-      }
+      params.push('mes=' + mesInput.value);
     }
 
     else if (tipo === 'atividade') {
       const atividadeId = atividadeSelect.value;
       if (!atividadeId) {
-        alert('Selecione uma atividade.');
+          alert('Selecione uma atividade.');
+          return;
+      }
+
+      const periodoNormalizado = (periodo || '').trim().toLowerCase();
+
+      if (periodoNormalizado === 'mensal') {
+          url = "{% url 'relatorio_atividade_mensal_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
+          if (mesInput.value) {
+              params.push('mes=' + encodeURIComponent(mesInput.value));
+          }
+      } else {
+          url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
+          if (dataInput.value) {
+              params.push('data=' + encodeURIComponent(dataInput.value));
+          }
+      }
+  }
+      
+
+    else if (tipo === 'semds') {
+      const subtipo = subtipoSemds.value;
+
+      if (!subtipo) {
+        alert('Selecione uma opção do Relatório SEMDS.');
         return;
       }
-      url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
-      if (periodo === 'diario' && dataInput.value) {
-        params.push('data=' + dataInput.value);
-      } else if (periodo === 'mensal' && mesInput.value) {
-        params.push('mes=' + mesInput.value);
+
+      if (!mesInput.value) {
+        alert('Selecione o mês do relatório.');
+        return;
       }
+
+      if (subtipo === 'busca_ativa') {
+        url = "{% url 'relatorio_busca_ativa_html' %}";
+      } else if (subtipo === 'sisc') {
+        url = "{% url 'relatorio_sisc_html' %}";
+      }
+
+      params.push('mes=' + mesInput.value);
     }
 
     else {
@@ -302,18 +327,27 @@ document.addEventListener('DOMContentLoaded', function () {
       url += '?' + params.join('&');
     }
 
-    console.log('Redirecionando para:', url);
-    window.location.href = url;
+    console.log('URL FINAL PDF:', url);
+    window.open(url, '_blank');
   });
 
-  tipoRelatorio.addEventListener('change', toggleEntidade);
+  tipoRelatorio.addEventListener('change', function () {
+    if (tipoRelatorio.value !== 'semds') {
+      subtipoSemds.value = '';
+    }
+    toggleEntidade();
+  });
+
+  subtipoSemds.addEventListener('change', function () {
+    toggleSubtipoSemds();
+    togglePeriodo();
+  });
+
   tipoPeriodo.addEventListener('change', togglePeriodo);
 
-  // estado inicial
   toggleEntidade();
   togglePeriodo();
 
-  // === ATIVA SELECT2 NO CAMPO DE ALUNO ===
   $('#aluno_id').select2({
     width: '100%',
     placeholder: 'Busque pelo nome ou inscrição',
@@ -321,6 +355,5 @@ document.addEventListener('DOMContentLoaded', function () {
     language: 'pt-BR'
   });
 });
-
 </script>
 {% endblock extra_js %}

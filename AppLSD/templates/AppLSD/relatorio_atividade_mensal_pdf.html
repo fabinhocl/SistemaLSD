@@ -1,0 +1,179 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório Mensal - {{ activity.atividade }}</title>
+  <style>
+  @page {
+    size: A4 landscape;
+    margin: 7mm;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    color: #111;
+    font-size: 9px;
+  }
+
+  .topo {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .topo-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
+  }
+
+  .topo-table td {
+    border: none;
+    vertical-align: top;
+    padding: 0;
+  }
+
+  .logo {
+    text-align: right;
+    width: 170px;
+  }
+
+  .logo img {
+    height: 48px;
+  }
+
+  h1 {
+    margin: 0 0 5px 0;
+    font-size: 17px;
+  }
+
+  .meta {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  table.relatorio {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 8px;
+  }
+
+  table.relatorio th,
+  table.relatorio td {
+    border: 1px solid #222;
+    padding: 2px 1px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  table.relatorio th {
+    background: #e6e6e6;
+    font-weight: bold;
+  }
+
+  .col-aluno {
+    width: 265px;
+    text-align: left !important;
+    white-space: nowrap;
+    padding-left: 5px !important;
+  }
+
+  .col-dia-num {
+    width: 12px;
+    font-size: 7px;
+    line-height: 1.0;
+    padding: 1px 0 !important;
+  }
+
+  .col-dia-semana {
+    width: 12px;
+    font-size: 6px;
+    line-height: 1.0;
+    padding: 1px 0 !important;
+  }
+
+  .col-dia-status {
+    width: 12px;
+    font-size: 7px;
+    line-height: 1.0;
+    padding: 1px 0 !important;
+  }
+
+  .col-faltas {
+    width: 34px;
+  }
+
+  .col-percentual {
+    width: 46px;
+  }
+
+  .col-justificativas {
+    width: 205px;
+    text-align: left !important;
+    white-space: normal;
+    word-wrap: break-word;
+    padding-left: 4px !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+</style>
+</head>
+<body>
+  <div class="topo">
+    <table class="topo-table">
+      <tr>
+        <td class="topo-cell">
+          <h1>Relatório Mensal - {{ activity.atividade }}</h1>
+          <div class="meta">
+            Mês: {{ mes }} |
+            Facilitador: {{ activity.facilitador.first_name }} {{ activity.facilitador.last_name }} |
+            Turno: {{ activity.turno }}
+          </div>
+        </td>
+        <td class="logo">
+          <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <table class="relatorio">
+    <thead>
+      <tr>
+        <th class="col-aluno" rowspan="2">Aluno</th>
+        {% for dia in dias_mes %}
+          <th class="col-dia-num">{{ dia|date:"d" }}</th>
+        {% endfor %}
+        <th class="col-faltas" rowspan="2">Faltas</th>
+        <th class="col-percentual" rowspan="2">% Pres.</th>
+        <th class="col-justificativas" rowspan="2">Justificativas</th>
+      </tr>
+      <tr>
+        {% for dia in dias_mes %}
+          <th class="col-dia-semana">{{ dia|date:"D"|slice:":3" }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in linhas %}
+      <tr>
+        <td class="col-aluno">{{ linha.aluno.name }}</td>
+        {% for status in linha.status_por_dia %}
+          <td class="col-dia-status">{{ status|default:"" }}</td>
+        {% endfor %}
+        <td class="col-faltas">{{ linha.faltas }}</td>
+        <td class="col-percentual">{{ linha.percentual_presenca }}</td>
+        <td class="col-justificativas">{{ linha.justificativas|default:" " }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

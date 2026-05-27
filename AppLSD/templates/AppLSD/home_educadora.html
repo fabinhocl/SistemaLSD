@@ -4,119 +4,241 @@
 {% block title %}Minhas Turmas{% endblock %}
 
 {% block content %}
+<div class="container py-4">
 
+    <h2 class="text-center mb-4">Grupos e Atividades de {{ user.first_name }}</h2>
 
+    <ul class="nav nav-pills nav-justified mb-4" id="turnoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button
+                class="nav-link active"
+                id="manha-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#manha-pane"
+                type="button"
+                role="tab"
+                aria-controls="manha-pane"
+                aria-selected="true">
+                Manhã
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button
+                class="nav-link"
+                id="tarde-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#tarde-pane"
+                type="button"
+                role="tab"
+                aria-controls="tarde-pane"
+                aria-selected="false">
+                Tarde
+            </button>
+        </li>
+    </ul>
 
-{# ==================== TURMAS DA EDUCADORA ==================== #}
-<h2 class="text-center mb-4">Turmas da Educadora {{ user.first_name }}</h2>
+    <div class="tab-content" id="turnoTabsContent">
 
-<div class="row justify-content-center">
-    {% if turmas_com_status %}
-        {% for item in turmas_com_status %}
-        <div class="col-md-4 mb-3">
-            <div class="card h-100">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="text-center mb-0">{{ item.turma.grupo }}</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Faixa Etária:</strong> {{ item.turma.faixa_etaria }}</p>
-                    <p><strong>Turno:</strong> {{ item.turma.get_turno_display }}</p>
-                    <p>
-                        <strong>Total de alunos:</strong>
-                        <span class="badge bg-info">{{ item.total_alunos }}</span>
-                    </p>
-                    <p>
-                        <strong>Alunos presentes:</strong>
-                        <span class="badge bg-success">{{ item.alunos_presentes|default:"0" }}</span>
-                    </p>
-                </div>
-                <div class="card-footer bg-light">
-                    <a href="{% url 'turma_detail' item.turma.id %}" class="btn btn-info btn-sm w-100 mb-2">
-                        <i class="fas fa-eye"></i> Ver Detalhes
-                    </a>
+        <div class="tab-pane fade show active" id="manha-pane" role="tabpanel" aria-labelledby="manha-tab" tabindex="0">
 
-                    <!-- ✅ FREQUÊNCIA COM PERMISSÕES -->
-                    {% if item.frequencia_existe %}
-                        <!-- Frequência já foi feita -->
-                        {% if item.pode_editar %}
-                            {# Coordenação: pode editar #}
-                            <a href="{% url 'frequencia_editar' item.frequencia.id %}" class="btn btn-warning btn-sm w-100">
-                                <i class="fas fa-edit"></i> Editar Frequência
-                            </a>
-                        {% elif item.pode_visualizar %}
-                            {# Educadora: só visualiza #}
-                            <a href="{% url 'frequencia_visualizar' item.frequencia.id %}" class="btn btn-info btn-sm w-100">
-                                <i class="fas fa-eye"></i> Visualizar Frequência
-                            </a>
-                        {% endif %}
-                    {% else %}
-                        <!-- Frequência não foi feita ainda -->
-                        <a href="{% url 'frequencia_turma_iniciar' item.turma.id %}" class="btn btn-success btn-sm w-100">
-                            <i class="fas fa-play"></i> Fazer Frequência
-                        </a>
-                    {% endif %}
-                </div>
+            <h3 class="text-center mb-3">Grupos da Manhã</h3>
+            <div class="row justify-content-center mb-5">
+                {% if turmas_manha %}
+                    {% for item in turmas_manha %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="text-center mb-0">{{ item.turma.grupo }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Faixa Etária:</strong> {{ item.turma.faixa_etaria }}</p>
+                                <p><strong>Turno:</strong> {{ item.turma.get_turno_display }}</p>
+                                <p>
+                                    <strong>Total de alunos:</strong>
+                                    <span class="badge bg-info">{{ item.total_alunos }}</span>
+                                </p>
+                                <p>
+                                    <strong>Alunos presentes:</strong>
+                                    <span class="badge bg-success">{{ item.alunos_presentes|default:"0" }}</span>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a href="{% url 'turma_detail' item.turma.id %}" class="btn btn-info btn-sm w-100 mb-2">
+                                    <i class="fas fa-eye"></i> Ver Detalhes
+                                </a>
+
+                                {% if item.frequencia_existe %}
+                                    {% if item.pode_editar %}
+                                        <a href="{% url 'frequencia_editar' item.frequencia.id %}" class="btn btn-warning btn-sm w-100">
+                                            <i class="fas fa-edit"></i> Editar Frequência
+                                        </a>
+                                    {% elif item.pode_visualizar %}
+                                        <a href="{% url 'frequencia_visualizar' item.frequencia.id %}" class="btn btn-info btn-sm w-100">
+                                            <i class="fas fa-eye"></i> Visualizar Frequência
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'frequencia_turma_iniciar' item.turma.id %}" class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-play"></i> Fazer Frequência
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            Nenhuma turma encontrada no turno da manhã.
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <h3 class="text-center mb-3">Atividades da Manhã</h3>
+            <div class="row justify-content-center">
+                {% if atividades_manha %}
+                    {% for item in atividades_manha %}
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="text-center mb-0">{{ item.obj.atividade }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Tipo:</strong> {{ item.obj.get_tipo_display }}</p>
+                                <p><strong>Dias:</strong> {{ item.obj.get_dia_semana_display }}</p>
+                                <p><strong>Turno:</strong> {{ item.obj.get_turno_display }}</p>
+
+                                {% if item.frequencia_existe %}
+                                    <a href="{% url 'frequencia_activity_visualizar' item.obj.pk %}" class="btn btn-info w-100 mb-2">
+                                        Visualizar Frequência
+                                    </a>
+                                    <span class="badge bg-success d-block text-center">Frequência Realizada</span>
+                                {% else %}
+                                    <a href="{% url 'frequencia_activity_iniciar' item.obj.pk %}" class="btn btn-success w-100">
+                                        Fazer Frequência
+                                    </a>
+                                {% endif %}
+
+                                <a href="{% url 'activity_detail' item.obj.pk %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                                    Ver Detalhes
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            Nenhuma atividade hoje para o turno da manhã.
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
-        {% endfor %}
-    {% else %}
-        <div class="col-12">
-            <div class="alert alert-info text-center">
-                Nenhuma turma encontrada.
+
+        <div class="tab-pane fade" id="tarde-pane" role="tabpanel" aria-labelledby="tarde-tab" tabindex="0">
+
+            <h3 class="text-center mb-3">Grupos da Tarde</h3>
+            <div class="row justify-content-center mb-5">
+                {% if turmas_tarde %}
+                    {% for item in turmas_tarde %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="text-center mb-0">{{ item.turma.grupo }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Faixa Etária:</strong> {{ item.turma.faixa_etaria }}</p>
+                                <p><strong>Turno:</strong> {{ item.turma.get_turno_display }}</p>
+                                <p>
+                                    <strong>Total de alunos:</strong>
+                                    <span class="badge bg-info">{{ item.total_alunos }}</span>
+                                </p>
+                                <p>
+                                    <strong>Alunos presentes:</strong>
+                                    <span class="badge bg-success">{{ item.alunos_presentes|default:"0" }}</span>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <a href="{% url 'turma_detail' item.turma.id %}" class="btn btn-info btn-sm w-100 mb-2">
+                                    <i class="fas fa-eye"></i> Ver Detalhes
+                                </a>
+
+                                {% if item.frequencia_existe %}
+                                    {% if item.pode_editar %}
+                                        <a href="{% url 'frequencia_editar' item.frequencia.id %}" class="btn btn-warning btn-sm w-100">
+                                            <i class="fas fa-edit"></i> Editar Frequência
+                                        </a>
+                                    {% elif item.pode_visualizar %}
+                                        <a href="{% url 'frequencia_visualizar' item.frequencia.id %}" class="btn btn-info btn-sm w-100">
+                                            <i class="fas fa-eye"></i> Visualizar Frequência
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'frequencia_turma_iniciar' item.turma.id %}" class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-play"></i> Fazer Frequência
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            Nenhuma turma encontrada no turno da tarde.
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <h3 class="text-center mb-3">Atividades da Tarde</h3>
+            <div class="row justify-content-center">
+                {% if atividades_tarde %}
+                    {% for item in atividades_tarde %}
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="text-center mb-0">{{ item.obj.atividade }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Tipo:</strong> {{ item.obj.get_tipo_display }}</p>
+                                <p><strong>Dias:</strong> {{ item.obj.get_dia_semana_display }}</p>
+                                <p><strong>Turno:</strong> {{ item.obj.get_turno_display }}</p>
+
+                                {% if item.frequencia_existe %}
+                                    <a href="{% url 'frequencia_activity_visualizar' item.obj.pk %}" class="btn btn-info w-100 mb-2">
+                                        Visualizar Frequência
+                                    </a>
+                                    <span class="badge bg-success d-block text-center">Frequência Realizada</span>
+                                {% else %}
+                                    <a href="{% url 'frequencia_activity_iniciar' item.obj.pk %}" class="btn btn-success w-100">
+                                        Fazer Frequência
+                                    </a>
+                                {% endif %}
+
+                                <a href="{% url 'activity_detail' item.obj.pk %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                                    Ver Detalhes
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            Nenhuma atividade hoje para o turno da tarde.
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
-    {% endif %}
+    </div>
+
+    <div class="mt-4 no-print d-flex gap-2">
+        <a href="{% url 'dashboard_presenca' %}" class="btn btn-secondary">Resumo Geral</a>
+        <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+    </div>
 </div>
-
-
-        
-        
-    
-
-<h2 class="text-center">Atividades de Hoje dos seus alunos</h2>
-
-<div class="row justify-content-center">
-    {% if atividades_do_dia %}
-        {% for item in atividades_do_dia %}
-        <div class="col-md-3 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <!-- Usamos item.obj para acessar a atividade -->
-                    <h5 class="text-center">{{ item.obj.atividade }}</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Tipo:</strong> {{ item.obj.get_tipo_display }}</p>
-                    <p><strong>Dias:</strong> {{ item.obj.get_dia_semana_display }}</p>
-                    <p><strong>Turno:</strong> {{ item.obj.get_turno_display }}</p>
-                    
-                    {% if item.frequencia_existe %}
-                        <!-- Se já existe, mostra botão de visualizar/editar -->
-                        <a href="{% url 'frequencia_activity_visualizar' item.obj.pk %}" class="btn btn-info w-100 mb-2">
-                             Visualizar Frequência
-                        </a>
-                        <span class="badge bg-success d-block text-center">Frequência Realizada</span>
-                    {% else %}
-                        <!-- Se não existe, mostra botão de fazer -->
-                        <a href="{% url 'frequencia_activity_iniciar' item.obj.pk %}" class="btn btn-success w-100">
-                             Fazer Frequência
-                        </a>
-                    {% endif %}
-                    
-                    <a href="{% url 'activity_detail' item.obj.pk %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">Ver Detalhes</a>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p class="text-center">Nenhuma atividade hoje com alunos das suas turmas.</p>
-    {% endif %}
-</div>
-
-
-<div class="mt-4 no-print">
-    <a href="{% url 'dashboard_presenca' %}" class="btn btn-secondary">Dashboard Geral</a>
-    <button class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
-</div>
-
-
 {% endblock %}

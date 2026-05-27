@@ -5,11 +5,13 @@ from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usu
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioCadastroForm, UsuarioEdicaoForm, RemoverAlunoAtividadeForm, MeuPerfilForm
 from calendar import monthrange
+from collections import defaultdict
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -20,8 +22,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.db import transaction
-from django.db.models import Count, Q, Avg, Value, CharField, Exists, OuterRef, IntegerField
-from django.db.models.functions import Cast
+from django.db.models import Count, Q, F, Avg, Value, When, Sum, CharField, Exists, OuterRef, IntegerField, FloatField, Case
+from django.db.models.functions import Cast, Coalesce, Concat
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
 from django.views.generic import ListView
@@ -30,9 +32,11 @@ from datetime import date, timedelta, datetime
 from .permissoes import require_perfil
 # Concatena e ordena por data
 from itertools import chain
+from io import BytesIO
 from operator import itemgetter
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 import os
 os.environ['WEASYPRINT_DLL_DIRECTORIES'] = r"C:\Program Files\GTK3-Runtime Win64\bin"
 from weasyprint import HTML, CSS
@@ -308,15 +312,28 @@ def remove_accents(text):
     )
 
 
+from django.contrib.auth.decorators import login_required
+from django.db.models import Exists, OuterRef
+from django.shortcuts import render
+from django.utils import timezone
+
 @login_required
 def home_educadora(request):
     educadora = request.user
     hoje = timezone.now().date()
     weekday = hoje.weekday()
 
-    # ====== TURMAS COM STATUS DE FREQUÊNCIA ======
-    turmas = Turma.objects.filter(educadora=educadora)
-    
+    mapa_weekday = {
+        0: 'segunda',
+        1: 'terca',
+        2: 'quarta',
+        3: 'quinta',
+        4: 'sexta',
+    }
+    valor_dia = mapa_weekday.get(weekday)
+
+    turmas = Turma.objects.filter(educadora=educadora).order_by('turno', 'grupo')
+
     turmas_com_status = []
     for turma in turmas:
         frequencia_turma_hoje = FrequenciaTurma.objects.filter(
@@ -324,20 +341,16 @@ def home_educadora(request):
             data=hoje
         ).first()
 
-         # ✅ Usando Aluno.objects.filter em vez de turma.aluno_set
         total_alunos = Aluno.objects.filter(turma=turma).count()
-        
-        # DEBUG: Verificar se FrequenciaAluno existe
+
         freq_alunos = FrequenciaAluno.objects.filter(
             chamada__turma=turma,
             chamada__data=hoje
         )
-        
+
         alunos_presentes_hoje = freq_alunos.filter(presente=True).count()
 
-       
-        
-        turmas_com_status.append({
+        item_turma = {
             'turma': turma,
             'total_alunos': total_alunos,
             'alunos_presentes': alunos_presentes_hoje,
@@ -345,31 +358,26 @@ def home_educadora(request):
             'frequencia': frequencia_turma_hoje,
             'pode_editar': is_coordenacao(educadora),
             'pode_visualizar': is_educadora(educadora) and frequencia_turma_hoje is not None,
-        })
-    
-     # ====== ATIVIDADES COM STATUS DE FREQUÊNCIA ======
-    alunos_da_educadora = Aluno.objects.filter(turma__educadora=educadora)
-    
+        }
+        turmas_com_status.append(item_turma)
+
+    alunos_da_educadora = Aluno.objects.filter(
+        turma__educadora=educadora
+    ).distinct()
+
     atividades_com_alunos_da_educadora = Activity.objects.filter(
         Exists(
             alunos_da_educadora.filter(atividades=OuterRef('pk'))
         )
-    )
-    
-    mapa_weekday = {0: 'segunda', 1: 'terca', 2: 'quarta', 3: 'quinta', 4: 'sexta'}
-    valor_dia = mapa_weekday.get(weekday)
-
+    ).order_by('turno', 'atividade')
 
     if valor_dia:
         atividades_com_alunos_da_educadora = atividades_com_alunos_da_educadora.filter(
             dia_semana__icontains=valor_dia
         )
 
-    # CRIAR LISTA COM STATUS DE FREQUÊNCIA ✅
     atividades_com_status = []
     for atividade in atividades_com_alunos_da_educadora:
-        # Verifica se já existe pelo menos um registro de frequência hoje para esta atividade
-        # e para os alunos desta educadora
         frequencia_existe = FrequenciaAtividade.objects.filter(
             atividade=atividade,
             data=hoje,
@@ -380,16 +388,36 @@ def home_educadora(request):
             'obj': atividade,
             'frequencia_existe': frequencia_existe
         })
-    
+
+    turmas_manha = [
+        item for item in turmas_com_status
+        if item['turma'].turno in ['M', 'Matutino', 'matutino']
+    ]
+
+    turmas_tarde = [
+        item for item in turmas_com_status
+        if item['turma'].turno in ['V', 'Vespertino', 'vespertino']
+    ]
+
+    atividades_manha = [
+        item for item in atividades_com_status
+        if item['obj'].turno in ['M', 'Matutino', 'matutino']
+    ]
+
+    atividades_tarde = [
+        item for item in atividades_com_status
+        if item['obj'].turno in ['V', 'Vespertino', 'vespertino']
+    ]
 
     context = {
-        'turmas_com_status': turmas_com_status,  # ✅ Com este nome
-        'atividades_do_dia': atividades_com_status,
+        'turmas_manha': turmas_manha,
+        'turmas_tarde': turmas_tarde,
+        'atividades_manha': atividades_manha,
+        'atividades_tarde': atividades_tarde,
         'is_coordenacao': is_coordenacao(educadora),
         'is_educadora': is_educadora(educadora),
-        'total_alunos': total_alunos,
-        'alunos_presentes_hoje': alunos_presentes_hoje,
     }
+
     return render(request, 'AppLSD/home_educadora.html', context)
 
     
@@ -539,61 +567,108 @@ def dashboard_completo(request):
 @login_required
 def dashboard_presenca(request):
     hoje = timezone.now().date()
-    semana = hoje - timedelta(days=7)
+    
 
     total_alunos = Aluno.objects.filter(status_lsd='Frequentando').count()
+
+    turmas_ativas = Turma.objects.filter(alunos__isnull=False).distinct().count()
+
     presentes_hoje = FrequenciaAluno.objects.filter(
         chamada__data=hoje, presente=True
     ).count()
+    
     faltas_hoje = FrequenciaAluno.objects.filter(
         chamada__data=hoje, presente=False
     ).count()
-    turmas_ativas = Turma.objects.filter(alunos__isnull=False).distinct().count()
+
+    presentes_manha = FrequenciaAluno.objects.filter(
+        chamada__data=hoje,
+        chamada__turma__turno__iexact='Matutino',
+        presente=True
+    ).count()
+
+    faltas_manha = FrequenciaAluno.objects.filter(
+        chamada__data=hoje,
+        chamada__turma__turno__iexact='Matutino',
+        presente=False
+    ).count()
+
+    presentes_tarde = FrequenciaAluno.objects.filter(
+        chamada__data=hoje,
+        chamada__turma__turno__iexact='Vespertino',
+        presente=True
+    ).count()
+
+    faltas_tarde = FrequenciaAluno.objects.filter(
+        chamada__data=hoje,
+        chamada__turma__turno__iexact='Vespertino',
+        presente=False
+    ).count()
+    
 
     # Frequência por turma
     turmas_com_frequencia = []
-    for turma in Turma.objects.annotate(total_alunos=Count('alunos')):
-        if turma.total_alunos > 0:
-            media_presenca = (
-                FrequenciaAluno.objects
-                .filter(
-                    aluno__turma=turma,
-                    chamada__data__gte=hoje - timezone.timedelta(days=7),
-                )
-                .annotate(presente_int=Cast("presente", IntegerField()))
-                .aggregate(media=Avg("presente_int"))["media"] or 0
+    for turma in (
+        Turma.objects
+        .annotate(
+            total_alunos=Count(
+                'alunos',
+                filter=Q(alunos__status_lsd='Frequentando'),
+                distinct=True
             )
+        )
+        .filter(total_alunos__gt=0)
+        .order_by('turno', 'grupo')
+    ):
+        turma.presentes_hoje = FrequenciaAluno.objects.filter(
+            chamada__turma=turma,
+            chamada__data=hoje,
+            presente=True
+        ).count()
 
-            turma.media_presenca = media_presenca * 100
-            turmas_com_frequencia.append(turma)
+        turma.faltas_hoje = FrequenciaAluno.objects.filter(
+            chamada__turma=turma,
+            chamada__data=hoje,
+            presente=False
+        ).count()
 
-    # IDs das atividades com presenças registradas nos últimos 7 dias
-    atividades_ids = FrequenciaAtividade.objects.filter(
-        data__gte=semana
-    ).values_list("atividade_id", flat=True).distinct()
+        turmas_com_frequencia.append(turma)
 
     atividades_com_frequencia = []
-    for atividade in Activity.objects.annotate(total_alunos=Count("alunos")).filter(
-        id__in=atividades_ids
+    for atividade in (
+        Activity.objects
+        .annotate(
+            total_alunos=Count('alunos', distinct=True)
+        )
+        .filter(total_alunos__gt=0)
+        .order_by('turno', 'atividade')
     ):
-        if atividade.total_alunos > 0:
-            presencas = FrequenciaAtividade.objects.filter(
-                atividade=atividade,
-                data__gte=semana,
-                presente=True,
-            ).count()
-            media = (presencas / atividade.total_alunos * 100) if atividade.total_alunos else 0
-            atividade.media_presenca = round(media, 1)
-            atividades_com_frequencia.append(atividade)
+        atividade.presentes_hoje = FrequenciaAtividade.objects.filter(
+            atividade=atividade,
+            data=hoje,
+            presente=True
+        ).count()
+
+        atividade.faltas_hoje = FrequenciaAtividade.objects.filter(
+            atividade=atividade,
+            data=hoje,
+            presente=False
+        ).count()
+
+        atividades_com_frequencia.append(atividade)
 
     return render(
         request,
         "AppLSD/dashboard_presenca.html",
         {
             "total_alunos": total_alunos,
+            "turmas_ativas": turmas_ativas,
             "presentes_hoje": presentes_hoje,
             "faltas_hoje": faltas_hoje,
-            "turmas_ativas": turmas_ativas,
+            "presentes_manha": presentes_manha,
+            "faltas_manha": faltas_manha,
+            "presentes_tarde": presentes_tarde,
+            "faltas_tarde": faltas_tarde,
             "turmas_com_frequencia": turmas_com_frequencia,
             "atividades_com_frequencia": atividades_com_frequencia,
         },
@@ -1647,37 +1722,25 @@ def is_coordenacao(user):
 #@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
 @login_required
 def editar_frequencia_turma(request, frequencia_id):
-    """
-    Edita a frequência - apenas coordenadoras e educadoras (alterado dia 04/05/2026)
-    """
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
 
     if not pode_editar_frequencia_turma(request.user, chamada.turma):
         raise PermissionDenied("Você não tem permissão para editar esta frequência.")
-    
-    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
+
+    presencas = FrequenciaAluno.objects.filter(
+        chamada=chamada
+    ).select_related('aluno').order_by('aluno__name')
+
     alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
-    
+
     if request.method == 'POST':
-        chamada.editado_por = request.user             # auditoria
+        chamada.editado_por = request.user
         chamada.save()
-        # Processar alterações
+
         for aluno in alunos_turma:
-           # Mesmo padrão da view de iniciar: checkbox marcado = presente
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
-            
-            # Atualizar ou criar registro
-            """ 
-            try:
-        # Buscar registro existente
-                freq_aluno = FrequenciaAluno.objects.get(chamada=chamada, aluno=aluno)
-                freq_aluno.presente = presente
-                freq_aluno.motivo_falta = motivo_falta if not presente else ''
-                freq_aluno.save()
-            except FrequenciaAluno.DoesNotExist:
-            """
-                # Se não existe, cria novo registro
+
             FrequenciaAluno.objects.update_or_create(
                 chamada=chamada,
                 aluno=aluno,
@@ -1686,9 +1749,8 @@ def editar_frequencia_turma(request, frequencia_id):
                     'motivo_falta': motivo_falta if not presente else ''
                 }
             )
-        messages.success(request, 'Frequência atualizada com sucesso!')
 
-        perfil_editor = 'coordenação' if is_coordenacao(request.user) else 'educadora'
+        messages.success(request, 'Frequência atualizada com sucesso!')
 
         registrar_log(
             request.user,
@@ -1697,16 +1759,23 @@ def editar_frequencia_turma(request, frequencia_id):
             f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela coordenadora ({request.user.get_full_name() or request.user.username}).',
         )
         return redirect('turma_detail', turma_id=chamada.turma.id)
-            
-    # Criar dicionário de presenças para facilitar no template
-    presencas_dict = {p.aluno.id: p for p in presencas}
+
+    presencas_map = {p.aluno_id: p for p in presencas}
+
+    alunos_com_presenca = []
+    for aluno in alunos_turma:
+        presenca = presencas_map.get(aluno.id)
+        alunos_com_presenca.append({
+            'aluno': aluno,
+            'presenca': presenca,
+        })
+
     context = {
         'chamada': chamada,
-        'presencas': presencas_dict,
-        'alunos_turma': alunos_turma,
+        'alunos_com_presenca': alunos_com_presenca,
         'modo_edicao': True,
     }
-    
+
     return render(request, 'AppLSD/frequencia_turma_editar.html', context)
 
 @login_required
@@ -2281,7 +2350,11 @@ def relatorio_presenca_turma_pdf(request, turma_id, data=None):
 
 def get_contexto_relatorio_turma_mensal(request, turma_id):
     turma = Turma.objects.get(id=turma_id)
-    alunos = list(Aluno.objects.filter(turma=turma).order_by('name'))
+    alunos = list(
+        Aluno.objects
+        .filter(turma=turma)
+        .order_by('name')
+    )
 
     mes = request.GET.get('mes')
     if not mes:
@@ -2296,23 +2369,27 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
     ultimo_dia_num = monthrange(ano, mes_num)[1]
     ultimo_dia = date(ano, mes_num, ultimo_dia_num)
 
-    # todos os dias do mês
-    todos_dias = [primeiro_dia + timedelta(days=i)
-                  for i in range((ultimo_dia - primeiro_dia).days + 1)]
-    # apenas dias úteis (segunda a sexta)
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
+
     dias_mes = [d for d in todos_dias if d.weekday() < 5]
 
-    # chamadas e frequências no mês todo (não precisa filtrar aqui por dia útil)
-    chamadas = (FrequenciaTurma.objects
-                .filter(turma=turma, data__range=(primeiro_dia, ultimo_dia)))
+    chamadas = (
+        FrequenciaTurma.objects
+        .filter(turma=turma, data__range=(primeiro_dia, ultimo_dia))
+    )
     chamadas_por_data = {c.data: c for c in chamadas}
 
-    frequencias = (FrequenciaAluno.objects
-                   .filter(
-                       aluno__turma=turma,
-                       chamada__data__range=(primeiro_dia, ultimo_dia),
-                   )
-                   .select_related('aluno', 'chamada'))
+    frequencias = (
+        FrequenciaAluno.objects
+        .filter(
+            aluno__turma=turma,
+            chamada__data__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related('aluno', 'chamada')
+    )
 
     freq_dict = {
         (f.aluno_id, f.chamada.data): f
@@ -2323,24 +2400,44 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
     for aluno in alunos:
         linha_status = []
         faltas = 0
+        presencas = 0
+        justificativas = []
 
-        # percorrendo apenas dias_mes (só dias úteis)
         for dia in dias_mes:
             f = freq_dict.get((aluno.id, dia))
+
             if f is None:
                 status = ''
             else:
                 if f.presente:
                     status = 'P'
+                    presencas += 1
                 else:
                     status = 'F'
                     faltas += 1
+
+                    motivo = (
+                        getattr(f, 'motivo_falta', None)
+                        or getattr(f, 'justificativa', None)
+                        or getattr(f, 'motivo', None)
+                        or ''
+                    )
+
+                    if motivo:
+                        justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")
+
             linha_status.append(status)
+
+        total_registros = presencas + faltas
+        percentual_presenca = round((presencas / total_registros) * 100, 1) if total_registros else 0
 
         linhas.append({
             'aluno': aluno,
             'status_por_dia': linha_status,
-            'faltas': faltas,  # só conta F em dias úteis
+            'faltas': faltas,
+            'presencas': presencas,
+            'percentual_presenca': percentual_presenca,
+            'justificativas': ' | '.join(justificativas),
         })
 
     return {
@@ -2351,7 +2448,6 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
         'dias_mes': dias_mes,
         'linhas': linhas,
     }
-
 
 @login_required
 def relatorio_turma_mensal_html(request, turma_id):
@@ -2370,37 +2466,55 @@ def relatorio_turma_mensal_pdf(request, turma_id):
         context=context,
     )
 
+
+#Relatório diário atividades
 def get_contexto_relatorio_atividade(request, activity_id, data=None):
-    activity = Activity.objects.get(id=activity_id)
+    activity = get_object_or_404(Activity, id=activity_id)
 
     data_get = request.GET.get('data')
     if data_get:
         data = data_get
 
-    chamada = None
     presencas = []
+    total_presentes = 0
+    total_faltas = 0
 
     if data:
-        chamada = FrequenciaTurma.objects.filter(activity=activity, data=data).first()
+        presencas = (
+            FrequenciaAtividade.objects
+            .filter(atividade=activity, data=data)
+            .select_related('aluno')
+            .order_by('aluno__name')
+        )
     else:
-        chamada = (
-            FrequenciaTurma.objects
-            .filter(activity=activity)
+        ultima_frequencia = (
+            FrequenciaAtividade.objects
+            .filter(atividade=activity)
             .order_by('-data')
             .first()
         )
-        data = chamada.data if chamada else None
 
-    if chamada:
-        presencas = FrequenciaAluno.objects.filter(chamada=chamada)
+        if ultima_frequencia:
+            data = ultima_frequencia.data
+            presencas = (
+                FrequenciaAtividade.objects
+                .filter(atividade=activity, data=data)
+                .select_related('aluno')
+                .order_by('aluno__name')
+            )
+
+    total_presentes = presencas.filter(presente=True).count() if presencas else 0
+    total_faltas = presencas.filter(presente=False).count() if presencas else 0
 
     context = {
         'activity': activity,
         'data': data,
-        'chamada': chamada,
         'presencas': presencas,
+        'total_presentes': total_presentes,
+        'total_faltas': total_faltas,
     }
     return context
+
 
 @login_required
 def relatorio_presenca_activity(request, activity_id, data=None):
@@ -2418,6 +2532,115 @@ def relatorio_presenca_activity_pdf(request, activity_id, data=None):
         file_object=response,
         context=context,
     )
+
+#Relatório Mensal atividdes
+def get_contexto_relatorio_atividade_mensal(request, activity_id):
+    activity = get_object_or_404(Activity, id=activity_id)
+
+    mes = request.GET.get('mes')
+    if not mes:
+        hoje = date.today()
+        mes = f"{hoje.year}-{hoje.month:02d}"
+
+    ano, mes_num = mes.split('-')
+    ano = int(ano)
+    mes_num = int(mes_num)
+
+    primeiro_dia = date(ano, mes_num, 1)
+    ultimo_dia_num = monthrange(ano, mes_num)[1]
+    ultimo_dia = date(ano, mes_num, ultimo_dia_num)
+
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
+
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    alunos = list(
+        activity.alunos.all().order_by('name')
+    )
+
+    frequencias = (
+        FrequenciaAtividade.objects
+        .filter(
+            atividade=activity,
+            data__range=(primeiro_dia, ultimo_dia),
+            aluno__in=alunos,
+        )
+        .select_related('aluno')
+        .order_by('data', 'aluno__name')
+    )
+
+    freq_dict = {
+        (f.aluno_id, f.data): f
+        for f in frequencias
+    }
+
+    linhas = []
+    for aluno in alunos:
+        linha_status = []
+        faltas = 0
+        presencas = 0
+        justificativas = []
+
+        for dia in dias_mes:
+            f = freq_dict.get((aluno.id, dia))
+
+            if f is None:
+                status = ''
+            else:
+                if f.presente:
+                    status = 'P'
+                    presencas += 1
+                else:
+                    status = 'F'
+                    faltas += 1
+                    if f.motivo_falta:
+                        justificativas.append(f"{dia.strftime('%d/%m')}: {f.motivo_falta}")
+
+            linha_status.append(status)
+
+        total_registros = presencas + faltas
+        percentual_presenca = round((presencas / total_registros) * 100, 1) if total_registros else 0
+
+        linhas.append({
+            'aluno': aluno,
+            'status_por_dia': linha_status,
+            'faltas': faltas,
+            'presencas': presencas,
+            'percentual_presenca': percentual_presenca,
+            'justificativas': ' | '.join(justificativas),
+        })
+
+    return {
+        'activity': activity,
+        'mes': mes,
+        'ano': ano,
+        'mes_num': mes_num,
+        'dias_mes': dias_mes,
+        'linhas': linhas,
+    }
+
+
+@login_required
+def relatorio_atividade_mensal_html(request, activity_id):
+    context = get_contexto_relatorio_atividade_mensal(request, activity_id)
+    return render(request, 'AppLSD/relatorio_atividade_mensal.html', context)
+
+
+@login_required
+def relatorio_atividade_mensal_pdf(request, activity_id):
+    context = get_contexto_relatorio_atividade_mensal(request, activity_id)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="relatorio_atividade_mensal_{activity_id}.pdf"'
+    return generate_pdf(
+        'AppLSD/relatorio_atividade_mensal_pdf.html',
+        file_object=response,
+        context=context,
+    )
+
+
 
 def get_contexto_relatorio_aluno_mensal(request):
     aluno_id = request.GET.get('aluno_id')
@@ -2956,3 +3179,482 @@ def export_adult_excel(request):
     
     wb.save(response)
     return response
+
+
+
+def _get_periodo(request):
+    hoje = date.today()
+    mes_param = request.GET.get("mes")
+    if mes_param:
+        ano, mes = map(int, mes_param.split("-"))
+    else:
+        ano, mes = hoje.year, hoje.month
+
+    primeiro_dia = date(ano, mes, 1)
+    ultimo_dia_num = monthrange(ano, mes)[1]
+    ultimo_dia = date(ano, mes, ultimo_dia_num)
+    return ano, mes, primeiro_dia, ultimo_dia
+
+
+def _auto_width(ws, max_width=40):
+    for col in ws.columns:
+        col_letter = get_column_letter(col[0].column)
+        max_len = 0
+        for cell in col:
+            value = "" if cell.value is None else str(cell.value)
+            max_len = max(max_len, len(value))
+        ws.column_dimensions[col_letter].width = min(max_len + 2, max_width)
+
+
+@login_required
+def relatorio_busca_ativa(request):
+    ano, mes, primeiro_dia, ultimo_dia = _get_periodo(request)
+
+    alunos = (
+        Aluno.objects
+        .filter(
+            status_lsd__iexact="Frequentando",
+            excluido=False,
+            family__excluido=False,
+        )
+        .select_related("family", "turma", "turma__educadora")
+        .annotate(
+            familia=F("family__responsible_name"),
+            contato=F("family__telephone"),
+            endereco=Concat(
+                Coalesce(F("family__address"), Value("")),
+                Value(", "),
+                Coalesce(F("family__number"), Value("")),
+                Value(", "),
+                Coalesce(F("family__neighborhood"), Value("")),
+                Value(", "),
+                Coalesce(F("family__reference_point"), Value("")),
+                output_field=CharField()
+            ),
+            total_chamadas=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
+                            then=1
+                        ),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                0
+            ),
+            total_presencas=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
+                            frequenciaaluno__presente=True,
+                            then=1
+                        ),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                0
+            ),
+        )
+        .annotate(
+            percentual_presenca=Case(
+                When(
+                    total_chamadas__gt=0,
+                    then=(F("total_presencas") * 100.0 / F("total_chamadas"))
+                ),
+                default=Value(0.0),
+                output_field=FloatField()
+            )
+        )
+        .filter(percentual_presenca__lt=50)
+        .order_by("family__responsible_name", "name")
+    )
+
+    familias = defaultdict(list)
+    for aluno in alunos:
+        chave = (aluno.familia, aluno.contato, aluno.endereco)
+        familias[chave].append(aluno)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Busca Ativa"
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    cab_fill = PatternFill("solid", fgColor="D9D9D9")
+    sub_fill = PatternFill("solid", fgColor="EDEDED")
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 22
+    ws.column_dimensions["C"].width = 40
+
+    row = 1
+    for (responsavel, contato, endereco), assistidos in familias.items():
+        ws.cell(row=row, column=1, value="Responsável")
+        ws.cell(row=row, column=2, value="Contato")
+        ws.cell(row=row, column=3, value="Endereço")
+        for c in range(1, 4):
+            ws.cell(row=row, column=c).font = Font(bold=True)
+            ws.cell(row=row, column=c).fill = cab_fill
+            ws.cell(row=row, column=c).alignment = center
+            ws.cell(row=row, column=c).border = border
+
+        row += 1
+        ws.cell(row=row, column=1, value=responsavel)
+        ws.cell(row=row, column=2, value=contato)
+        ws.cell(row=row, column=3, value=endereco)
+        for c in range(1, 4):
+            ws.cell(row=row, column=c).alignment = left
+            ws.cell(row=row, column=c).border = border
+
+        row += 1
+        ws.cell(row=row, column=1, value="Assistidos")
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+        ws.cell(row=row, column=3, value="Percentual presença")
+
+        for c in range(1, 4):
+            ws.cell(row=row, column=c).font = Font(bold=True)
+            ws.cell(row=row, column=c).fill = sub_fill
+            ws.cell(row=row, column=c).alignment = center
+            ws.cell(row=row, column=c).border = border
+
+        row += 1
+        for assistido in assistidos:
+            ws.cell(row=row, column=1, value=assistido.name)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+            ws.cell(row=row, column=3, value=round(assistido.percentual_presenca, 1))
+
+            for c in range(1, 4):
+                ws.cell(row=row, column=c).border = border
+                ws.cell(row=row, column=c).alignment = left if c != 3 else center
+
+            row += 1
+
+        row += 1
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="busca_ativa_{ano}_{mes:02d}.xlsx"'
+    return response
+
+
+@login_required
+def relatorio_busca_ativa_html(request):
+    ano, mes, primeiro_dia, ultimo_dia = _get_periodo(request)
+
+    alunos = (
+        Aluno.objects
+        .filter(
+            status_lsd__iexact="Frequentando",
+            excluido=False,
+            family__excluido=False,
+        )
+        .select_related("family")
+        .annotate(
+            familia=F("family__responsible_name"),
+            contato=F("family__telephone"),
+            endereco=Concat(
+                Coalesce(F("family__address"), Value("")),
+                Value(", "),
+                Coalesce(F("family__number"), Value("")),
+                Value(", "),
+                Coalesce(F("family__neighborhood"), Value("")),
+                Value(", "),
+                Coalesce(F("family__reference_point"), Value("")),
+                output_field=CharField()
+            ),
+            total_chamadas=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
+                            then=1
+                        ),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                0
+            ),
+            total_presencas=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
+                            frequenciaaluno__presente=True,
+                            then=1
+                        ),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                0
+            ),
+        )
+        .annotate(
+            percentual_presenca=Case(
+                When(total_chamadas__gt=0, then=(F("total_presencas") * 100.0 / F("total_chamadas"))),
+                default=Value(0.0),
+                output_field=FloatField()
+            )
+        )
+        .filter(percentual_presenca__lt=50)
+        .order_by("family__responsible_name", "name")
+    )
+
+    familias = defaultdict(list)
+    for aluno in alunos:
+        chave = {
+            "responsavel": aluno.familia,
+            "contato": aluno.contato,
+            "endereco": aluno.endereco,
+        }
+        familias[(aluno.familia, aluno.contato, aluno.endereco)].append({
+            "assistido": aluno.name,
+            "percentual_presenca": round(aluno.percentual_presenca, 1)
+        })
+
+    blocos = []
+    for (responsavel, contato, endereco), assistidos in familias.items():
+        blocos.append({
+            "responsavel": responsavel,
+            "contato": contato,
+            "endereco": endereco,
+            "assistidos": assistidos,
+        })
+
+    context = {
+        "titulo": "Relatório Busca Ativa",
+        "mes": f"{ano}-{mes:02d}",
+        "blocos": blocos,
+    }
+    return render(request, "AppLSD/relatorio_busca_ativa.html", context)
+
+
+@login_required
+def relatorio_sisc(request):
+    ano, mes, primeiro_dia, ultimo_dia = _get_periodo(request)
+
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    alunos = list(
+        Aluno.objects
+        .filter(
+            status_lsd__iexact="Frequentando",
+            excluido=False,
+            family__excluido=False,
+            turma__isnull=False,
+            turma__educadora__isnull=False,
+        )
+        .select_related("family", "turma", "turma__educadora")
+        .order_by(
+            "turma__educadora__first_name",
+            "turma__educadora__last_name",
+            "turma__turno",
+            "name"
+        )
+    )
+
+    frequencias = (
+        FrequenciaAluno.objects
+        .filter(
+            aluno__in=alunos,
+            chamada__data__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related("aluno", "chamada")
+    )
+
+    freq_dict = {(f.aluno_id, f.chamada.data): f for f in frequencias}
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatorio SISC"
+
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    cab_fill = PatternFill("solid", fgColor="0F766E")
+    cab_font = Font(color="FFFFFF", bold=True)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    cabecalho = ["Educadora", "Turma", "Aluno"]
+    cabecalho += [d.strftime("%d") for d in dias_mes]
+    cabecalho += ["Total Faltas", "% Presença", "Justificativas"]
+
+    ws.append(cabecalho)
+
+    for c in range(1, len(cabecalho) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.fill = cab_fill
+        cell.font = cab_font
+        cell.alignment = center
+        cell.border = border
+
+    row = 2
+    for aluno in alunos:
+        educadora = f"{aluno.turma.educadora.first_name} {aluno.turma.educadora.last_name}".strip()
+        turma_nome = " - ".join(
+            [v for v in [aluno.turma.grupo, aluno.turma.turno, aluno.turma.faixa_etaria] if v]
+        )
+
+        linha = [educadora, turma_nome, aluno.name]
+        total_presencas = 0
+        total_faltas = 0
+        justificativas = []
+
+        for dia in dias_mes:
+            f = freq_dict.get((aluno.id, dia))
+            if f is None:
+                status = ""
+            elif f.presente:
+                status = "P"
+                total_presencas += 1
+            else:
+                status = "F"
+                total_faltas += 1
+                motivo = getattr(f, "motivo_falta", "") or getattr(f, "justificativa", "") or ""
+                if motivo:
+                    justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")
+
+            linha.append(status)
+
+        total_chamadas = total_presencas + total_faltas
+        percentual_presenca = round((total_presencas / total_chamadas) * 100, 1) if total_chamadas else 0
+
+        linha.append(total_faltas)
+        linha.append(percentual_presenca)
+        linha.append(" | ".join(justificativas))
+
+        ws.append(linha)
+
+        for c in range(1, len(cabecalho) + 1):
+            ws.cell(row=row, column=c).border = border
+            ws.cell(row=row, column=c).alignment = center if 4 <= c <= (3 + len(dias_mes)) else left
+
+        row += 1
+
+    ws.freeze_panes = "D2"
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 32
+    ws.column_dimensions[get_column_letter(len(cabecalho) - 2)].width = 12
+    ws.column_dimensions[get_column_letter(len(cabecalho) - 1)].width = 12
+    ws.column_dimensions[get_column_letter(len(cabecalho))].width = 40
+
+    for i in range(4, 4 + len(dias_mes)):
+        ws.column_dimensions[get_column_letter(i)].width = 4
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="relatorio_sisc_{ano}_{mes:02d}.xlsx"'
+    return response
+
+
+@login_required
+def relatorio_sisc_html(request):
+    ano, mes, primeiro_dia, ultimo_dia = _get_periodo(request)
+
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    alunos = list(
+        Aluno.objects
+        .filter(
+            status_lsd__iexact="Frequentando",
+            excluido=False,
+            family__excluido=False,
+            turma__isnull=False,
+            turma__educadora__isnull=False,
+        )
+        .select_related("turma", "turma__educadora")
+        .order_by(
+            "turma__educadora__first_name",
+            "turma__educadora__last_name",
+            "turma__turno",
+            "name"
+        )
+    )
+
+    frequencias = (
+        FrequenciaAluno.objects
+        .filter(
+            aluno__in=alunos,
+            chamada__data__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related("aluno", "chamada")
+    )
+
+    freq_dict = {(f.aluno_id, f.chamada.data): f for f in frequencias}
+
+    linhas = []
+    educadoras = set()
+
+    for aluno in alunos:
+        educadora = f"{aluno.turma.educadora.first_name} {aluno.turma.educadora.last_name}".strip()
+        educadoras.add(educadora)
+
+        status_por_dia = []
+        faltas = 0
+        presencas = 0
+        justificativas = []
+
+        for dia in dias_mes:
+            f = freq_dict.get((aluno.id, dia))
+            if f is None:
+                status = ""
+            elif f.presente:
+                status = "P"
+                presencas += 1
+            else:
+                status = "F"
+                faltas += 1
+                motivo = getattr(f, "motivo_falta", "") or getattr(f, "justificativa", "") or ""
+                if motivo:
+                    justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")
+            status_por_dia.append(status)
+
+        total = presencas + faltas
+        percentual = round((presencas / total) * 100, 1) if total else 0
+
+        linhas.append({
+            "educadora": educadora,
+            "aluno": aluno.name,
+            "status_por_dia": status_por_dia,
+            "faltas": faltas,
+            "percentual": percentual,
+            "justificativas": " | ".join(justificativas),
+        })
+
+    context = {
+        "titulo": "Relatório SISC",
+        "mes": f"{ano}-{mes:02d}",
+        "educadora_texto": " / ".join(sorted(educadoras)),
+        "dias_mes": dias_mes,
+        "linhas": linhas,
+    }
+    return render(request, "AppLSD/relatorio_sisc.html", context)

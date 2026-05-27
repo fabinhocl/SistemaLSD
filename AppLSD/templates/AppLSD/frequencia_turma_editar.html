@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Editar Frequência - {{ chamada.turma.educadora.first_name }} - {{ chamada.turma.faixa_etaria }}</h2>
-    <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
+    <h1>Editar Frequência - {{ chamada.turma.grupo }}</h1>
+    <h3>Faixa Etária: {{ chamada.turma.faixa_etaria }}</h3>
+    <h3>Educadora: {{ chamada.turma.educadora.first_name }} </h3>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
-    
         
     <form method="post" id="formFrequencia">
         {% csrf_token %}
@@ -27,11 +27,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for aluno in alunos_turma %}
-                        {% with presenca=presencas|filter_by_aluno:aluno.id %}
-                        <tr class="text-center">
-                            <td>{{ aluno.family.registration_number }}</td>
-                            <td>{{ aluno.name }}</td>
+                        {% for item in alunos_com_presenca %}
+                        {% with aluno=item.aluno presenca=item.presenca %}
+                        <tr>
+                            <td class="text-center">{{ aluno.family.registration_number }}</td>
+                            <td class="text-justify">{{ aluno.name|upper }}</td>
                             <td class="text-center">
                                 <div class="form-check form-check-inline">
                                     <input 
@@ -41,7 +41,7 @@
                                         id="presente_{{ aluno.id }}" 
                                         value="on"
                                         {% if presenca and presenca.presente %}checked{% endif %}
->
+                                        onchange="toggleMotivo({{ aluno.id }})">
                                     
                                     <label class="form-check-label" for="presente_{{ aluno.id }}">
                                         <i class="fas fa-check text-success"></i>
@@ -50,14 +50,17 @@
                             </td>
                             
                             <td>
-                                <input 
-                                    type="text" 
-                                    class="form-control form-control-sm" 
+                                <select
                                     name="motivo_{{ aluno.id }}"
                                     id="motivo_{{ aluno.id }}"
-                                    placeholder="Motivo Falta (opcional)"
-                                    value="{% if presenca and not presenca.presente %}{{ presenca.motivo_falta }}{% endif %}"
-                                >
+                                    class="form-select"
+                                    {% if presenca and presenca.presente %}disabled{% endif %}>
+                                    <option value="">Selecione o motivo</option>
+                                    <option value="SJ" {% if presenca and presenca.motivo_falta == 'SJ' %}selected{% endif %}>Sem Justificativa</option>
+                                    <option value="AM" {% if presenca and presenca.motivo_falta == 'AM' %}selected{% endif %}>Atestado Médico</option>
+                                    <option value="DM" {% if presenca and presenca.motivo_falta == 'DM' %}selected{% endif %}>Declaração Médica</option>
+                                    <option value="OT" {% if presenca and presenca.motivo_falta == 'OT' %}selected{% endif %}>Outro</option>
+                                </select>
                             </td>
                         </tr>
                         {% endwith %}
@@ -81,32 +84,18 @@
 </div>
 
 <script>
-// Habilitar/desabilitar campo justificativa conforme seleção
-document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const alunoId = this.name.split('_')[1];
-        const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
-        
-        if (this.checked === false) {
-            motivoFaltaField.disabled = false;
-            motivoFaltaField.focus();
-        } else {
-            motivoFaltaField.disabled = true;
-            motivoFaltaField    .value = '';
-        }
-    });
-});
+function toggleMotivo(alunoId) {
+    const checkbox = document.getElementById(`presente_${alunoId}`);
+    const select = document.getElementById(`motivo_${alunoId}`);
 
-// Inicializar estado dos campos ao carregar
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
-        const alunoId = checkbox.name.split('_')[1];
-        const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
-        
-        if (checkbox.checked) {
-            motivoFaltaField.disabled = true;
-        }
-    });
-});
+    if (!checkbox || !select) return;
+
+    if (checkbox.checked) {
+        select.value = '';
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+    }
+}
 </script>
 {% endblock %}

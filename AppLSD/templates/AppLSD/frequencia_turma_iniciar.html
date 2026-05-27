@@ -1,10 +1,13 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
-{% block title %}Frequência Turma {% endblock %}
+{% load frequencia_filters %}
+{% block title %}Frequência Grupo {% endblock %}
 {% block content %}
 
 <div class="container mt-4">
-    <h1>Turma: {{ turma.educadora.first_name }} - {{ turma.faixa_etaria }} - {{ turma.grupo }}</h1>
+    <h1>Frequência: {{ turma.grupo }} </h1>
+    <h3>Faixa Etária: {{ turma.faixa_etaria }}</h3>
+    <h2>Educadora: {{ turma.educadora.first_name }} </h2>
     <p><strong>Turno:</strong> {{ turma.turno }}</p>
 
 
@@ -48,9 +51,9 @@
             </thead>
             <tbody>
                 {% for aluno in alunos %}
-                <tr class="text-center">
-                    <td>{{ aluno.family.registration_number }}</td>
-                    <td>{{ aluno.name }}</td>
+                <tr>
+                    <td class="text-center">{{ aluno.family.registration_number }}</td>
+                    <td class="text-justify">{{ aluno.name|upper }}</td>
                     <td class="text-center">
                         <input
                             type="checkbox"
@@ -61,12 +64,17 @@
                         >
                     </td>
                     <td>
-                        <input
-                            type="text"
+                        <select
                             name="motivo_{{ aluno.id }}"
-                            class="form-control"
-                            placeholder="Motivo da falta (opcional)"
-                        >
+                            id="motivo_{{ aluno.id }}"
+                            class="form-select"
+                            {% if aluno.presente %}disabled{% endif %}>
+                            <option value="">Selecione o motivo</option>
+                            <option value="SJ" {% if aluno.motivo_falta == 'SJ' %}selected{% endif %}>Sem Justificativa</option>
+                            <option value="AM" {% if aluno.motivo_falta == 'AM' %}selected{% endif %}>Atestado Médico</option>
+                            <option value="DM" {% if aluno.motivo_falta == 'DM' %}selected{% endif %}>Declaração Médica</option>
+                            <option value="OT" {% if aluno.motivo_falta == 'OT' %}selected{% endif %}>Outro</option>
+                        </select>
                     </td>
                 </tr>
                 {% empty %}
@@ -90,4 +98,35 @@
     </form>
 </div>
 
+
+
+<script>
+// Habilitar/desabilitar campo justificativa conforme seleção
+document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const alunoId = this.name.split('_')[1];
+        const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
+        
+        if (this.checked === false) {
+            motivoFaltaField.disabled = false;
+            motivoFaltaField.focus();
+        } else {
+            motivoFaltaField.disabled = true;
+            motivoFaltaField    .value = '';
+        }
+    });
+});
+
+// Inicializar estado dos campos ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+        const alunoId = checkbox.name.split('_')[1];
+        const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
+        
+        if (checkbox.checked) {
+            motivoFaltaField.disabled = true;
+        }
+    });
+});
+</script>
 {% endblock %}

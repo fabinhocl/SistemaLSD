@@ -6,11 +6,35 @@
 
 <h1>Atividade: {{ atividade.atividade }} </h1>
 <h2>Facilitador(a): {{ atividade.facilitador }}</h2>
-<p><strong>Turno:</strong> {{ atividade.turno }}</p>
+<p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
+<p><strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }}</p>
+<p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
+
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <label for="data" class="form-label"><strong>Pesquisar chamada por data</strong></label>
+
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <input
+                            type="date"
+                            name="data"
+                            id="data"
+                            class="form-control"
+                            value="{{ data_filtro|date:'Y-m-d' }}">
+                        <button type="submit" class="btn btn-primary">
+                            Pesquisar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 <form method="post">
     {% csrf_token %}
-    <label for="data">Data:</label>
-    <input type="date" name="data" id="data" value="{{ data }}">
+
     <table class="table table-bordered mt-3">
         <thead>
             <tr class="text-center">
@@ -22,15 +46,17 @@
         </thead>
         <tbody>
             {% for aluno in alunos %}
-            <tr class="text-center">
+            <tr>
                 <td>{{ aluno.family.registration_number }}</td>
-                <td>{{ aluno.name }}</td>
+                <td class="text-justify">{{ aluno.name }}</td>
                 <td>{{ aluno.turma.educadora.first_name }}</td>
                 <td class="text-center">
                     <input type="checkbox" name="presente_{{ aluno.id }}" {% if presencas_dict.aluno.id.presente %}checked{% endif %} value="1" checked class="form-check-input">
                 </td>
                 <td>
-                    <input type="text" name="motivo_{{ aluno.id }}" class="form-control" 
+                    <input 
+                    type="text" name="motivo_{{ aluno.id }}" 
+                    class="form-control" 
                     placeholder="Motivo da falta (opcional)" 
                     value="{% if presencas_dict.aluno.id and not presencas_dict.aluno.id.presente %}{{ presencas_dict.aluno.id.motivo_falta }}{% endif %}">
                 </td>
@@ -44,7 +70,7 @@
         <label for="observacoes">Observações Gerais</label>
         <textarea name="observacoes" class="form-control"></textarea>
     </div>
-    <div class="no-print">
+    <div class="no-print" "mt-3 d-flex gap-2">
         <button type="submit" class="btn btn-success">Salvar Chamada</button>
         <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-secondary">Voltar</a>
         <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
