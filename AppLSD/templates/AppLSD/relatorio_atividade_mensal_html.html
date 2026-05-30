@@ -5,208 +5,191 @@
   <meta charset="utf-8">
   <title>Relatório Mensal - {{ activity.atividade }}</title>
   <style>
-    @page {
-      size: A4 landscape;
-      margin: 10mm;
-    }
+  @page {
+    size: A4;
+    margin: 7mm;
+  }
 
-    body {
-      font-family: Arial, sans-serif;
-      color: #222;
-      margin: 0;
-      padding: 0;
-    }
+  body {
+    font-family: Arial, sans-serif;
+    color: #111;
+    font-size: 9px;
+  }
 
-    .container {
-      padding: 18px;
-    }
+  .topo {
+    width: 100%;
+    margin-bottom: 10px;
+  }
 
-    .acoes {
-      margin-bottom: 18px;
-    }
+  .topo-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
+  }
 
-    .acoes button,
-    .acoes a {
-      padding: 10px 14px;
-      border: none;
-      background: #6c757d;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-right: 8px;
-      display: inline-block;
-    }
+  .topo-table td {
+    border: none;
+    vertical-align: top;
+    padding: 0;
+  }
 
-    .topo {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-      gap: 16px;
-    }
+  .logo {
+    text-align: right;
+    width: 170px;
+  }
 
-    .topo img {
-      height: 60px;
-      max-width: 180px;
-      object-fit: contain;
-    }
+  .logo img {
+    height: 48px;
+  }
 
-    h1 {
-      margin: 0 0 8px 0;
-      font-size: 22px;
-    }
+  h1 {
+    margin: 0 0 5px 0;
+    font-size: 17px;
+  }
 
-    .meta {
-      font-size: 15px;
-      margin-bottom: 10px;
-    }
+  .meta {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 11px;
-    }
+  table.relatorio {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 8px;
+  }
 
-    th, td {
-      border: 1px solid #222;
-      padding: 4px 3px;
-      text-align: center;
-      vertical-align: middle;
-    }
+  table.relatorio th,
+  table.relatorio td {
+    border: 1px solid #222;
+    padding: 2px 1px;
+    text-align: center;
+    vertical-align: middle;
+  }
 
-    th {
-      background: #ececec;
-      font-weight: 700;
-    }
+  table.relatorio th {
+    background: #e6e6e6;
+    font-weight: bold;
+  }
 
-    thead {
-      display: table-header-group;
-    }
+  .col-aluno {
+    width: 230px;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
 
-    tr {
-      page-break-inside: avoid;
-    }
+  .texto-aluno {
+    text-align: left;
+    white-space: nowrap;
+    font-weight: bold;
+  }
 
-    .col-aluno {
-      width: 270px;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding-left: 6px;
-    }
+  .col-dia-num {
+    width: 18px;
+    font-size: 8px;
+    line-height: 1.1;
+    padding: 2px 0 !important;
+  }
 
-    .col-dia {
-      width: 34px;
-      font-size: 9px;
-      line-height: 1.1;
-      padding: 2px 1px;
-    }
+  .col-dia-semana {
+    width: 18px;
+    font-size: 7px;
+    line-height: 1.1;
+    padding: 2px 0 !important;
+  }
 
-    .col-faltas {
-      width: 52px;
-    }
+  .col-dia-status {
+    width: 18px;
+    font-size: 8px;
+    line-height: 1.1;
+    padding: 2px 0 !important;
+  }
 
-    .col-percentual {
-      width: 72px;
-    }
+  .col-faltas {
+    width: 34px;
+  }
 
-    .col-justificativas {
-      width: 240px;
-      text-align: left;
-      white-space: normal;
-      word-break: break-word;
-      padding-left: 6px;
-    }
+  .col-percentual {
+    width: 46px;
+  }
 
-    @media print {
-      .acoes,
-      .navbar,
-      .sidebar,
-      .menu,
-      .btn {
-        display: none !important;
-      }
+  .col-justificativas {
+    width: 190px;
+    text-align: left !important;
+    white-space: normal;
+    word-wrap: break-word;
+    padding-left: 4px !important;
+  }
 
-      .container {
-        padding: 0;
-      }
+  .texto-justificativa {
+    text-align: left;
+    white-space: normal;
+  }
 
-      table {
-        font-size: 10px;
-      }
+  thead {
+    display: table-header-group;
+  }
 
-      .col-aluno {
-        width: 290px;
-        white-space: nowrap;
-        overflow: visible;
-        text-overflow: clip;
-      }
-
-      .col-dia {
-        width: 30px;
-        font-size: 8px;
-      }
-
-      .col-justificativas {
-        width: 220px;
-      }
-    }
-  </style>
+  tr {
+    page-break-inside: avoid;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <div class="acoes">
-      <button onclick="window.print()">Imprimir / Salvar em PDF</button>
-      <a href="{% url 'home_relatorios' %}">Voltar para Relatórios</a>
-    </div>
-
-    <div class="topo">
-      <div>
-        <h1>Relatório Mensal - {{ activity.atividade }}</h1>
-        <div class="meta">
-          Mês: {{ mes }} |
-          Facilitador: {{ activity.facilitador.first_name }} {{ activity.facilitador.last_name }} |
-          Turno: {{ activity.turno }}
-        </div>
-      </div>
-      <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th class="col-aluno">Aluno</th>
-          {% for dia in dias_mes %}
-            <th class="col-dia">
-              {{ dia|date:"d" }}<br>{{ dia|date:"D" }}
-            </th>
-          {% endfor %}
-          <th class="col-faltas">Faltas</th>
-          <th class="col-percentual">% Presença</th>
-          <th class="col-justificativas">Justificativas</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for linha in linhas %}
-        <tr>
-          <td class="col-aluno">{{ linha.aluno.name }}</td>
-          {% for status in linha.status_por_dia %}
-            <td>{{ status }}</td>
-          {% endfor %}
-          <td class="col-faltas">{{ linha.faltas }}</td>
-          <td class="col-percentual">{{ linha.percentual_presenca }}</td>
-          <td class="col-justificativas">{{ linha.justificativas }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="{{ dias_mes|length|add:4 }}">Nenhum aluno vinculado à atividade.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
+  <div class="topo">
+    <table class="topo-table">
+      <tr>
+        <td class="topo-cell">
+          <h1>Relatório Mensal - {{ activity.atividade }}</h1>
+          <div class="meta">
+            Mês: {{ mes }} |
+            Facilitador: {{ activity.facilitador.first_name }} {{ activity.facilitador.last_name }} |
+            Turno: {{ activity.turno }}
+          </div>
+        </td>
+        <td class="logo">
+          <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
+        </td>
+      </tr>
     </table>
   </div>
+
+  <table class="relatorio">
+    <thead>
+      <tr>
+        <th class="col-aluno" rowspan="2">Aluno</th>
+        {% for dia in dias_mes %}
+          <th class="col-dia-num">{{ dia|date:"d" }}</th>
+        {% endfor %}
+        <th class="col-faltas" rowspan="2">Faltas</th>
+        <th class="col-percentual" rowspan="2">% Pres.</th>
+        <th class="col-justificativas" rowspan="2">Justificativas</th>
+      </tr>
+      <tr>
+        {% for dia in dias_mes %}
+          <th class="col-dia-semana">{{ dia|date:"D"|slice:":3" }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in linhas %}
+      <tr>
+        <td class="col-aluno">
+          <div class="texto-aluno">{{ linha.aluno.name|upper }}</div>
+        </td>
+
+        {% for status in linha.status_por_dia %}
+          <td class="col-dia-status">{{ status|default:"" }}</td>
+        {% endfor %}
+
+        <td class="col-faltas">{{ linha.faltas }}</td>
+        <td class="col-percentual">{{ linha.percentual_presenca }}</td>
+        <td class="col-justificativas">
+          <div class="texto-justificativa">{{ linha.justificativas|default:" " }}</div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </body>
 </html>

@@ -47,6 +47,7 @@ import base64
 import matplotlib.pyplot as plt
 import unicodedata
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -2534,6 +2535,74 @@ def relatorio_presenca_activity_pdf(request, activity_id, data=None):
     )
 
 #Relatório Mensal atividdes
+def normalizar_texto(texto):
+    if not texto:
+        return ''
+    texto = str(texto).strip().lower()
+    texto = unicodedata.normalize('NFKD', texto)
+    texto = ''.join(c for c in texto if not unicodedata.combining(c))
+    return texto
+
+def extrair_weekdays(dia_semana_raw):
+    valor = normalizar_texto(dia_semana_raw)
+
+    for sep in [';', '|', '/', ' e ']:
+        valor = valor.replace(sep, ',')
+
+    partes = [p.strip() for p in valor.split(',') if p.strip()]
+
+    mapa_dias = {
+        'segunda': 0,
+        'segunda-feira': 0,
+        'seg': 0,
+        'segunda feira': 0,
+
+        'terca': 1,
+        'terca-feira': 1,
+        'ter': 1,
+        'terca feira': 1,
+
+        'quarta': 2,
+        'quarta-feira': 2,
+        'qua': 2,
+        'quarta feira': 2,
+
+        'quinta': 3,
+        'quinta-feira': 3,
+        'qui': 3,
+        'quinta feira': 3,
+
+        'sexta': 4,
+        'sexta-feira': 4,
+        'sex': 4,
+        'sexta feira': 4,
+
+        'sabado': 5,
+        'sab': 5,
+        'sabado-feira': 5,
+        'sabado feira': 5,
+
+        'domingo': 6,
+        'dom': 6,
+    }
+
+    weekdays = set()
+
+    for parte in partes:
+        parte = re.sub(r'\s+', ' ', parte).strip()
+
+        if parte in mapa_dias:
+            weekdays.add(mapa_dias[parte])
+            continue
+
+        for chave, numero in mapa_dias.items():
+            if chave in parte:
+                weekdays.add(numero)
+                break
+
+    return weekdays
+
+
 def get_contexto_relatorio_atividade_mensal(request, activity_id):
     activity = get_object_or_404(Activity, id=activity_id)
 
@@ -2555,11 +2624,17 @@ def get_contexto_relatorio_atividade_mensal(request, activity_id):
         for i in range((ultimo_dia - primeiro_dia).days + 1)
     ]
 
-    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+    weekdays_permitidos = extrair_weekdays(activity.dia_semana)
 
-    alunos = list(
-        activity.alunos.all().order_by('name')
-    )
+    dias_mes = [
+        d for d in todos_dias
+        if d.weekday() in weekdays_permitidos
+    ]
+
+    if not dias_mes:
+        dias_mes = [d for d in todos_dias if d.weekday() < 5]
+
+    alunos = list(activity.alunos.all().order_by('name'))
 
     frequencias = (
         FrequenciaAtividade.objects
@@ -2622,7 +2697,6 @@ def get_contexto_relatorio_atividade_mensal(request, activity_id):
         'linhas': linhas,
     }
 
-
 @login_required
 def relatorio_atividade_mensal_html(request, activity_id):
     context = get_contexto_relatorio_atividade_mensal(request, activity_id)
@@ -2664,7 +2738,7 @@ def get_contexto_relatorio_aluno_mensal(request):
      # --------- DIAS ÚTEIS DO MÊS (segunda a sexta) ----------
     todos_dias = [primeiro_dia + timedelta(days=i)
                   for i in range((ultimo_dia - primeiro_dia).days + 1)]
-    dias_mes = [d for d in todos_dias if d.weekday() < 5]
+    dias_mes = [d for d in todos_dias if d.weekday() in weekdays_permitidos]
 
     # --------- FREQUÊNCIA EM TURMA (planilha P/F) ----------
     freq_qs = (FrequenciaAluno.objects
