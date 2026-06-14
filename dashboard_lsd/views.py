@@ -1,4 +1,4 @@
-from . import dash_apps
+from . import dash_apps_antigo
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 

@@ -59,6 +59,7 @@
             <option value="aluno">Relatório Mensal do Aluno</option>
             <option value="atividade">Relatório por Atividade</option>
             <option value="semds">Relatório SEMDS</option>
+            <option value="desligados"> Relatório Desligados</option>
           </select>
         </div>
 
@@ -136,6 +137,18 @@
         <a href="{% url 'dashboard_presenca' %}" class="btn btn-outline-secondary">Dashboard Turmas</a>
       </div>
 
+      <div class="row mb-3">
+        <div class="col-md-3 mb-3 d-none" id="campo_data_inicial">
+          <label for="data_inicial" class="form-label">Data inicial</label>
+          <input type="date" id="data_inicial" name="data_inicial" class="form-control">
+        </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_data_final">
+          <label for="data_final" class="form-label">Data final</label>
+          <input type="date" id="data_final" name="data_final" class="form-control">
+        </div>
+      </div>
+
     </form>
   </div>
 </div>
@@ -154,6 +167,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const atividadeSelect = document.getElementById('atividade_id');
   const dataInput = document.getElementById('data');
   const mesInput = document.getElementById('mes');
+  const dataInicialInput = document.getElementById('data_inicial');
+  const dataFinalInput = document.getElementById('data_final');
 
   const campoTurma = document.getElementById('campo_turma');
   const campoAluno = document.getElementById('campo_aluno');
@@ -162,6 +177,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const campoTipoPeriodo = document.getElementById('campo_tipo_periodo');
   const campoData = document.getElementById('campo_data');
   const campoMes = document.getElementById('campo_mes');
+  const campoDataInicial = document.getElementById('campo_data_inicial');
+  const campoDataFinal = document.getElementById('campo_data_final');
+
 
   function esconderTudo() {
     campoTurma.classList.add('d-none');
@@ -171,6 +189,8 @@ document.addEventListener('DOMContentLoaded', function () {
     campoData.classList.add('d-none');
     campoMes.classList.add('d-none');
     campoTipoPeriodo.classList.add('d-none');
+    campoDataInicial.classList.add('d-none');
+    campoDataFinal.classList.add('d-none');
   }
 
   function toggleEntidade() {
@@ -195,6 +215,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (subtipoSemds.value) {
         campoMes.classList.remove('d-none');
       }
+    } else if (tipo === 'desligados') {
+      campoDataInicial.classList.remove('d-none');
+      campoDataFinal.classList.remove('d-none');
     }
   }
 
@@ -214,6 +237,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tipoRelatorio.value === 'aluno') {
       campoData.classList.add('d-none');
       campoMes.classList.remove('d-none');
+      return;
+    }
+
+    if (tipoRelatorio.value === 'desligados') {
+      campoData.classList.add('d-none');
+      campoMes.classList.add('d-none');
       return;
     }
 
@@ -316,6 +345,17 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       params.push('mes=' + mesInput.value);
+    }
+
+    else if (tipo === 'desligados') {
+      if (!dataInicialInput.value || !dataFinalInput.value) {
+        alert('Selecione a data inicial e a data final.');
+        return;
+      }
+
+      url = "{% url 'relatorio_desligados_html' %}";
+      params.push('data_inicial=' + encodeURIComponent(dataInicialInput.value));
+      params.push('data_final=' + encodeURIComponent(dataFinalInput.value));
     }
 
     else {

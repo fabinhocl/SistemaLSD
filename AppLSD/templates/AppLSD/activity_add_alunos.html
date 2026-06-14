@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 {% load static %}
 {% block content %}
-<h1>Adicionar Alunos à Atividade </h1>
+<h1>Adicionar Assistidos à Atividade {{ atividade.atividade }} </h1>
 <h2> Facilitador: {{ atividade.facilitador.first_name }}</h2>
 <h3>Tipo: {{ atividade.get_tipo_display }}</h3>
   <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
@@ -17,8 +17,8 @@
 
     <div class="col-md-4">
         <label class="form-label">Nº inscrição</label>
-        <input type="text" name="inscricao" class="form-control"
-            value="{{ request.GET.inscricao }}">
+        <input type="text" name="registration_number" class="form-control"
+            value="{{ request.GET.registration_number }}">
     </div>
 
     <div class="col-md-3">
@@ -54,7 +54,7 @@
           id="aluno_{{ aluno.id }}"
         >
         <label class="form-check-label" for="aluno_{{ aluno.id }}">
-          {{ aluno.name }}{% if aluno.faixa_etaria %} – {{ aluno.faixa_etaria }}{% endif %} – Turno: {{ aluno.turno }}
+          {{ aluno.name|upper }}{% if aluno.faixa_etaria %} – {{ aluno.faixa_etaria }}{% endif %} – Turno: {{ aluno.turno }}
         </label>
       </div>
     {% empty %}

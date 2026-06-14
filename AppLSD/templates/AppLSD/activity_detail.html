@@ -51,12 +51,12 @@ Detalhes da Atividade - {{ atividade.atividade }}
         </thead>
         <tbody>
           {% for aluno in alunos_atividade %}
-          <tr class="text-center">
-            <td>{{ aluno.family.registration_number }}</td>
-            <td>{{ aluno.name }}</td>
-            <td>{{ aluno.birth_date|date:"d/m/Y" }}</td>
-            <td>{{ aluno.idade }}</td>
-            <td>{{ aluno.turma }}</td>
+          <tr>
+            <td class="text-center">{{ aluno.family.registration_number }}</td>
+            <td class="text-justify">{{ aluno.name|upper }}</td>
+            <td class="text-center">{{ aluno.birth_date|date:"d/m/Y" }}</td>
+            <td class="text-center">{{ aluno.idade }}</td>
+            <td class="text-center">{{ aluno.turma }}</td>
             <td>
               <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">
                 Visualizar</a>

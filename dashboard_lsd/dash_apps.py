@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import dash
 import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
@@ -7,7 +8,6 @@ from datetime import date
 
 import plotly.express as px
 import pandas as pd
-#import streamlit as st
 
 from AppLSD.models import Family, Aluno, Adult, Turma, Activity
 
@@ -17,93 +17,80 @@ from AppLSD.models import Family, Aluno, Adult, Turma, Activity
 def calcula_idade(nascimento):
     if pd.isnull(nascimento):
         return None
-    return date.today().year - pd.to_datetime(nascimento).year
+    hoje = date.today()
+    nasc = pd.to_datetime(nascimento)
+    return hoje.year - nasc.year - ((hoje.month, hoje.day) < (nasc.month, nasc.day))
+
+
+def criar_fig_bar(df, x, y, titulo, x_title, y_title, orientation='v'):
+    fig = px.bar(
+        df,
+        x=x if orientation == 'v' else y,
+        y=y if orientation == 'v' else x,
+        text=y if orientation == 'v' else x,
+        orientation=orientation,
+        title=titulo,
+    )
+    fig.update_traces(textposition='outside', cliponaxis=False)
+    fig.update_layout(
+        title={"text": f"<b>{titulo}</b>", "x": 0.5, "xanchor": "center"},
+        xaxis_title=x_title,
+        yaxis_title=y_title,
+    )
+    return fig
 
 
 # ---------- DATAFRAMES ----------
 
 def get_family_dataframe():
     qs = Family.objects.all().values(
-        'id',
-        'registration_number',
-        'responsible_name',
-        'birth_date',
-        'sex',
-        'mae_solo',
-        'gestante',
-        'neighborhood',
-        'marital_status',
-        'education',
-        'race',
-        'religion',
-        'social_benefits',
-        'occupation',
-        'has_proven_income',
-        'salary_range',
-        'domicile_type',
-        'status',
+        'id', 'registration_number', 'responsible_name', 'birth_date', 'sex',
+        'mae_solo', 'gestante', 'neighborhood', 'marital_status', 'education',
+        'race', 'religion', 'social_benefits', 'occupation', 'has_proven_income',
+        'salary_range', 'domicile_type', 'status',
     )
     df = pd.DataFrame(list(qs))
     if df.empty:
         return df
 
     df['idade'] = df['birth_date'].apply(calcula_idade)
-
     df['faixa_etaria'] = pd.cut(
         df['idade'],
         bins=[18, 29, 39, 49, 59, 100],
-        labels=[ '18-29', '30-39', '40-49', '50-59', '60+'],
+        labels=['18-29', '30-39', '40-49', '50-59', '60+'],
         right=True,
     )
 
     salary_map = {
-        "1_sm": "1 Salário Mínimo",
-        "2_sm": "2 Salários Mínimos",
-        "3_sm": "3 Salários Mínimos+",
+        '1_sm': '1 Salário Mínimo',
+        '2_sm': '2 Salários Mínimos',
+        '3_sm': '3 Salários Mínimos+',
     }
     df['salary_range_legenda'] = df['salary_range'].map(salary_map).fillna(df['salary_range'])
     return df
 
+
 def get_alunos_dataframe():
     qs = Aluno.objects.all().values(
-        'id',
-        'sex',
-        'birth_date',
-        'school',
-        'rede_ensino',
-        'serie',
-        'ensino',
-        'turno',
-        'health_problem',
-        'special_need',
-        'uso_medicacao',
-        'qual_medicacao',
-        'frequencia_tipo',
-        'dias_semana',
-        'status_lsd',
+        'id', 'sex', 'birth_date', 'school', 'rede_ensino', 'serie', 'ensino', 'turno',
+        'health_problem', 'special_need', 'uso_medicacao', 'qual_medicacao',
+        'frequencia_tipo', 'dias_semana', 'status_lsd',
     )
     df = pd.DataFrame.from_records(qs)
     if df.empty:
         return df
-    
-    #Calcular idade
-    df["birth_date"] = pd.to_datetime(df["birth_date"])
 
-    def calcular_idade(data_nasc):
-        if pd.isna(data_nasc):
-            return None
-        hoje = date.today()
-        return (
-            hoje.year - data_nasc.year
-            - ((hoje.month, hoje.day) < (data_nasc.month, data_nasc.day))
-        )
+    df['birth_date'] = pd.to_datetime(df['birth_date'])
+    df['idade'] = df['birth_date'].apply(calcula_idade)
 
-    # garantindo que birth_date esteja em datetime
-    
+    df['publico_dashboard'] = pd.cut(
+        df['idade'],
+        bins=[5, 12, 17],
+        labels=['Crianças (6 a 12 anos)', 'Adolescentes (13 a 17 anos)'],
+        right=True,
+        include_lowest=True,
+    )
 
-    df['idade'] = df['birth_date'].apply(calcular_idade)
-
-    # criar faixas etárias
     df['faixa_etaria_alunos'] = pd.cut(
         df['idade'],
         bins=[6, 7, 9, 12, 17],
@@ -113,44 +100,76 @@ def get_alunos_dataframe():
     )
     return df
 
+
+def get_adult_dataframe():
+    qs = Adult.objects.all().values(
+        'id', 'sex', 'birth_date', 'status_lsd'
+    )
+    df = pd.DataFrame(list(qs))
+    if df.empty:
+        return df
+
+    df['birth_date'] = pd.to_datetime(df['birth_date'])
+    df['idade'] = df['birth_date'].apply(calcula_idade)
+    df['faixa_etaria_idosos'] = pd.cut(
+        df['idade'],
+        bins=[59, 69, 79, 89, 120],
+        labels=['60-69', '70-79', '80-89', '90+'],
+        right=True,
+        include_lowest=True,
+    )
+    return df
+
+
+def get_turmas_dataframe():
+    qs = Turma.objects.all().values(
+        'id', 'name', 'educatora__name', 'turno', 'status'
+    )
+    return pd.DataFrame(list(qs))
+
+
+def get_activities_dataframe():
+    qs = Activity.objects.all().values(
+        'id', 'name', 'status'
+    )
+    return pd.DataFrame(list(qs))
+
+
 # ---------- APP ----------
 
-app = DjangoDash("LSDDashboard",
-                 external_stylesheets=[dbc.themes.BOOTSTRAP],
-                 suppress_callback_exceptions=True,
-                 )   
+app = DjangoDash(
+    'LSDDashboard',
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True,
+)
 
 app.layout = html.Div(
     [
-        #html.H3("Dashboard Integra+Lar"),
-
         dbc.Tabs(
-            id="tabs-dashboard",
-            active_tab="tab-familias",
+            id='tabs-dashboard',
+            active_tab='tab-familias',
             children=[
-                dbc.Tab(label="Famílias", tab_id="tab-familias"),
-                dbc.Tab(label="Alunos", tab_id="tab-alunos"),
-                dbc.Tab(label="Idosos", tab_id="tab-idosos"),
-                dbc.Tab(label="Turmas", tab_id="tab-turmas"),
-                dbc.Tab(label="Atividades", tab_id="tab-atividades"),
+                dbc.Tab(label='Famílias', tab_id='tab-familias'),
+                dbc.Tab(label='Alunos', tab_id='tab-alunos'),
+                dbc.Tab(label='Idosos', tab_id='tab-idosos'),
+                dbc.Tab(label='Turmas', tab_id='tab-turmas'),
+                dbc.Tab(label='Atividades', tab_id='tab-atividades'),
             ],
-            className="mb-3",
+            className='mb-3',
         ),
-
-        dcc.Interval(id="interval-component", interval=30 * 1000, n_intervals=0),
-
-        html.Div(id="conteudo-aba"),
+        dcc.Interval(id='interval-component', interval=30 * 1000, n_intervals=0),
+        html.Div(id='conteudo-aba'),
     ],
-    className="container-fluid py-3",
+    className='container-fluid py-3',
 )
 
 
 # ---------- CALLBACK PRINCIPAL ----------
 
 @app.callback(
-    Output("conteudo-aba", "children"),
-    Input("tabs-dashboard", "active_tab"),
-    Input("interval-component", "n_intervals"),
+    Output('conteudo-aba', 'children'),
+    Input('tabs-dashboard', 'active_tab'),
+    Input('interval-component', 'n_intervals'),
 )
 def renderizar_conteudo_aba(tab, n):
     if tab == "tab-familias":
@@ -414,7 +433,6 @@ def renderizar_conteudo_aba(tab, n):
             margin=dict(l=80, r=40, t=60, b=80),
         )
 
-
         # --------- LAYOUT (CARDS + GRÁFICOS) ---------
         kpi_cards = dbc.Row(
             [
@@ -525,202 +543,330 @@ def renderizar_conteudo_aba(tab, n):
             ]
         )
 
-    elif tab == "tab-alunos":
+
+    elif tab == 'tab-alunos':
         df_alunos = get_alunos_dataframe()
         if df_alunos.empty:
-            return html.Div("Sem alunos/assistidos cadastrados.")
-        
-        df_frequentando = df_alunos[df_alunos["status_lsd"] == "Frequentando"].copy()
+            return html.Div('Sem alunos/assistidos cadastrados.')
+
+        df_frequentando = df_alunos[df_alunos['status_lsd'] == 'Frequentando'].copy()
 
         total = len(df_alunos)
         frequentando = len(df_frequentando)
-        meninas = len(df_frequentando[df_frequentando["sex"] == "Feminino"])
-        meninos = len(df_frequentando[df_frequentando["sex"] == "Masculino"])
+        meninas = len(df_frequentando[df_frequentando['sex'] == 'Feminino'])
+        meninos = len(df_frequentando[df_frequentando['sex'] == 'Masculino'])
+        criancas = len(df_frequentando[df_frequentando['idade'].between(6, 12)])
+        adolescentes = len(df_frequentando[df_frequentando['idade'].between(13, 17)])
 
-        # --------- GRÁFICOS ---------
-
-         # -------- faixas etárias --------
-        alunos_faixa_counts = (
-            df_frequentando["faixa_etaria_alunos"]
+        publico_counts = (
+            df_frequentando['publico_dashboard']
             .value_counts()
-            .reindex(["6-7", "8-9", "10-12", "13-17"])
+            .reindex(['Crianças (6 a 12 anos)', 'Adolescentes (13 a 17 anos)'])
             .fillna(0)
             .reset_index()
         )
-        alunos_faixa_counts.columns = ["faixa_etaria_alunos", "qtd"]
-
-        fig_alunos_faixa = px.bar(
-            alunos_faixa_counts,
-            x="faixa_etaria_alunos",
-            y="qtd",
-            title="Alunos por faixa etária",
-            text="qtd",
+        publico_counts.columns = ['publico', 'qtd']
+        fig_publico = criar_fig_bar(
+            publico_counts, 'publico', 'qtd', 'Assistidos por público', 'Público', 'Quantidade de assistidos'
         )
-        fig_alunos_faixa.update_traces(textposition="outside", cliponaxis=False)
-        fig_alunos_faixa.update_layout(
-            title={"text": "<b>Alunos por faixa etária</b>", "x": 0.5, "xanchor": "center"},
-            xaxis_title="Faixa etária",
-            yaxis_title="Quantidade de alunos",
-        )
-        #fig_sexo = px.bar(df_alunos, x="sex", title="Alunos por sexo")
 
-        # -------- Rede de Ensino --------
         alunos_rede_counts = (
-            df_frequentando["rede_ensino"]
+            df_frequentando['rede_ensino']
+            .fillna('Não informado')
             .value_counts()
-            .sort_index()
             .reset_index()
         )
-        alunos_rede_counts.columns = ["rede_ensino", "qtd"]
-        
+        alunos_rede_counts.columns = ['rede_ensino', 'qtd']
+        fig_rede = criar_fig_bar(
+            alunos_rede_counts, 'rede_ensino', 'qtd', 'Alunos por rede de ensino', 'Rede de ensino', 'Quantidade de alunos'
+        )
 
-        fig_rede = px.bar(
-            alunos_rede_counts,
-            x="rede_ensino",
-            y="qtd",
-            title="Alunos por rede de ensino",
-            text="qtd",
-        )
-        fig_rede.update_traces(textposition="outside", cliponaxis=False)
-        fig_rede.update_layout(
-            title={"text": "<b>Alunos por rede de ensino</b>", "x": 0.5, "xanchor": "center"},
-            xaxis_title="Rede de Ensino",
-            yaxis_title="Quantidade de alunos",
-        )
-        
-       # -------- Turno --------
-        fig_turno_counts = (
-            df_frequentando["turno"]
+        turno_counts = (
+            df_frequentando['turno']
+            .fillna('Não informado')
             .value_counts()
-            .sort_index()
             .reset_index()
         )
-        fig_turno_counts.columns = ["turno", "qtd"]
-        
+        turno_counts.columns = ['turno', 'qtd']
+        fig_turno = criar_fig_bar(
+            turno_counts, 'turno', 'qtd', 'Alunos por turno', 'Turno', 'Quantidade de alunos'
+        )
 
-        fig_turno = px.bar(
-            fig_turno_counts,
-            x="turno",
-            y="qtd",
-            title="Alunos por turno",
-            text="qtd",
-        )
-        fig_turno.update_traces(textposition="outside", cliponaxis=False)
-        fig_turno.update_layout(
-            title={"text": "<b>Alunos por turno</b>", "x": 0.5, "xanchor": "center"},
-            xaxis_title="Turno",
-            yaxis_title="Quantidade de alunos",
-        )
-        
-         # -------- Escola --------
-        fig_escola_counts = (
-            df_frequentando["school"]
-            .fillna("Não informado")
+        escola_counts = (
+            df_frequentando['school']
+            .fillna('Não informado')
+            .astype(str)
             .str.strip()
             .value_counts()
             .reset_index()
         )
-        fig_escola_counts.columns = ["escola", "qtd"]
-        
-        top_escolas = fig_escola_counts.head(15)  # por exemplo, top 15
-
-        fig_escola = px.bar(
-            top_escolas,
-            x="qtd",
-            y="escola",
-            title="Alunos por escola (Top 15)",
-            text="qtd",
-            orientation="h",
+        escola_counts.columns = ['escola', 'qtd']
+        top_escolas = escola_counts.head(15)
+        fig_escola = criar_fig_bar(
+            top_escolas, 'escola', 'qtd', 'Alunos por escola (Top 15)', 'Quantidade de alunos', 'Escola', orientation='h'
         )
-        
-        fig_escola.update_traces(textposition="outside", cliponaxis=False)
-        fig_escola.update_layout(
-            title={"text": "<b>Alunos por escola</b>", "x": 0.5, "xanchor": "center"},
-            yaxis_title="Escola",
-            xaxis_title="Quantidade de alunos",
-        )
-       
-
-
-        # --------- LAYOUT (CARDS + GRÁFICOS) ---------
 
         kpi_cards = dbc.Row(
             [
-                dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                        [
-                            html.H6("Crianças/Adolescentes cadastrados", className="text-muted mb-2 text-center"),
-                            html.H3(f"{total}", className="mb-0 text-center"),
-                            ]
-                        ),
-                        className="mb-3 shadow-sm",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.H6("Crianças/Adolescentes Assistidos", className="text-muted mb-2 text-center"),
-                                html.H3(f"{frequentando}", className="mb-0 text-success text-center"),
-                            ]
-                        ),
-                        className="shadow-sm",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.H6("Quantidade de Meninas", className="text-muted mb-2 text-center"),
-                                html.H3(f"{meninas}", className="mb-0 text-danger text-center"),
-                            ]
-                        ),
-                        className="shadow-sm",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.H6("Quantidade de Meninos", className="text-muted mb-2 text-center"),
-                                html.H3(f"{meninos}", className="mb-0 text-primary text-center"),
-                            ]
-                        ),
-                        className="shadow-sm",
-                    ),
-                    md=3,
-                ),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Crianças/Adolescentes cadastrados', className='text-muted mb-2 text-center'),
+                    html.H3(f'{total}', className='mb-0 text-center'),
+                ]), className='mb-3 shadow-sm'), md=2),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Assistidos frequentando', className='text-muted mb-2 text-center'),
+                    html.H3(f'{frequentando}', className='mb-0 text-success text-center'),
+                ]), className='shadow-sm'), md=2),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Crianças (6 a 12 anos)', className='text-muted mb-2 text-center'),
+                    html.H3(f'{criancas}', className='mb-0 text-primary text-center'),
+                ]), className='shadow-sm'), md=2),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Adolescentes (13 a 17 anos)', className='text-muted mb-2 text-center'),
+                    html.H3(f'{adolescentes}', className='mb-0 text-warning text-center'),
+                ]), className='shadow-sm'), md=2),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Meninas', className='text-muted mb-2 text-center'),
+                    html.H3(f'{meninas}', className='mb-0 text-danger text-center'),
+                ]), className='shadow-sm'), md=2),
+                dbc.Col(dbc.Card(dbc.CardBody([
+                    html.H6('Meninos', className='text-muted mb-2 text-center'),
+                    html.H3(f'{meninos}', className='mb-0 text-info text-center'),
+                ]), className='shadow-sm'), md=2),
             ],
-            className="mb-4 g-3",  # g-3 dá espaçamento entre colunas
-        )
-        return html.Div(
-            [
-                kpi_cards,
-
-                 # Linha 1
-                html.Div(
-                    [
-                        #dcc.Graph(figure=fig_sexo, style={"flex": "1", "minWidth": "300px"}),
-                        #dcc.Graph(figure=fig_alunos_faixa, style={"flex": "1", "minWidth": "300px"}),
-                    ],
-                    style={"display": "flex", "gap": "24px", "flexWrap": "wrap"},
-                ),
-                html.Div(
-                    [
-                        dcc.Graph(figure=fig_rede, style={"flex": "1", "minWidth": "300px"}),
-                        dcc.Graph(figure=fig_turno, style={"flex": "1", "minWidth": "300px"}),
-                    ],
-                    style={"display": "flex", "gap": "24px", "flexWrap": "wrap"},
-                ),
-                dcc.Graph(figure=fig_escola),
-            ]
+            className='mb-4 g-3',
         )
 
-    # Demais abas ainda em branco
+        return html.Div([
+            kpi_cards,
+            html.Div([
+                dcc.Graph(figure=fig_publico, style={'flex': '1', 'minWidth': '300px'}),
+                dcc.Graph(figure=fig_rede, style={'flex': '1', 'minWidth': '300px'}),
+            ], style={'display': 'flex', 'gap': '24px', 'flexWrap': 'wrap'}),
+            html.Div([
+                dcc.Graph(figure=fig_turno, style={'flex': '1', 'minWidth': '300px'}),
+                dcc.Graph(figure=fig_escola, style={'flex': '1', 'minWidth': '300px'}),
+            ], style={'display': 'flex', 'gap': '24px', 'flexWrap': 'wrap'}),
+        ])
+
+    elif tab == 'tab-idosos':
+        df_idosos = get_adult_dataframe()
+        if df_idosos.empty:
+            return html.Div('Sem idosos cadastrados.')
+
+        if 'status_lsd' in df_idosos.columns:
+            df_idosos_ativos = df_idosos[df_idosos['status_lsd'] == 'Frequentando'].copy()
+            if df_idosos_ativos.empty:
+                df_idosos_ativos = df_idosos.copy()
+        else:
+            df_idosos_ativos = df_idosos.copy()
+
+        total_idosos = len(df_idosos)
+        idosos_ativos = len(df_idosos_ativos)
+        idosas = len(df_idosos_ativos[df_idosos_ativos['sex'] == 'Feminino'])
+        idosos_homens = len(df_idosos_ativos[df_idosos_ativos['sex'] == 'Masculino'])
+        idosos_60_69 = len(df_idosos_ativos[df_idosos_ativos['idade'].between(60, 69)])
+        idosos_70_mais = len(df_idosos_ativos[df_idosos_ativos['idade'] >= 70])
+
+        sexo_counts = df_idosos_ativos['sex'].fillna('Não informado').value_counts().reset_index()
+        sexo_counts.columns = ['sexo', 'qtd']
+        fig_idosos_sexo = criar_fig_bar(
+            sexo_counts, 'sexo', 'qtd', 'Idosos por sexo', 'Sexo', 'Quantidade de idosos'
+        )
+
+        faixa_counts = (
+            df_idosos_ativos['faixa_etaria_idosos']
+            .value_counts()
+            .reindex(['60-69', '70-79', '80-89', '90+'])
+            .fillna(0)
+            .reset_index()
+        )
+        faixa_counts.columns = ['faixa', 'qtd']
+        fig_idosos_faixa = criar_fig_bar(
+            faixa_counts, 'faixa', 'qtd', 'Idosos por faixa etária', 'Faixa etária', 'Quantidade de idosos'
+        )
+
+        kpi_cards = dbc.Row([
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Idosos cadastrados', className='text-muted mb-2 text-center'),
+                html.H3(f'{total_idosos}', className='mb-0 text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Idosos assistidos', className='text-muted mb-2 text-center'),
+                html.H3(f'{idosos_ativos}', className='mb-0 text-success text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Faixa 60 a 69 anos', className='text-muted mb-2 text-center'),
+                html.H3(f'{idosos_60_69}', className='mb-0 text-primary text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Faixa 70 anos ou mais', className='text-muted mb-2 text-center'),
+                html.H3(f'{idosos_70_mais}', className='mb-0 text-warning text-center'),
+            ]), className='shadow-sm'), md=3),
+        ], className='mb-4 g-3')
+
+        return html.Div([
+            kpi_cards,
+            html.Div([
+                dcc.Graph(figure=fig_idosos_sexo, style={'flex': '1', 'minWidth': '300px'}),
+                dcc.Graph(figure=fig_idosos_faixa, style={'flex': '1', 'minWidth': '300px'}),
+            ], style={'display': 'flex', 'gap': '24px', 'flexWrap': 'wrap'}),
+            html.Div([
+                dbc.Card(dbc.CardBody([
+                    html.H6('Detalhamento rápido', className='text-muted mb-2'),
+                    html.P(f'Idosas: {idosas} | Idosos: {idosos_homens}', className='mb-0'),
+                ]), className='shadow-sm')
+            ], className='mt-2'),
+        ])
+
+    elif tab == 'tab-turmas':
+        df_turmas = get_turmas_dataframe()
+        df_alunos = get_alunos_dataframe()
+
+        if df_turmas.empty:
+            return html.Div('Sem turmas cadastradas.')
+
+        total_turmas = len(df_turmas)
+        turmas_ativas = len(df_turmas[df_turmas['status'] == 'ativo']) if 'status' in df_turmas.columns else total_turmas
+        turnos = len(df_turmas['turno'].dropna().unique()) if 'turno' in df_turmas.columns else 0
+        educadores = len(df_turmas['educatora__name'].dropna().unique()) if 'educatora__name' in df_turmas.columns else 0
+
+        turno_counts = df_turmas['turno'].fillna('Não informado').value_counts().reset_index()
+        turno_counts.columns = ['turno', 'qtd']
+        fig_turmas_turno = criar_fig_bar(
+            turno_counts, 'turno', 'qtd', 'Turmas por turno', 'Turno', 'Quantidade de turmas'
+        )
+
+        educador_counts = (
+            df_turmas['educatora__name']
+            .fillna('Não informado')
+            .value_counts()
+            .reset_index()
+        )
+        educador_counts.columns = ['educador', 'qtd']
+        fig_turmas_educador = criar_fig_bar(
+            educador_counts, 'educador', 'qtd', 'Turmas por educador', 'Quantidade de turmas', 'Educador', orientation='h'
+        )
+
+        if not df_alunos.empty and 'status_lsd' in df_alunos.columns:
+            df_frequentando = df_alunos[df_alunos['status_lsd'] == 'Frequentando'].copy()
+            publico_counts = (
+                df_frequentando['publico_dashboard']
+                .value_counts()
+                .reindex(['Crianças (6 a 12 anos)', 'Adolescentes (13 a 17 anos)'])
+                .fillna(0)
+                .reset_index()
+            )
+            publico_counts.columns = ['publico', 'qtd']
+            fig_turmas_publico = criar_fig_bar(
+                publico_counts, 'publico', 'qtd', 'Público atendido nas turmas', 'Público', 'Quantidade de assistidos'
+            )
+        else:
+            fig_turmas_publico = px.bar(title='Público atendido nas turmas')
+
+        kpi_cards = dbc.Row([
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Turmas cadastradas', className='text-muted mb-2 text-center'),
+                html.H3(f'{total_turmas}', className='mb-0 text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Turmas ativas', className='text-muted mb-2 text-center'),
+                html.H3(f'{turmas_ativas}', className='mb-0 text-success text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Turnos com turmas', className='text-muted mb-2 text-center'),
+                html.H3(f'{turnos}', className='mb-0 text-primary text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Educadores vinculados', className='text-muted mb-2 text-center'),
+                html.H3(f'{educadores}', className='mb-0 text-warning text-center'),
+            ]), className='shadow-sm'), md=3),
+        ], className='mb-4 g-3')
+
+        return html.Div([
+            kpi_cards,
+            html.Div([
+                dcc.Graph(figure=fig_turmas_turno, style={'flex': '1', 'minWidth': '300px'}),
+                dcc.Graph(figure=fig_turmas_publico, style={'flex': '1', 'minWidth': '300px'}),
+            ], style={'display': 'flex', 'gap': '24px', 'flexWrap': 'wrap'}),
+            dcc.Graph(figure=fig_turmas_educador),
+        ])
+
+    elif tab == 'tab-atividades':
+        df_atividades = get_activities_dataframe()
+        df_alunos = get_alunos_dataframe()
+        df_idosos = get_adult_dataframe()
+
+        if df_atividades.empty:
+            return html.Div('Sem atividades cadastradas.')
+
+        total_atividades = len(df_atividades)
+        atividades_ativas = len(df_atividades[df_atividades['status'] == 'ativo']) if 'status' in df_atividades.columns else total_atividades
+        publico_criancas = 0
+        publico_adolescentes = 0
+        publico_idosos = 0
+
+        if not df_alunos.empty:
+            df_frequentando = df_alunos[df_alunos['status_lsd'] == 'Frequentando'].copy()
+            publico_criancas = len(df_frequentando[df_frequentando['idade'].between(6, 12)])
+            publico_adolescentes = len(df_frequentando[df_frequentando['idade'].between(13, 17)])
+
+        if not df_idosos.empty:
+            if 'status_lsd' in df_idosos.columns:
+                df_idosos_ativos = df_idosos[df_idosos['status_lsd'] == 'Frequentando'].copy()
+                if df_idosos_ativos.empty:
+                    df_idosos_ativos = df_idosos.copy()
+            else:
+                df_idosos_ativos = df_idosos.copy()
+            publico_idosos = len(df_idosos_ativos)
+
+        status_counts = df_atividades['status'].fillna('Não informado').value_counts().reset_index() if 'status' in df_atividades.columns else pd.DataFrame({'status': ['Sem status'], 'qtd': [total_atividades]})
+        if 'status' in status_counts.columns:
+            status_counts.columns = ['status', 'qtd']
+        fig_atividades_status = criar_fig_bar(
+            status_counts, 'status', 'qtd', 'Atividades por status', 'Status', 'Quantidade de atividades'
+        )
+
+        publico_df = pd.DataFrame({
+            'publico': ['Crianças (6 a 12 anos)', 'Adolescentes (13 a 17 anos)', 'Idosos'],
+            'qtd': [publico_criancas, publico_adolescentes, publico_idosos]
+        })
+        fig_atividades_publico = criar_fig_bar(
+            publico_df, 'publico', 'qtd', 'Público vinculado às atividades', 'Público', 'Quantidade de assistidos'
+        )
+
+        nome_counts = df_atividades['name'].fillna('Não informado').value_counts().reset_index().head(15)
+        nome_counts.columns = ['atividade', 'qtd']
+        fig_atividades_nome = criar_fig_bar(
+            nome_counts, 'atividade', 'qtd', 'Atividades cadastradas', 'Quantidade', 'Atividade', orientation='h'
+        )
+
+        kpi_cards = dbc.Row([
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Atividades cadastradas', className='text-muted mb-2 text-center'),
+                html.H3(f'{total_atividades}', className='mb-0 text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Atividades ativas', className='text-muted mb-2 text-center'),
+                html.H3(f'{atividades_ativas}', className='mb-0 text-success text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Público infantil', className='text-muted mb-2 text-center'),
+                html.H3(f'{publico_criancas}', className='mb-0 text-primary text-center'),
+            ]), className='shadow-sm'), md=3),
+            dbc.Col(dbc.Card(dbc.CardBody([
+                html.H6('Público adolescente', className='text-muted mb-2 text-center'),
+                html.H3(f'{publico_adolescentes}', className='mb-0 text-warning text-center'),
+            ]), className='shadow-sm'), md=3),
+        ], className='mb-4 g-3')
+
+        return html.Div([
+            kpi_cards,
+            html.Div([
+                dcc.Graph(figure=fig_atividades_status, style={'flex': '1', 'minWidth': '300px'}),
+                dcc.Graph(figure=fig_atividades_publico, style={'flex': '1', 'minWidth': '300px'}),
+            ], style={'display': 'flex', 'gap': '24px', 'flexWrap': 'wrap'}),
+            dcc.Graph(figure=fig_atividades_nome),
+        ])
+
     else:
-        return html.Div("Em construção.")
-
+        return html.Div('Em construção.')

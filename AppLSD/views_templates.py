@@ -20,15 +20,16 @@ from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.utils.timezone import make_aware
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.db import transaction
 from django.db.models import Count, Q, F, Avg, Value, When, Sum, CharField, Exists, OuterRef, IntegerField, FloatField, Case
-from django.db.models.functions import Cast, Coalesce, Concat
+from django.db.models.functions import Cast, Coalesce, Concat, Lower
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
 from django.views.generic import ListView
 from django_xhtml2pdf.utils import generate_pdf
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, time
 from .permissoes import require_perfil
 # Concatena e ordena por data
 from itertools import chain
@@ -2222,20 +2223,21 @@ def adicionar_ocorrencia(request, aluno_id):
     return render(request, 'AppLSD/adicionar_ocorrencia.html', {'form': form, 'aluno': aluno})
 
 def activity_add_alunos(request, activity_id):
-    atividade = Activity.objects.get(id=activity_id)
+    atividade = get_object_or_404(Activity, id=activity_id)
 
-    # alunos que ainda não estão na atividade e estão frequentando
-    alunos_queryset = Aluno.objects.exclude(atividades=atividade)
-    alunos_queryset = alunos_queryset.filter(status_lsd="Frequentando")
+    alunos_queryset = (
+        Aluno.objects
+        .exclude(atividades=atividade)
+        .filter(status_lsd="Frequentando")
+    )
 
-    # Se quiser restringir pelo turno da própria atividade (opcional):
-    if atividade.turno == 'Matutino':
-       alunos_queryset = alunos_queryset.filter(turno='Vespertino')
-    elif atividade.turno == 'Vespertino':
-         alunos_queryset = alunos_queryset.filter(turno='Matutino')
+    if atividade.turno == "Matutino":
+        alunos_queryset = alunos_queryset.filter(turno="Vespertino")
+    elif atividade.turno == "Vespertino":
+        alunos_queryset = alunos_queryset.filter(turno="Matutino")
 
-    # filtros de busca
     filtro = AlunoFiltroForm(request.GET or None)
+
     if filtro.is_valid():
         nome = filtro.cleaned_data.get("nome")
         inscricao = filtro.cleaned_data.get("registration_number")
@@ -2245,9 +2247,7 @@ def activity_add_alunos(request, activity_id):
             alunos_queryset = alunos_queryset.filter(name__icontains=nome)
 
         if inscricao:
-            alunos_queryset = alunos_queryset.filter(
-                family=inscricao
-            )
+            alunos_queryset = alunos_queryset.filter(family__registration_number__icontains=inscricao)
 
         if faixa:
             hoje = date.today()
@@ -2257,40 +2257,46 @@ def activity_add_alunos(request, activity_id):
                 data_min = date(hoje.year - max_idade - 1, hoje.month, hoje.day) + timedelta(days=1)
                 return data_min, data_max
 
-            if faixa == "06-07":
-                data_min, data_max = intervalo_idade(6, 7)
-            elif faixa == "08-09":
-                data_min, data_max = intervalo_idade(8, 9)
-            elif faixa == "10-12":
-                data_min, data_max = intervalo_idade(10, 12)
-            elif faixa == "13-17":
-                data_min, data_max = intervalo_idade(13, 17)
+            faixas = {
+                "06-07": (6, 7),
+                "08-09": (8, 9),
+                "10-12": (10, 12),
+                "13-17": (13, 17),
+            }
 
-            alunos_queryset = alunos_queryset.filter(
-                birth_date__range=(data_min, data_max)
-            )
+            if faixa in faixas:
+                min_idade, max_idade = faixas[faixa]
+                data_min, data_max = intervalo_idade(min_idade, max_idade)
+                alunos_queryset = alunos_queryset.filter(
+                    birth_date__range=(data_min, data_max)
+                )
 
-    # Form dinâmico usando o queryset filtrado
+    alunos_queryset = alunos_queryset.order_by(Lower("name"))
+
     class DinamicoAddAlunosToAtividadeForm(AddAlunosToTurmaForm):
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, alunos_queryset=None, **kwargs):
             super().__init__(*args, **kwargs)
-            self.fields["alunos"].queryset = alunos_queryset
+            self.fields["alunos"].queryset = alunos_queryset or Aluno.objects.none()
 
     if request.method == "POST":
-        form = DinamicoAddAlunosToAtividadeForm(request.POST)
+        form = DinamicoAddAlunosToAtividadeForm(
+            request.POST,
+            alunos_queryset=alunos_queryset,
+        )
         if form.is_valid():
-            for aluno in form.cleaned_data["alunos"]:
-                atividade.alunos.add(aluno)
+            atividade.alunos.add(*form.cleaned_data["alunos"])
             return redirect("activity_detail", activity_id=atividade.id)
     else:
-        form = DinamicoAddAlunosToAtividadeForm()
+        form = DinamicoAddAlunosToAtividadeForm(
+            alunos_queryset=alunos_queryset,
+        )
 
-    return render(
-        request,
-        "AppLSD/activity_add_alunos.html",
-        {"atividade": atividade, "form": form, "filtro": filtro},
-    )
-
+    context = {
+        "atividade": atividade,
+        "form": form,
+        "filtro": filtro,
+    }
+    return render(request, "AppLSD/activity_add_alunos.html", context)
 
 def get_contexto_relatorio_turma(request, turma_id, data=None):
     turma = Turma.objects.get(id=turma_id)
@@ -3732,3 +3738,76 @@ def relatorio_sisc_html(request):
         "linhas": linhas,
     }
     return render(request, "AppLSD/relatorio_sisc.html", context)
+
+
+def relatorio_desligados_html(request):
+    data_inicial = request.GET.get("data_inicial")
+    data_final = request.GET.get("data_final")
+
+    familias_desligadas = []
+    alunos_desligados = []
+    erro = None
+
+    if data_inicial and data_final:
+        try:
+            data_inicial_date = datetime.strptime(data_inicial, "%Y-%m-%d").date()
+            data_final_date = datetime.strptime(data_final, "%Y-%m-%d").date()
+
+            inicio_dt = make_aware(datetime.combine(data_inicial_date, time.min))
+            fim_dt = make_aware(datetime.combine(data_final_date, time.max))
+
+            family_ct = ContentType.objects.get_for_model(Family)
+            aluno_ct = ContentType.objects.get_for_model(Aluno)
+
+            logs_familias = AppLog.objects.filter(
+                content_type=family_ct,
+                criado_em__range=(inicio_dt, fim_dt),
+                acao__icontains="familia_inativada",
+            ).select_related("criado_por", "content_type").order_by("-criado_em")
+
+            logs_alunos = AppLog.objects.filter(
+                content_type=aluno_ct,
+                criado_em__range=(inicio_dt, fim_dt),
+                acao__icontains="desligado",
+            ).select_related("criado_por", "content_type").order_by("-criado_em")
+
+            for log in logs_familias:
+                familia = log.objeto
+                familias_desligadas.append({
+                    "data": log.criado_em,
+                    "inscricao": getattr(familia, "registration_number", "") if familia else "",
+                    "familia": getattr(familia, "responsible_name", "") if familia else "",
+                    "acao": log.acao,
+                    "descricao": log.descricao,
+                    "usuario": log.criado_por.username if log.criado_por else "",
+                })
+
+            for log in logs_alunos:
+                aluno = log.objeto
+                alunos_desligados.append({
+                    "data": log.criado_em,
+                    "aluno": getattr(aluno, "name", "") if aluno else "",
+                    "inscricao": (
+                        aluno.family.registration_number
+                        if aluno and getattr(aluno, "family", None)
+                        else ""
+                    ),
+                    "acao": log.acao,
+                    "descricao": log.descricao,
+                    "usuario": log.criado_por.username if log.criado_por else "",
+                })
+
+        except ValueError:
+            erro = "Período inválido. Verifique as datas informadas."
+    else:
+        erro = "Informe a data inicial e a data final."
+
+    context = {
+        "data_inicial": data_inicial,
+        "data_final": data_final,
+        "familias_desligadas": familias_desligadas,
+        "alunos_desligados": alunos_desligados,
+        "erro": erro,
+    }
+
+    return render(request, "AppLSD/relatorio_desligados_html.html", context)

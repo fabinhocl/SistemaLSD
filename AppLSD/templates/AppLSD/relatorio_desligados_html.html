@@ -1,0 +1,71 @@
+{% extends 'AppLSD/base.html' %}
+
+{% block content %}
+<h2>Relatório de Desligados</h2>
+
+<p><strong>Período:</strong> {{ data_inicial }} até {{ data_final }}</p>
+
+{% if erro %}
+  <div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+
+<h4>Famílias Desligadas</h4>
+<table class="table table-bordered">
+  <thead>
+    <tr class="text-center">
+      <th>Data</th>
+      <th>Inscrição</th>
+      <th>Família</th>
+      <th>Ação</th>
+      <th>Descrição</th>
+      <th>Usuário</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in familias_desligadas %}
+      <tr>
+        <td>{{ item.data|date:"d/m/Y" }}</td>
+        <td class="text-center">{{ item.inscricao }} </td>
+        <td>{{ item.familia|upper }} </td>
+        <td>{{ item.acao }}</td>
+        <td>{{ item.descricao }}</td>
+        <td>{{ item.usuario }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">Nenhuma família desligada no período.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h4>Alunos Desligados</h4>
+<table class="table table-bordered">
+  <thead>
+    <tr class="text-center">
+      <th>Data</th>
+      <th>Inscrição</th>
+      <th>Aluno</th>
+      <th>Ação</th>
+      <th>Descrição</th>
+      <th>Usuário</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in alunos_desligados %}
+      <tr>
+        <td>{{ item.data|date:"d/m/Y" }}</td>
+        <td class="text-center">{{ item.inscricao }}</td>
+        <td>{{ item.aluno|upper }}
+        <td>{{ item.acao }}</td>
+        <td>{{ item.descricao }}</td>
+        <td>{{ item.usuario }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">Nenhum aluno desligado no período.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

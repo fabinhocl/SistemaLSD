@@ -166,6 +166,7 @@ urlpatterns = [
     path("relatorios/semds/busca-ativa/html/", views_templates.relatorio_busca_ativa_html, name="relatorio_busca_ativa_html"),
     path("relatorios/semds/sisc/", views_templates.relatorio_sisc, name="relatorio_sisc"),
     path("relatorios/semds/sisc/html/", views_templates.relatorio_sisc_html, name="relatorio_sisc_html"),
+    path("relatorios/desligados/", views_templates.relatorio_desligados_html, name="relatorio_desligados_html"),
     #select2 no formulário de Atividade para selecionar os facilitador de forma mais amigável
     #path("select2/", include("django_select2.urls")),
     
