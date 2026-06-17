@@ -1,58 +1,191 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
 {% load frequencia_filters %}
-{% block title %}Relatório - {{ turma.nome }}{% endblock %}
+{% block title %}Relatório - {{ turma.grupo }}{% endblock %}
+
 {% block content %}
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
 
-<h3>Chamada da Turma: {{ turma.educadora.first_name }} — Data: {{ data }}</h3>
-<form method="get" class="mb-3">
-    <label for="data" class="form-label">Escolher Data:</label>
-    <input type="date" id="data" name="data" value="{{ request.GET.data }}">
-    <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
-</form>
+  body {
+    font-family: Arial, sans-serif;
+    color: #222;
+    background: #fff;
+  }
 
-<table class="table">
+  .relatorio-box {
+    background: #fff;
+    padding: 10px 18px 18px 18px;
+  }
+
+  .relatorio-header {
+    
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .logo-relatorio {
+    height: 55px;
+    margin-bottom: 6px;
+  }
+
+  .titulo-relatorio {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .cabecalho-info {
+    margin-top: 6px;
+    border: none !important;
+  }
+
+  .cabecalho-info div {
+    margin: 0 0 2px 0;
+    line-height: 1.05;
+    font-size: 14px;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .table-relatorio {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-top: 10px;
+  }
+
+  .table-relatorio th,
+  .table-relatorio td {
+    border: 1px solid #444;
+    padding: 8px 10px;
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  .table-relatorio th {
+    background: #e9ecef;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .col-inscricao {
+    width: 10%;
+    text-align: center;
+  }
+
+  .col-aluno {
+    width: 46%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .col-situacao {
+    width: 14%;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .col-motivo {
+    width: 30%;
+  }
+
+  .status-presente {
+    color: #198754;
+    font-weight: 700;
+  }
+
+  .status-falta {
+    color: #dc3545;
+    font-weight: 700;
+  }
+
+  .no-print {
+    margin-top: 18px;
+  }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .relatorio-box {
+      padding: 0;
+    }
+  }
+</style>
+
+<div class="relatorio-box">
+  <div class="relatorio-header">
+    <img src="{% static 'img/logo-integra.png' %}" alt="Logo Integra + Lar" class="logo-relatorio">
+
+    <h2 class="titulo-relatorio">Relatório de Frequência do Grupo {{ turma.grupo }}</h2>
+
+    <div class="cabecalho-info">
+      <div><strong>Educadora:</strong> {{ turma.educadora.first_name }}</div>
+      <div><strong>Turno:</strong> {{ turma.turno }}</div>
+      <div><strong>Data:</strong> {{ data|date:"d/m/Y" }}</div>
+      <div><strong>Total de alunos:</strong> {{ total_alunos }}</div>
+      <div><strong>Presentes:</strong> {{ presentes }} | <strong>Faltantes:</strong> {{ faltantes }}</div>
+    </div>
+  </div>
+
+  <table class="table-relatorio">
     <thead>
-        <tr>
-            <th>Inscrição</th>
-            <th>Aluno</th>
-            <th>Situação</th>
-            <th>Motivo da Falta</th>
-        </tr>
+      <tr>
+        <th class="col-inscricao">Inscrição</th>
+        <th class="col-aluno">Aluno</th>
+        <th class="col-situacao">Situação</th>
+        <th class="col-motivo">Motivo da Falta</th>
+      </tr>
     </thead>
     <tbody>
-    {% for aluno in alunos %}
-    <tr>
-        <td>{{ aluno.family.registration_number }}</td>
-        <td>{{ aluno.name }}</td>
-        <td>
-            {% with presenca=presencas_dict|get_item:aluno.id %}
-                {% if presenca %}
-                    {% if presenca.presente %}
-                        Presente
-                    {% else %}
-                        Falta
-                    {% endif %}
-                {% else %}
-                    -
-                {% endif %}
-            {% endwith %}
-        </td>
-        <td>
-            {% if presencas_dict.aluno.id and not presencas_dict.aluno.id.presente %}
-                {{ presencas_dict.aluno.id.motivo_falta|default:"-" }}
+      {% for aluno in alunos %}
+        {% with presenca=presencas_dict|get_item:aluno.id %}
+        <tr>
+          <td class="col-inscricao">{{ aluno.family.registration_number }}</td>
+          <td class="col-aluno">{{ aluno.name|upper }}</td>
+          <td class="col-situacao">
+            {% if presenca %}
+              {% if presenca.presente %}
+                <span class="status-presente">PRESENTE</span>
+              {% else %}
+                <span class="status-falta">FALTA</span>
+              {% endif %}
             {% else %}
-                -
+              -
             {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+          </td>
+          <td class="col-motivo">
+            {% if presenca and not presenca.presente %}
+              {{ presenca.motivo_falta|default:"-" }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+      {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center;">Nenhum aluno encontrado para esta turma.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <div class="no-print">
-        <a href="{% url 'frequencia_visualizar' turma.id %}?data={{ data }}" class="btn btn-secondary">Editar Chamada</a>
-        <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
-        <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
-        <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
-    </div>
-</form>
+  <a href="{% url 'frequencia_visualizar' turma.id %}?data={{ data|date:'Y-m-d' }}" class="btn btn-secondary">Editar Chamada</a>
+  <a href="{% url 'turma_list' %}" class="btn btn-secondary">Voltar</a>
+  <a href="{% url 'home_relatorios' %}" class="btn btn-secondary">Voltar aos Relatórios</a>
+  <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir</button>
+</div>
 {% endblock %}

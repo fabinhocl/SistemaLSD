@@ -1,127 +1,430 @@
 {% extends 'AppLSD/base.html' %}
+{% load static %}
 {% block title %}Relatório Mensal - {{ aluno.name }}{% endblock %}
 
 {% block content %}
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 0.6cm;
+  }
 
-<h2>Relatório Mensal - {{ aluno.name }}</h2>
-<h2>{{ turma.educadora.first_name }} - {{ turma.grupo }} ({{ turma.turno }})</h2>
-<p><strong>Mês:</strong> {{ mes }}</p>
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    color: #222;
+    background: #fff;
+  }
 
-<h4>Frequência na Turma</h4>
-<table class="table table-bordered table-sm" style="font-size: 12px;">
-  <thead>
-    <tr>
-      <th>Aluno</th>
-      {% for dia in dias_mes %}
-        <th class="th-dia">
-          {{ dia|date:"d" }}<br>
-          {{ dia|date:"D" }}
-        </th>
-      {% endfor %}
-      <th>Faltas</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>{{ aluno.name }}</td>
-      {% for status in status_por_dia %}
-        <td style="text-align:center;">{{ status }}</td>
-      {% endfor %}
-      <td style="text-align:center; font-weight:bold;">{{ faltas }}</td>
-    </tr>
-  </tbody>
-</table>
+  .relatorio-print-page {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
 
-<h4 class="mt-4">Participação em Atividades</h4>
-<table class="table table-bordered table-sm">
-  <thead>
-    <tr>
-      <th>Data</th>
-      <th>Atividade</th>
-      <th>Turno</th>
-      <th>Facilitador(a)</th>
-      <th>Situação</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for reg in atividades_freq %}
-      <tr>
-        <td>{{ reg.data|date:"d/m/Y" }}</td>
-        <td>{{ reg.atividade.atividade }}</td>
-        <td>{{ reg.atividade.turno }}</td>
-        <td>{{ reg.atividade.facilitador }}</td>
-        <td>{% if reg.presente %}Presente{% else %}Falta{% endif %}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5">Nenhuma participação em atividades neste mês.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+  .relatorio-box {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 10px 12px 16px 12px;
+    box-sizing: border-box;
+    background: #fff;
+  }
 
+  .relatorio-header {
+    border-bottom: 2px solid #444;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
 
-<h4 class="mt-4">Histórico de Movimentações de Turma</h4>
-<table class="table table-bordered table-sm">
-  <thead>
-    <tr>
-      <th>Data</th>
-      <th>Turma de Origem</th>
-      <th>Turma de Destino</th>
-      <th>Motivo</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for mov in movimentacoes %}
-      <tr>
-        <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
-        <td>
-          {% if mov.turma_origem %}
-            {{ mov.turma_origem.sala }} ({{ mov.turma_origem.turno }})
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          {% if mov.turma_destino %}
-            {{ mov.turma_destino.sala }} ({{ mov.turma_destino.turno }})
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>{{ mov.motivo }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="4">Nenhuma movimentação neste mês.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+  .logo-relatorio {
+    height: 42px;
+    display: block;
+    margin: 0 auto 6px auto;
+  }
 
-<h4 class="mt-4">Ocorrências</h4>
-<table class="table table-bordered table-sm">
-  <thead>
-    <tr>
-      <th>Data</th>
-      <th>Tipo</th>
-      <th>Observação</th>
-      <th>Descrição</th>
-      <th>Responsável</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for occ in ocorrencias %}
-      <tr>
-        <td>{{ occ.data|date:"d/m/Y" }}</td>
-        <td>{{ occ.tipo }}</td>
-        <td>{{ occ.observacoes }}</td>
-        <td>{{ occ.descricao }}</td>
-        <td>{{ occ.responsavel }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5">Nenhuma ocorrência neste mês.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+  .titulo-relatorio {
+    margin: 0 0 6px 0;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+  }
 
-<a href="{% url 'relatorio_busca_aluno' %}" class="btn btn-secondary">Voltar à Busca</a>
-<button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
+  .cabecalho-info {
+    margin-top: 4px;
+  }
 
+  .cabecalho-info div {
+    margin: 0;
+    line-height: 1.1;
+    font-size: 12px;
+  }
+
+  .alerta-relatorio {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border: 1px solid #d6c27a;
+    background: #fff3cd;
+    color: #664d03;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .bloco-relatorio {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .secao-titulo {
+    margin: 12px 0 5px 0;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .resumo-frequencia {
+    margin: 0 0 6px 0;
+    padding: 0;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .table-relatorio,
+  .table-relatorio thead,
+  .table-relatorio tbody,
+  .table-relatorio tr,
+  .table-relatorio th,
+  .table-relatorio td {
+    border: 1px solid #444 !important;
+  }
+
+  .table-relatorio {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    background: #fff;
+  }
+
+  .table-relatorio th,
+  .table-relatorio td {
+    padding: 5px 4px !important;
+    font-size: 11px;
+    vertical-align: middle !important;
+  }
+
+  .table-relatorio th {
+    background: #e9ecef !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+
+  .tabela-frequencia {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    display: table !important;
+  }
+
+  .freq-aluno {
+    width: 26%;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  .freq-dia {
+    width: 2.5%;
+    text-align: center;
+    font-size: 10px !important;
+    padding: 3px 1px !important;
+  }
+
+  .freq-status {
+    text-align: center;
+    font-weight: 700;
+    padding: 3px 1px !important;
+    font-size: 10px !important;
+  }
+
+  .freq-faltas {
+    width: 6%;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .status-presente {
+    color: #198754;
+    font-weight: 700;
+  }
+
+  .status-falta {
+    color: #dc3545;
+    font-weight: 700;
+  }
+
+  .texto-centro {
+    text-align: center;
+  }
+
+  .no-print {
+    margin-top: 16px;
+  }
+
+  @media print {
+    html, body {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .container,
+    .container-fluid,
+    .content-wrapper,
+    .main-content,
+    .page-content,
+    .card,
+    .card-body {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    .relatorio-print-page,
+    .relatorio-box {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 4px 6px !important;
+    }
+
+    .table-relatorio,
+    .table-relatorio th,
+    .table-relatorio td {
+      border: 1px solid #444 !important;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="relatorio-print-page">
+  <div class="relatorio-box">
+    <div class="relatorio-header">
+      <img src="{% static 'img/logo-integra.png' %}" alt="Logo Integra + Lar" class="logo-relatorio">
+
+      <h2 class="titulo-relatorio">Relatório Mensal do Assistido - {{ aluno.name|upper }}</h2>
+
+      <div class="cabecalho-info">
+        {% if aluno_sem_turma %}
+          <div><strong>Turma:</strong> Não vinculada</div>
+        {% else %}
+          <div><strong>Educadora:</strong> {{ turma_relatorio.educadora.first_name }}</div>
+          <div><strong>Grupo:</strong> {{ turma_relatorio.grupo }}</div>
+          <div><strong>Turno:</strong> {{ turma_relatorio.turno }}</div>
+        {% endif %}
+        <div><strong>Mês:</strong> {{ mes }}</div>
+        <div><strong>Aluno:</strong> {{ aluno.name|upper }}</div>
+        {% if aluno.family %}
+          <div><strong>Inscrição:</strong> {{ aluno.family.registration_number }}</div>
+        {% endif %}
+      </div>
+
+      {% if aluno_sem_turma %}
+        <div class="alerta-relatorio">
+          Este aluno está sem turma vinculada. O relatório foi gerado considerando todos os dias úteis do mês.
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="bloco-relatorio">
+      <div class="secao-titulo">Frequência na Turma</div>
+
+      <div class="resumo-frequencia">
+        <strong>Dias úteis no mês:</strong> {{ total_dias_letivos }} |
+        <strong>Presentes:</strong> {{ presentes }} |
+        <strong>Faltas:</strong> {{ faltas }}
+      </div>
+
+      <table class="table-relatorio tabela-frequencia">
+        <thead>
+          <tr>
+            <th class="freq-aluno">Aluno</th>
+            {% for item in status_por_dia %}
+              <th class="freq-dia">
+                {{ item.dia|date:"d" }}<br>
+                {{ item.dia|date:"D" }}
+              </th>
+            {% endfor %}
+            <th class="freq-faltas">Faltas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="freq-aluno">{{ aluno.name|upper }}</td>
+            {% for item in status_por_dia %}
+              <td class="freq-status">
+                {% if item.status == 'P' %}
+                  <span class="status-presente">P</span>
+                {% elif item.status == 'F' %}
+                  <span class="status-falta">F</span>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td class="freq-faltas">{{ faltas }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bloco-relatorio">
+      <div class="secao-titulo">Frequência nas Atividades</div>
+
+      {% if atividades_grade %}
+        <table class="table-relatorio tabela-frequencia">
+          <thead>
+            <tr>
+              <th style="width: 18%;">Atividade</th>
+              <th style="width: 12%;">Facilitador(a)</th>
+              {% for dia in dias_mes %}
+                <th class="freq-dia">
+                  {{ dia|date:"d" }}<br>
+                  {{ dia|date:"D" }}
+                </th>
+              {% endfor %}
+              <th style="width: 6%;">Faltas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in atividades_grade %}
+              <tr>
+                <td>
+                  <strong>{{ item.atividade.atividade }}</strong><br>
+                  {{ item.atividade.turno }}
+                </td>
+                <td>{{ item.atividade.facilitador.first_name }}</td>
+
+                {% for dia_info in item.dias %}
+                  <td class="freq-status">
+                    {% if dia_info.status == 'P' %}
+                      <span class="status-presente">P</span>
+                    {% elif dia_info.status == 'F' %}
+                      <span class="status-falta">F</span>
+                    {% elif dia_info.status == '' %}
+                      -
+                    {% else %}
+                      
+                    {% endif %}
+                  </td>
+                {% endfor %}
+
+                <td class="freq-faltas">{{ item.faltas }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <table class="table-relatorio">
+          <tbody>
+            <tr>
+              <td class="texto-centro">Nenhuma atividade vinculada neste mês.</td>
+            </tr>
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+
+    <div class="bloco-relatorio">
+      <div class="secao-titulo">Histórico de Movimentações de Turma</div>
+
+      <table class="table-relatorio">
+        <thead>
+          <tr>
+            <th style="width: 16%;">Data</th>
+            <th style="width: 26%;">Turma de Origem</th>
+            <th style="width: 26%;">Turma de Destino</th>
+            <th style="width: 32%;">Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mov in movimentacoes %}
+            <tr>
+              <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+              <td>
+                {% if mov.turma_origem %}
+                  {{ mov.turma_origem.grupo }} - {{ mov.turma_origem.educadora.first_name }} - {{ mov.turma_origem.turno }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if mov.turma_destino %}
+                  {{ mov.turma_destino.grupo }} - {{ mov.turma_destino.educadora.first_name }} - {{ mov.turma_destino.turno }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ mov.motivo }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="texto-centro">Nenhuma movimentação neste mês.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bloco-relatorio">
+      <div class="secao-titulo">Ocorrências</div>
+
+      <table class="table-relatorio">
+        <thead>
+          <tr>
+            <th style="width: 12%;">Data</th>
+            <th style="width: 14%;">Tipo</th>
+            <th style="width: 24%;">Observação</th>
+            <th style="width: 32%;">Descrição</th>
+            <th style="width: 18%;">Responsável</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for occ in ocorrencias %}
+            <tr>
+              <td>{{ occ.data|date:"d/m/Y" }}</td>
+              <td>{{ occ.tipo }}</td>
+              <td>{{ occ.observacoes }}</td>
+              <td>{{ occ.descricao }}</td>
+              <td>{{ occ.responsavel }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="texto-centro">Nenhuma ocorrência neste mês.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="no-print">
+  <a href="{% url 'relatorio_busca_aluno' %}" class="btn btn-secondary">Voltar à Busca</a>
+  <button type="button" class="btn btn-outline-primary" onclick="window.print()">Imprimir / Salvar em PDF</button>
+</div>
 {% endblock %}

@@ -21,7 +21,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, Http404
 from django.db import transaction
 from django.db.models import Count, Q, F, Avg, Value, When, Sum, CharField, Exists, OuterRef, IntegerField, FloatField, Case
 from django.db.models.functions import Cast, Coalesce, Concat, Lower
@@ -2299,19 +2299,29 @@ def activity_add_alunos(request, activity_id):
     return render(request, "AppLSD/activity_add_alunos.html", context)
 
 def get_contexto_relatorio_turma(request, turma_id, data=None):
-    turma = Turma.objects.get(id=turma_id)
+    turma = get_object_or_404(Turma, id=turma_id)
     alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
-    # data vinda por GET sobrescreve o parâmetro da URL
     data_get = request.GET.get('data')
     if data_get:
         data = data_get
 
     chamada = None
     presencas_dict = {}
+    presentes = 0
+    faltantes = 0
 
     if data:
-        chamada = FrequenciaTurma.objects.filter(turma=turma, data=data).first()
+        if isinstance(data, str):
+            try:
+                data = datetime.strptime(data, "%Y-%m-%d").date()
+            except ValueError:
+                data = date.today()
+
+        chamada = FrequenciaTurma.objects.filter(
+            turma=turma,
+            data=data
+        ).first()
     else:
         chamada = (
             FrequenciaTurma.objects
@@ -2319,11 +2329,13 @@ def get_contexto_relatorio_turma(request, turma_id, data=None):
             .order_by('-data')
             .first()
         )
-        data = chamada.data if chamada else None
+        data = chamada.data if chamada else date.today()
 
     if chamada:
-        presencas = FrequenciaAluno.objects.filter(chamada=chamada)
+        presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
         presencas_dict = {p.aluno_id: p for p in presencas}
+        presentes = sum(1 for p in presencas if p.presente)
+        faltantes = sum(1 for p in presencas if not p.presente)
 
     context = {
         'turma': turma,
@@ -2331,8 +2343,12 @@ def get_contexto_relatorio_turma(request, turma_id, data=None):
         'chamada': chamada,
         'data': data,
         'presencas_dict': presencas_dict,
+        'presentes': presentes,
+        'faltantes': faltantes,
+        'total_alunos': alunos.count(),
     }
     return context
+
 
 @login_required
 def relatorio_presenca_turma(request, turma_id, data=None):
@@ -2345,7 +2361,6 @@ def relatorio_presenca_turma_pdf(request, turma_id, data=None):
     context = get_contexto_relatorio_turma(request, turma_id, data)
 
     response = HttpResponse(content_type='application/pdf')
-    # se quiser forçar download, use também:
     # response['Content-Disposition'] = f'attachment; filename="relatorio_turma_{turma_id}.pdf"'
 
     return generate_pdf(
@@ -2353,7 +2368,6 @@ def relatorio_presenca_turma_pdf(request, turma_id, data=None):
         file_object=response,
         context=context,
     )
-
 
 def get_contexto_relatorio_turma_mensal(request, turma_id):
     turma = Turma.objects.get(id=turma_id)
@@ -2726,39 +2740,54 @@ def get_contexto_relatorio_aluno_mensal(request):
     aluno_id = request.GET.get('aluno_id')
     mes = request.GET.get('mes')  # YYYY-MM
 
+    if not aluno_id:
+        raise Http404("Aluno não informado.")
+
     aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    # se não vier mês, você pode defaultar para mês atual
     if not mes:
         hoje = date.today()
         mes = f"{hoje.year}-{hoje.month:02d}"
 
-    ano, mes_num = mes.split('-')
-    ano = int(ano)
-    mes_num = int(mes_num)
+    try:
+        ano, mes_num = mes.split('-')
+        ano = int(ano)
+        mes_num = int(mes_num)
+        primeiro_dia = date(ano, mes_num, 1)
+    except (ValueError, TypeError):
+        hoje = date.today()
+        ano = hoje.year
+        mes_num = hoje.month
+        mes = f"{ano}-{mes_num:02d}"
+        primeiro_dia = date(ano, mes_num, 1)
 
-    primeiro_dia = date(ano, mes_num, 1)
     ultimo_dia_num = monthrange(ano, mes_num)[1]
     ultimo_dia = date(ano, mes_num, ultimo_dia_num)
 
-     # --------- DIAS ÚTEIS DO MÊS (segunda a sexta) ----------
-    todos_dias = [primeiro_dia + timedelta(days=i)
-                  for i in range((ultimo_dia - primeiro_dia).days + 1)]
-    dias_mes = [d for d in todos_dias if d.weekday() in weekdays_permitidos]
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
 
-    # --------- FREQUÊNCIA EM TURMA (planilha P/F) ----------
-    freq_qs = (FrequenciaAluno.objects
-               .filter(
-                   aluno=aluno,
-                   chamada__data__range=(primeiro_dia, ultimo_dia),
-               )
-               .select_related('chamada'))
+    dias_mes = [d for d in todos_dias if d.weekday() < 5]
 
-    # dict data -> registro de frequência
+    turma_aluno = getattr(aluno, 'turma', None)
+
+    freq_qs = (
+        FrequenciaAluno.objects
+        .filter(
+            aluno=aluno,
+            chamada__data__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related('chamada')
+        .order_by('chamada__data')
+    )
+
     freq_dict = {f.chamada.data: f for f in freq_qs}
 
     status_por_dia = []
     faltas = 0
+    presentes = 0
 
     for dia in dias_mes:
         f = freq_dict.get(dia)
@@ -2767,33 +2796,108 @@ def get_contexto_relatorio_aluno_mensal(request):
         else:
             if f.presente:
                 status = 'P'
+                presentes += 1
             else:
                 status = 'F'
                 faltas += 1
-        status_por_dia.append(status)
+        status_por_dia.append({
+            'dia': dia,
+            'status': status,
+        })
 
-    # --------- FREQUÊNCIA EM ATIVIDADES ----------
-    atividades_freq = (
+        atividades_freq_qs = (
         FrequenciaAtividade.objects
         .filter(
             aluno=aluno,
             data__range=(primeiro_dia, ultimo_dia),
         )
-        .select_related('atividade')
-        .order_by('data', 'atividade__atividade')
+        .select_related('atividade', 'atividade__facilitador')
+        .order_by('atividade__atividade', 'data')
     )
 
-    # --------- MOVIMENTAÇÕES ENTRE TURMAS ----------
-    movs = MovimentacaoTurmaAluno.objects.filter(
-        aluno=aluno,
-        data__date__range=(primeiro_dia, ultimo_dia),
-    ).select_related('turma_origem', 'turma_destino').order_by('data')
+    freq_atividade_dict = {}
+    for reg in atividades_freq_qs:
+        freq_atividade_dict[(reg.atividade_id, reg.data)] = reg
 
-    # --------- OCORRÊNCIAS ----------
-    ocorrencias = OcorrenciaAluno.objects.filter(
-        aluno=aluno,
-        data__range=(primeiro_dia, ultimo_dia),
-    ).order_by('data')
+    atividades_grade = []
+
+    atividades_vinculadas = (
+        aluno.atividades.all()
+        .select_related('facilitador')
+        .order_by('atividade')
+    )
+
+    for atividade in atividades_vinculadas:
+        dias_atividade = []
+        faltas_atividade = 0
+
+        for dia in dias_mes:
+            # ajuste conforme o campo dia_semana da activity
+            incluir_dia = True
+
+            if getattr(atividade, 'dia_semana', None):
+                mapa_dias = {
+                    'segunda': 0,
+                    'terça': 1,
+                    'terca': 1,
+                    'quarta': 2,
+                    'quinta': 3,
+                    'sexta': 4,
+                    'sábado': 5,
+                    'sabado': 5,
+                    'domingo': 6,
+                }
+
+                dia_semana_atividade = str(atividade.dia_semana).lower()
+                incluir_dia = False
+
+                for nome, numero in mapa_dias.items():
+                    if nome in dia_semana_atividade and dia.weekday() == numero:
+                        incluir_dia = True
+                        break
+
+            if incluir_dia:
+                reg = freq_atividade_dict.get((atividade.id, dia))
+                if reg:
+                    if reg.presente:
+                        status = 'P'
+                    else:
+                        status = 'F'
+                        faltas_atividade += 1
+                else:
+                    status = ''
+            else:
+                status = None
+
+            dias_atividade.append({
+                'dia': dia,
+                'status': status,
+            })
+
+        atividades_grade.append({
+            'atividade': atividade,
+            'dias': dias_atividade,
+            'faltas': faltas_atividade,
+        })
+
+    movs = (
+        MovimentacaoTurmaAluno.objects
+        .filter(
+            aluno=aluno,
+            data__date__range=(primeiro_dia, ultimo_dia),
+        )
+        .select_related('turma_origem', 'turma_destino')
+        .order_by('data')
+    )
+
+    ocorrencias = (
+        OcorrenciaAluno.objects
+        .filter(
+            aluno=aluno,
+            data__range=(primeiro_dia, ultimo_dia),
+        )
+        .order_by('data')
+    )
 
     context = {
         'aluno': aluno,
@@ -2803,30 +2907,21 @@ def get_contexto_relatorio_aluno_mensal(request):
         'dias_mes': dias_mes,
         'status_por_dia': status_por_dia,
         'faltas': faltas,
-        'atividades_freq': atividades_freq,
+        'presentes': presentes,
+        'total_dias_letivos': len(dias_mes),
+        'atividades_grade': atividades_grade,
         'movimentacoes': movs,
         'ocorrencias': ocorrencias,
+        'turma_relatorio': turma_aluno,
+        'aluno_sem_turma': turma_aluno is None,
     }
     return context
 
- 
+
 @login_required
 def relatorio_mensal_aluno(request):
     context = get_contexto_relatorio_aluno_mensal(request)
     return render(request, 'AppLSD/relatorio_mensal_aluno.html', context)
-
-
-@login_required
-def relatorio_mensal_aluno_pdf(request):
-    context = get_contexto_relatorio_aluno_mensal(request)
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="relatorio_aluno_{context["aluno"].id}.pdf"'
-    return generate_pdf(
-        'AppLSD/relatorio_mensal_aluno_pdf.html',  # <-- novo template
-        file_object=response,
-        context=context,
-    )
-
 
 #@login_required
 def relatorio_busca_aluno(request):
