@@ -517,7 +517,26 @@ class Aluno(AuditModel):
     status_lsd = models.CharField(max_length=15, choices=STATUS_CHOICES, default='', blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     #turma = models.ManyToManyRelationship(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
-    activities = models.ManyToManyField('Activity', blank=True)
+    #activities = models.ManyToManyField('Activity', blank=True)
+
+    motivo_desligamento = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Motivo do desligamento'
+    )
+    data_desligamento = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Data do desligamento'
+    )
+    desligado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='alunos_desligados',
+        verbose_name='Desligado por'
+    )
 
     def __str__(self):
             return self.name

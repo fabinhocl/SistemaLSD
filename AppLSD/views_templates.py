@@ -5,7 +5,7 @@ from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usu
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioCadastroForm, UsuarioEdicaoForm, RemoverAlunoAtividadeForm, MeuPerfilForm
 from calendar import monthrange
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
@@ -18,6 +18,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.staticfiles import finders
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import make_aware
@@ -36,6 +37,7 @@ from itertools import chain
 from io import BytesIO
 from operator import itemgetter
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import os
@@ -1193,41 +1195,112 @@ def aluno_detail(request, pk):
         aluno=aluno
     ).order_by('-data')   # traz inclusive quando turma_destino é None
 
+    pode_desligar_aluno = (
+        not is_educadora and aluno.status_lsd != 'desligado'
+    )
+
     context = {
         'aluno': aluno,
         'logs': logs,
         'historico_turmas': historico_turmas,
         'is_educadora': is_educadora,
         'turma_atual': turma_atual,
+        "pode_desligar_aluno": pode_desligar_aluno,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
 
 @login_required
 def aluno_edit(request, pk):
-    # bloqueia colaboradores
     if usuario_tem_perfil(request.user, "colaborador"):
         raise PermissionDenied("Colaborador não pode editar aluno.")
+
     aluno = get_object_or_404(Aluno, pk=pk)
+    status_anterior = aluno.status_lsd
+
     if request.method == 'POST':
         form = AlunoForm(request.POST, instance=aluno)
         if form.is_valid():
-            aluno = form.save(commit=False)
-            aluno.editado_por = request.user  # auditoria
-            aluno.save()
+            aluno_editado = form.save(commit=False)
+            novo_status = aluno_editado.status_lsd
+
+            with transaction.atomic():
+                if status_anterior != 'desligado' and novo_status == 'desligado':
+                    motivo = 'Desligamento realizado pela edição do aluno'
+
+                    atividades = list(aluno.atividades.all())
+
+                    for atividade in atividades:
+                        atividade.alunos.remove(aluno)
+
+                        registrar_log(
+                            request.user,
+                            atividade,
+                            'aluno_removido_desligamento',
+                            f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento via edição. Motivo: {motivo}.'
+                        )
+
+                    if atividades:
+                        registrar_log(
+                            request.user,
+                            aluno,
+                            'aluno_removido_atividades',
+                            f'Aluno removido de todas as atividades por desligamento via edição. Motivo: {motivo}.'
+                        )
+
+                    if aluno.turma:
+                        turma_atual = aluno.turma
+                        aluno.turma = None
+
+                        registrar_log(
+                            request.user,
+                            turma_atual,
+                            'aluno_removido_turma',
+                            f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento via edição. Motivo: {motivo}.'
+                        )
+
+                        registrar_log(
+                            request.user,
+                            aluno,
+                            'aluno_removido_turma',
+                            f'Aluno removido da turma "{turma_atual.grupo}" por desligamento via edição. Motivo: {motivo}.'
+                        )
+
+                    aluno.status_lsd = 'desligado'
+                    aluno.editado_por = request.user
+                    aluno.motivo_desligamento = motivo
+                    aluno.data_desligamento = timezone.now()
+                    aluno.desligado_por = request.user
+                    aluno.save()
+
+                    registrar_log(
+                        request.user,
+                        aluno,
+                        'aluno_desligado',
+                        f'Aluno {aluno.name} desligado com sucesso via edição. Motivo: {motivo}.'
+                    )
+                else:
+                    aluno_editado.editado_por = request.user
+                    aluno_editado.save()
+                    form.save_m2m()
+
+                    registrar_log(
+                        request.user,
+                        aluno_editado,
+                        'aluno_editado',
+                        f'Aluno {aluno_editado.name} editado com sucesso.'
+                    )
+
+            messages.success(request, 'Aluno atualizado com sucesso.')
             return redirect('aluno_detail', pk=aluno.pk)
     else:
         form = AlunoForm(instance=aluno)
-    
-    # Contexto com valores para carregar nos campos HTML puros
+
     context = {
         'form': form,
         'aluno': aluno,
-        
     }
-  
-    # Log para debug
+
     logger.debug(f"Ensino: {aluno.ensino}, Série: {aluno.serie}")
-    
     return render(request, 'AppLSD/aluno_form.html', context)
 
 @login_required
@@ -1256,81 +1329,142 @@ def aluno_delete_confirm(request, pk):
         'error': error,
     })
 
+def desligar_aluno_logic(*, request_user, aluno, motivo, origem='manual', familia=None):
+    motivo = (motivo or '').strip() or 'Não informado'
+
+    atividades = Activity.objects.filter(alunos=aluno)
+
+    for atividade in atividades:
+        atividade.alunos.remove(aluno)
+
+        registrar_log(
+            request_user,
+            atividade,
+            'aluno_removido_desligamento',
+            f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento. Motivo: {motivo}.'
+        )
+
+    if atividades.exists():
+        registrar_log(
+            request_user,
+            aluno,
+            'aluno_removido_atividades',
+            f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
+        )
+
+    if aluno.turma:
+        turma_atual = aluno.turma
+        aluno.turma = None
+
+        registrar_log(
+            request_user,
+            turma_atual,
+            'aluno_removido_turma',
+            f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+        )
+
+        registrar_log(
+            request_user,
+            aluno,
+            'aluno_removido_turma',
+            f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+        )
+
+    aluno.status_lsd = 'Desligado'
+    aluno.editado_por = request_user
+
+    if hasattr(aluno, 'motivo_desligamento'):
+        aluno.motivo_desligamento = motivo
+
+    if hasattr(aluno, 'data_desligamento'):
+        aluno.data_desligamento = timezone.now()
+
+    if hasattr(aluno, 'desligado_por'):
+        aluno.desligado_por = request_user
+
+    aluno.save()
+
+    registrar_log(
+        request_user,
+        aluno,
+        'aluno_desligado',
+        f'Aluno {aluno.name} desligado com sucesso. Motivo: {motivo}.'
+    )
+
+@login_required
+def desativar_aluno(request, aluno_id):
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+
+    if not (request.user.is_superuser or is_coordenacao(request.user)):
+        return HttpResponseForbidden('Sem permissão')
+
+    if request.method == 'POST':
+        senha = request.POST.get('senha', '').strip()
+        motivo = request.POST.get('motivo', '').strip()
+
+        if not senha:
+            messages.error(request, 'Senha obrigatória!')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        if not check_password(senha, request.user.password):
+            messages.error(request, 'Senha incorreta!')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        if not motivo:
+            messages.error(request, 'O motivo do desligamento é obrigatório.')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        with transaction.atomic():
+            desligar_aluno_logic(
+                request_user=request.user,
+                aluno=aluno,
+                motivo=motivo,
+                origem='manual'
+            )
+
+        messages.success(
+            request,
+            f'Aluno {aluno.name} desligado com sucesso, removido da turma e das atividades.'
+        )
+        return redirect('aluno_detail', pk=aluno.id)
+
+    return render(request, 'AppLSD/desativar_aluno.html', {'aluno': aluno})
+
+
+@login_required
 def desativar_familia(request, familia_id):
     """
     Desativa uma família e todos os seus assistidos.
     Remove alunos de turmas e atividades, registrando no histórico.
     """
     familia = get_object_or_404(Family, id=familia_id)
-    
+
     if request.method == 'POST':
         with transaction.atomic():
-            # 1. Buscar todos os alunos da família
             alunos = Aluno.objects.filter(family=familia)
-            
-            # 2. Para cada aluno
+
             for aluno in alunos:
-                # Remover de todas as atividades
-                atividades = Activity.objects.filter(alunos=aluno)
-                for atividade in atividades:
-                    atividade.alunos.remove(aluno)
-                    
-                    # Registrar no histórico da atividade
-                    registrar_log(
-                        request.user,
-                        atividade,
-                        'aluno_removido_familia_desativada',
-                        f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" '
-                        f'por desativação da família {familia.name}.'
-                    )
-                
-                # Registrar no histórico do aluno
-                registrar_log(
-                    request.user,
-                    aluno,
-                    'aluno_removido_atividade',
-                    f'Removido de todas as atividades por desativação da família.'
+                desligar_aluno_logic(
+                    request_user=request.user,
+                    aluno=aluno,
+                    motivo=f'Desativação da família {familia.name}',
+                    origem='familia_desativada',
+                    familia=familia
                 )
-                
-                # Remover de todas as turmas (se aplicável)
-                turma_atual = aluno.turma
-                if turma_atual:
-                    aluno.turma = None
-                    aluno.save()
-                    
-                    # Registrar no histórico da turma
-                    registrar_log(
-                        request.user,
-                        turma_atual,
-                        'aluno_removido_familia_desativada',
-                        f'Aluno {aluno.name} removido por desativação da família {familia.name}.'
-                    )
-                
-                # Desativar o aluno
-                aluno.ativo = False
-                aluno.save()
-                
-                # Registrar no histórico do aluno
-                registrar_log(
-                    request.user,
-                    aluno,
-                    'aluno_desativado',
-                    f'Aluno desativado por desativação da família {familia.name}.'
-                )
-            
-            # 3. Desativar a família
+
             familia.ativo = False
             familia.save()
-            
+
             messages.success(
-                request, 
+                request,
                 f'Família {familia.name} desativada. '
                 f'{alunos.count()} aluno(s) removido(s) de turmas e atividades.'
             )
-            
+
             return redirect('familia_list')
-    
+
     return render(request, 'desativar_familia.html', {'familia': familia})
+
 
 def _remover_aluno_da_atividade_logic(request, aluno, atividade):
     """
@@ -1388,6 +1522,90 @@ def remover_aluno_da_atividade(request, activity_id, aluno_id):
     
     return redirect('activity_detail', activity_id=atividade.id)
 
+
+
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+
+    if not (request.user.is_superuser or is_coordenacao(request.user)):
+        return HttpResponseForbidden('Sem permissão')
+
+    if request.method == 'POST':
+        senha = request.POST.get('senha', '').strip()
+        motivo = request.POST.get('motivo', '').strip()
+
+        if not senha:
+            messages.error(request, 'Senha obrigatória!')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        if not check_password(senha, request.user.password):
+            messages.error(request, 'Senha incorreta!')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        if not motivo:
+            messages.error(request, 'O motivo do desligamento é obrigatório.')
+            return redirect('aluno_detail', pk=aluno.id)
+
+        with transaction.atomic():
+            # Remover de todas as atividades
+            atividades = Activity.objects.filter(alunos=aluno)
+
+            for atividade in atividades:
+                atividade.alunos.remove(aluno)
+
+                registrar_log(
+                    request.user,
+                    atividade,
+                    'aluno_removido_desligamento',
+                    f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" '
+                    f'por desligamento. Motivo: {motivo}.'
+                )
+
+            if atividades.exists():
+                registrar_log(
+                    request.user,
+                    aluno,
+                    'aluno_removido_atividade',
+                    f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
+                )
+
+            # Remover da turma
+            turma_atual = aluno.turma
+            if turma_atual:
+                aluno.turma = None
+
+                registrar_log(
+                    request.user,
+                    turma_atual,
+                    'aluno_removido_desligamento',
+                    f'Aluno {aluno.name} removido da turma por desligamento. Motivo: {motivo}.'
+                )
+
+                registrar_log(
+                    request.user,
+                    aluno,
+                    'aluno_removido_turma',
+                    f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+                )
+
+            # Desativar aluno
+            aluno.ativo = False
+            aluno.status_lsd = 'Desligado'
+            aluno.save()
+
+            registrar_log(
+                request.user,
+                aluno,
+                'aluno_desativado',
+                f'Aluno desligado. Motivo: {motivo}.'
+            )
+
+        messages.success(
+            request,
+            f'Aluno {aluno.name} desligado com sucesso, removido da turma e das atividades.'
+        )
+        return redirect('aluno_detail', pk=aluno.id)
+
+    return render(request, 'AppLSD/desativar_aluno.html', {'aluno': aluno})
 
 @login_required
 def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
@@ -3906,3 +4124,368 @@ def relatorio_desligados_html(request):
     }
 
     return render(request, "AppLSD/relatorio_desligados_html.html", context)
+
+
+def _limpar_nome_aba(nome):
+    if not nome:
+        return "Turma"
+    nome = str(nome).replace('/', '-').replace('\\', '-').replace('*', '')
+    nome = nome.replace('[', '').replace(']', '').replace(':', '').replace('?', '')
+    return nome[:31]
+
+
+SIGLAS_ATIVIDADES = {
+    'JUDÔ': 'JUD',
+    'JUDO': 'JUD',
+    'CORAL': 'COR',
+    'BANDA': 'BAN',
+    'TEATRO': 'TEA',
+    'KUN FO': 'KFU',
+    'KUNG FU': 'KFU',
+    'CAPOEIRA': 'CAP',
+    'INFORMÁTICA': 'INFO',
+    'INFORMATICA': 'INFO',
+    'FLAUTA': 'FLA',
+    'INGLÊS': 'ING',
+    'INGLES': 'ING',
+    'HANDEBOL': 'HAN',
+    'FUTSAL': 'FUT',
+    'VOLEIBOL': 'VOL',
+    'VOLEI': 'VOL',
+    'EDUCAÇÃO FÍSICA': 'EDF',
+    'EDUCACAO FISICA': 'EDF',
+}
+
+
+def normalizar_nome_atividade(nome):
+    return (nome or '').strip().upper()
+
+
+def sigla_atividade(nome):
+    nome_normalizado = normalizar_nome_atividade(nome)
+
+    for chave, sigla in SIGLAS_ATIVIDADES.items():
+        if chave in nome_normalizado:
+            return sigla
+
+    nome_limpo = nome_normalizado.replace(' ', '')
+    return nome_limpo[:6] if nome_limpo else 'ATV'
+
+
+def limpar_nome_aba(nome):
+    if not nome:
+        return "Turma"
+    invalidados = ['\\', '/', '*', '[', ']', ':', '?']
+    for ch in invalidados:
+        nome = nome.replace(ch, '-')
+    return nome[:31]
+
+
+def obter_logo_path():
+    candidatos = [
+        'img/logo_integra_lar.png',
+        'img/logo_integralar.png',
+        'images/logo_integra_lar.png',
+        'AppLSD/img/logo_integra_lar.png',
+        'AppLSD/img/logo_integralar.png',
+    ]
+
+    for caminho in candidatos:
+        arquivo = finders.find(caminho)
+        if arquivo:
+            return arquivo
+
+    return None
+
+
+def obter_atividades_consolidadas_da_turma(turma):
+    atividades_turno = (
+        Activity.objects
+        .filter(turno=turma.turno)
+        .order_by('atividade')
+    )
+
+    mapa_siglas = OrderedDict()
+
+    for atividade in atividades_turno:
+        nome_original = (atividade.atividade or '').strip()
+        sigla = sigla_atividade(nome_original)
+
+        if not sigla:
+            continue
+
+        if sigla not in mapa_siglas:
+            mapa_siglas[sigla] = {
+                'sigla': sigla,
+                'nomes_originais': [],
+                'ids': set(),
+            }
+
+        mapa_siglas[sigla]['ids'].add(atividade.id)
+
+        if nome_original and nome_original not in mapa_siglas[sigla]['nomes_originais']:
+            mapa_siglas[sigla]['nomes_originais'].append(nome_original)
+
+    return mapa_siglas
+
+
+def obter_alunos_da_turma(turma):
+    return (
+        Aluno.objects
+        .filter(turma=turma, status_lsd='Frequentando')
+        .select_related('family', 'turma')
+        .prefetch_related('atividades')
+        .order_by('name')
+    )
+
+
+@login_required
+def exportar_alunos_sem_atividades_excel(request):
+    turma_id = request.GET.get('turma_id')
+
+    turmas = Turma.objects.select_related('educadora').order_by('turno', 'grupo')
+    if turma_id:
+        turmas = turmas.filter(id=turma_id)
+
+    wb = Workbook()
+    ws_padrao = wb.active
+    wb.remove(ws_padrao)
+
+    logo_path = obter_logo_path()
+
+    fill_header = PatternFill(fill_type='solid', start_color='D9EAD3', end_color='D9EAD3')
+    fill_info = PatternFill(fill_type='solid', start_color='F4F6F8', end_color='F4F6F8')
+    font_header = Font(bold=True, size=11)
+    font_titulo = Font(bold=True, size=14)
+    font_subtitulo = Font(bold=True, size=11)
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    align_left = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    thin = Side(border_style='thin', color='A0A0A0')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for idx, turma in enumerate(turmas, start=1):
+        nome_aba = limpar_nome_aba(f"{turma.grupo or 'Turma'} - {turma.turno or ''}".strip())
+        ws = wb.create_sheet(title=nome_aba or f"Turma {idx}")
+
+        atividades_map = obter_atividades_consolidadas_da_turma(turma)
+        siglas = list(atividades_map.keys())
+
+        nome_educadora = ''
+        if turma.educadora:
+            nome_educadora = turma.educadora.get_full_name() or turma.educadora.first_name or str(turma.educadora)
+
+        total_colunas = 3 + len(siglas) + 2
+        ultima_coluna = get_column_letter(total_colunas)
+
+        if logo_path:
+            try:
+                img = XLImage(logo_path)
+                img.width = 85
+                img.height = 85
+                ws.add_image(img, 'A1')
+            except Exception:
+                pass
+
+        ws.merge_cells(f'B1:{ultima_coluna}1')
+        ws['B1'] = 'LAR SÃO DOMINGOS - RELATÓRIO DE ATIVIDADES'
+        ws['B1'].font = font_titulo
+        ws['B1'].alignment = align_center
+
+        ws.merge_cells(f'B2:{ultima_coluna}2')
+        ws['B2'] = f'Turma: {turma.grupo or "-"}'
+        ws['B2'].font = font_subtitulo
+        ws['B2'].alignment = align_left
+        ws['B2'].fill = fill_info
+
+        ws.merge_cells(f'B3:{ultima_coluna}3')
+        ws['B3'] = f'Educadora: {nome_educadora or "-"}'
+        ws['B3'].font = font_subtitulo
+        ws['B3'].alignment = align_left
+        ws['B3'].fill = fill_info
+
+        ws.merge_cells(f'B4:{ultima_coluna}4')
+        ws['B4'] = f'Turno: {turma.turno or "-"}   |   Ano Letivo: {turma.ano_letivo}'
+        ws['B4'].alignment = align_left
+        ws['B4'].fill = fill_info
+
+        if siglas:
+            descricao_siglas = ' | '.join(
+                f"{sigla} - {', '.join(dados['nomes_originais'])}"
+                for sigla, dados in atividades_map.items()
+            )
+        else:
+            descricao_siglas = 'Nenhuma atividade cadastrada para o turno desta turma.'
+
+        ws.merge_cells(f'A6:{ultima_coluna}6')
+        ws['A6'] = descricao_siglas
+        ws['A6'].alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        ws['A6'].font = Font(bold=True)
+
+        linha_header = 8
+        headers = ['INSC', 'NOME', 'NASC.'] + siglas + ['TOTAL', 'SEM ATIVIDADES']
+
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=linha_header, column=col_idx, value=header)
+            cell.font = font_header
+            cell.fill = fill_header
+            cell.alignment = align_center
+            cell.border = border
+
+        alunos = obter_alunos_da_turma(turma)
+        linha_atual = linha_header + 1
+        total_sem_atividades = 0
+
+        for aluno in alunos:
+            inscricao = ''
+            if aluno.family and getattr(aluno.family, 'registration_number', None):
+                inscricao = aluno.family.registration_number
+            else:
+                inscricao = aluno.id
+
+            siglas_aluno = set()
+
+            for atividade in aluno.atividades.all():
+                if atividade.turno != turma.turno:
+                    continue
+
+                sigla = sigla_atividade(atividade.atividade)
+                if sigla in atividades_map:
+                    siglas_aluno.add(sigla)
+
+            total_unico = len(siglas_aluno)
+            if total_unico == 0:
+                total_sem_atividades += 1
+
+            linha = [
+                inscricao,
+                aluno.name,
+                aluno.birth_date.strftime('%d/%m/%Y') if aluno.birth_date else '',
+            ]
+
+            for sigla in siglas:
+                linha.append('X' if sigla in siglas_aluno else '')
+
+            linha.append(total_unico)
+            linha.append('SIM' if total_unico == 0 else '')
+
+            for col_idx, valor in enumerate(linha, start=1):
+                cell = ws.cell(row=linha_atual, column=col_idx, value=valor)
+                cell.border = border
+                cell.alignment = align_center if col_idx != 2 else align_left
+
+            linha_atual += 1
+
+        ws.cell(row=linha_atual + 1, column=1, value='TOTAL DE ALUNOS').font = font_header
+        ws.cell(row=linha_atual + 1, column=2, value=alunos.count())
+
+        ws.cell(row=linha_atual + 2, column=1, value='ALUNOS SEM ATIVIDADES').font = font_header
+        ws.cell(row=linha_atual + 2, column=2, value=total_sem_atividades)
+
+        ws.column_dimensions['A'].width = 14
+        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions['C'].width = 14
+
+        for i in range(4, 4 + len(siglas)):
+            ws.column_dimensions[get_column_letter(i)].width = 10
+
+        ws.column_dimensions[get_column_letter(4 + len(siglas))].width = 10
+        ws.column_dimensions[get_column_letter(5 + len(siglas))].width = 18
+
+        ws.row_dimensions[1].height = 28
+        ws.row_dimensions[6].height = 40
+        ws.freeze_panes = f'A{linha_header + 1}'
+
+    if not wb.sheetnames:
+        ws = wb.create_sheet(title='Relatório')
+        ws['A1'] = 'Nenhuma turma encontrada.'
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="relatorio_alunos_sem_atividades.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def relatorio_alunos_sem_atividades_html(request):
+    turma_id = request.GET.get('turma_id')
+
+    turmas = Turma.objects.select_related('educadora').order_by('turno', 'grupo')
+    if turma_id:
+        turmas = turmas.filter(id=turma_id)
+
+    relatorios = []
+
+    for turma in turmas:
+        atividades_map = obter_atividades_consolidadas_da_turma(turma)
+        siglas = list(atividades_map.keys())
+        alunos = obter_alunos_da_turma(turma)
+
+        nome_educadora = ''
+        if turma.educadora:
+            nome_educadora = turma.educadora.get_full_name() or turma.educadora.first_name or str(turma.educadora)
+
+        linhas = []
+        total_sem_atividades = 0
+
+        for aluno in alunos:
+            inscricao = ''
+            if aluno.family and getattr(aluno.family, 'registration_number', None):
+                inscricao = aluno.family.registration_number
+            else:
+                inscricao = aluno.id
+
+            siglas_aluno = set()
+
+            for atividade in aluno.atividades.all():
+                if atividade.turno != turma.turno:
+                    continue
+
+                sigla = sigla_atividade(atividade.atividade)
+                if sigla in atividades_map:
+                    siglas_aluno.add(sigla)
+
+            total_unico = len(siglas_aluno)
+            sem_atividades = total_unico == 0
+
+            if sem_atividades:
+                total_sem_atividades += 1
+
+            marcacoes = []
+            for sigla in siglas:
+                marcacoes.append({
+                    'sigla': sigla,
+                    'marcado': sigla in siglas_aluno,
+                })
+
+            linhas.append({
+                'inscricao': inscricao,
+                'nome': aluno.name,
+                'nascimento': aluno.birth_date.strftime('%d/%m/%Y') if aluno.birth_date else '',
+                'marcacoes': marcacoes,
+                'total': total_unico,
+                'sem_atividades': sem_atividades,
+            })
+
+        atividades_legenda = []
+        for sigla, dados in atividades_map.items():
+            atividades_legenda.append({
+                'sigla': sigla,
+                'descricao': ', '.join(dados['nomes_originais']),
+            })
+
+        relatorios.append({
+            'turma': turma,
+            'nome_educadora': nome_educadora,
+            'atividades': atividades_legenda,
+            'siglas': siglas,
+            'linhas': linhas,
+            'total_alunos': alunos.count(),
+            'total_sem_atividades': total_sem_atividades,
+        })
+
+    context = {
+        'relatorios': relatorios,
+    }
+    return render(request, 'AppLSD/relatorio_alunos_sem_atividades.html', context)

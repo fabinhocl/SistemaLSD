@@ -10,7 +10,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Criança / Adolescente</h1>
-            <form method="post" class="mb-4">
+            <form method="post" class="mb-4" id="alunoEditForm">
                 {% csrf_token %}
                 
                 <div class="row mb-3">
@@ -97,11 +97,40 @@
                 </div>
 
                 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="btnSalvarAluno">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
                 <a href="{% url 'family_list' %}" class="btn btn-secondary ms-2">Voltar</a>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfirmarDesligamentoEdicao" tabindex="-1"
+     aria-labelledby="modalConfirmarDesligamentoEdicaoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalConfirmarDesligamentoEdicaoLabel">
+                    Confirmar desligamento
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body">
+                Ao salvar com status <strong>Desligado</strong>, o aluno será removido da turma e das atividades vinculadas.
+                Deseja continuar?
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarDesligamentoEdicao">
+                    Confirmar desligamento
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -312,6 +341,62 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // quando mudar
     tipoSelect.addEventListener('change', toggleDiasSemana);
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('alunoEditForm');
+    const btnSalvar = document.getElementById('btnSalvarAluno');
+    const btnConfirmar = document.getElementById('btnConfirmarDesligamentoEdicao');
+    const statusField = document.getElementById('id_status_lsd');
+    const modalElement = document.getElementById('modalConfirmarDesligamentoEdicao');
+
+    if (!form || !btnSalvar || !btnConfirmar || !statusField || !modalElement) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    const statusInicial = statusField.value;
+    let envioConfirmado = false;
+    let bloqueandoSubmit = false;
+
+    form.addEventListener('submit', function (event) {
+        if (bloqueandoSubmit) {
+            event.preventDefault();
+        }
+    });
+
+    btnSalvar.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        const statusAtual = statusField.value;
+
+        if (
+            statusInicial !== 'desligado' &&
+            statusAtual === 'desligado' &&
+            !envioConfirmado
+        ) {
+            bloqueandoSubmit = true;
+            modal.show();
+            return;
+        }
+
+        bloqueandoSubmit = false;
+        form.submit();
+    });
+
+    btnConfirmar.addEventListener('click', function () {
+        envioConfirmado = true;
+        bloqueandoSubmit = false;
+        modal.hide();
+        form.submit();
+    });
+
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        if (!envioConfirmado) {
+            bloqueandoSubmit = true;
+        }
+    });
 });
 </script>
 

@@ -97,6 +97,7 @@ urlpatterns = [
     path('alunos/<int:aluno_id>/ocorrencia/', views_templates.adicionar_ocorrencia, name='adicionar_ocorrencia'),
     path('atividades/<int:activity_id>/remover-aluno/<int:aluno_id>/', views_templates.remover_aluno_da_atividade, name='remover_aluno_da_atividade'),
     path('alunos/<int:aluno_id>/remover-da-atividade/<int:activity_id>/', views_templates.remover_aluno_da_atividade_por_aluno, name='remover_aluno_por_aluno'),
+    path('alunos/<int:aluno_id>/desativar/', views_templates.desativar_aluno, name='desativar_aluno'),
 
 
     #Turmas
@@ -122,6 +123,7 @@ urlpatterns = [
     path('activities/<int:activity_id>/relatorio-presenca/pdf/', views_templates.relatorio_presenca_activity_pdf, name='relatorio_presenca_activity_pdf'),
     path('activities/<int:activity_id>/relatorio-mensal/', views_templates.relatorio_atividade_mensal_html, name='relatorio_atividade_mensal_html'),
     path('activities/<int:activity_id>/relatorio-mensal/pdf/', views_templates.relatorio_atividade_mensal_pdf, name='relatorio_atividade_mensal_pdf'),
+   
 
 
     path('family-autocomplete/', views.FamilyAutocomplete.as_view(), name='family-autocomplete'),
@@ -167,6 +169,8 @@ urlpatterns = [
     path("relatorios/semds/sisc/", views_templates.relatorio_sisc, name="relatorio_sisc"),
     path("relatorios/semds/sisc/html/", views_templates.relatorio_sisc_html, name="relatorio_sisc_html"),
     path("relatorios/desligados/", views_templates.relatorio_desligados_html, name="relatorio_desligados_html"),
+    path('relatorios/alunos-sem-atividades/excel/', views_templates.exportar_alunos_sem_atividades_excel, name='exportar_alunos_sem_atividades_excel'), 
+    path('relatorios/alunos-sem-atividades/html/', views_templates.relatorio_alunos_sem_atividades_html, name='relatorio_alunos_sem_atividades_html'),
     #select2 no formulário de Atividade para selecionar os facilitador de forma mais amigável
     #path("select2/", include("django_select2.urls")),
     

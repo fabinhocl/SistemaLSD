@@ -51,7 +51,7 @@
     <form id="filtro-relatorios" method="get" action="">
 
       <div class="row mb-3">
-        <div class="col-md-3 mb-3">
+        <div class="col-md-4 mb-3">
           <label for="tipo_relatorio" class="form-label">Tipo de Relatório</label>
           <select id="tipo_relatorio" name="tipo_relatorio" class="form-select">
             <option value="">Selecione...</option>
@@ -60,6 +60,7 @@
             <option value="atividade">Relatório por Atividade</option>
             <option value="semds">Relatório SEMDS</option>
             <option value="desligados"> Relatório Desligados</option>
+            <option value="sem_atividades"> Relatório Alunos Sem Atividades</option>
           </select>
         </div>
 
@@ -133,6 +134,7 @@
         <button type="button" id="btn-gerar-relatorio" class="btn btn-primary">
           Gerar Relatório
         </button>
+        
         <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
         <a href="{% url 'dashboard_presenca' %}" class="btn btn-outline-secondary">Dashboard Turmas</a>
       </div>
@@ -180,7 +182,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const campoDataInicial = document.getElementById('campo_data_inicial');
   const campoDataFinal = document.getElementById('campo_data_final');
 
-
   function esconderTudo() {
     campoTurma.classList.add('d-none');
     campoAluno.classList.add('d-none');
@@ -201,23 +202,30 @@ document.addEventListener('DOMContentLoaded', function () {
       campoTurma.classList.remove('d-none');
       campoTipoPeriodo.classList.remove('d-none');
       togglePeriodo();
+
     } else if (tipo === 'aluno') {
       campoAluno.classList.remove('d-none');
       campoTipoPeriodo.classList.remove('d-none');
       campoMes.classList.remove('d-none');
       tipoPeriodo.value = 'mensal';
+
     } else if (tipo === 'atividade') {
       campoAtividade.classList.remove('d-none');
       campoTipoPeriodo.classList.remove('d-none');
       togglePeriodo();
+
     } else if (tipo === 'semds') {
       campoSubtipo.classList.remove('d-none');
       if (subtipoSemds.value) {
         campoMes.classList.remove('d-none');
       }
+
     } else if (tipo === 'desligados') {
       campoDataInicial.classList.remove('d-none');
       campoDataFinal.classList.remove('d-none');
+
+    } else if (tipo === 'sem_atividades') {
+      campoTurma.classList.remove('d-none');
     }
   }
 
@@ -243,6 +251,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tipoRelatorio.value === 'desligados') {
       campoData.classList.add('d-none');
       campoMes.classList.add('d-none');
+      return;
+    }
+
+    if (tipoRelatorio.value === 'sem_atividades') {
+      campoData.classList.add('d-none');
+      campoMes.classList.add('d-none');
+      campoTipoPeriodo.classList.add('d-none');
       return;
     }
 
@@ -278,10 +293,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (periodo === 'mensal') {
         url = "{% url 'relatorio_turma_mensal_html' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (mesInput.value) params.push('mes=' + mesInput.value);
+        if (mesInput.value) params.push('mes=' + encodeURIComponent(mesInput.value));
       } else {
         url = "{% url 'relatorio_presenca_turma_pdf' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (dataInput.value) params.push('data=' + dataInput.value);
+        if (dataInput.value) params.push('data=' + encodeURIComponent(dataInput.value));
       }
     }
 
@@ -298,32 +313,31 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       url = "{% url 'relatorio_mensal_aluno' %}";
-      params.push('aluno_id=' + alunoId);
-      params.push('mes=' + mesInput.value);
+      params.push('aluno_id=' + encodeURIComponent(alunoId));
+      params.push('mes=' + encodeURIComponent(mesInput.value));
     }
 
     else if (tipo === 'atividade') {
       const atividadeId = atividadeSelect.value;
       if (!atividadeId) {
-          alert('Selecione uma atividade.');
-          return;
+        alert('Selecione uma atividade.');
+        return;
       }
 
       const periodoNormalizado = (periodo || '').trim().toLowerCase();
 
       if (periodoNormalizado === 'mensal') {
-          url = "{% url 'relatorio_atividade_mensal_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
-          if (mesInput.value) {
-              params.push('mes=' + encodeURIComponent(mesInput.value));
-          }
+        url = "{% url 'relatorio_atividade_mensal_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
+        if (mesInput.value) {
+          params.push('mes=' + encodeURIComponent(mesInput.value));
+        }
       } else {
-          url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
-          if (dataInput.value) {
-              params.push('data=' + encodeURIComponent(dataInput.value));
-          }
+        url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
+        if (dataInput.value) {
+          params.push('data=' + encodeURIComponent(dataInput.value));
+        }
       }
-  }
-      
+    }
 
     else if (tipo === 'semds') {
       const subtipo = subtipoSemds.value;
@@ -344,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function () {
         url = "{% url 'relatorio_sisc_html' %}";
       }
 
-      params.push('mes=' + mesInput.value);
+      params.push('mes=' + encodeURIComponent(mesInput.value));
     }
 
     else if (tipo === 'desligados') {
@@ -358,6 +372,16 @@ document.addEventListener('DOMContentLoaded', function () {
       params.push('data_final=' + encodeURIComponent(dataFinalInput.value));
     }
 
+    else if (tipo === 'sem_atividades') {
+      url = "{% url 'relatorio_alunos_sem_atividades_html' %}";
+
+      const turmaId = turmaSelect.value;
+      if (turmaId) {
+        params.push('turma_id=' + encodeURIComponent(turmaId));
+      }
+    }
+
+        
     else {
       alert('Selecione o tipo de relatório.');
       return;
@@ -367,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
       url += '?' + params.join('&');
     }
 
-    console.log('URL FINAL PDF:', url);
+    console.log('URL FINAL:', url);
     window.open(url, '_blank');
   });
 

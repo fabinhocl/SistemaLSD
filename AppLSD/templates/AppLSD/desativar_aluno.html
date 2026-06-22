@@ -1,0 +1,17 @@
+<form method="post">
+    {% csrf_token %}
+    <p>Confirma o desligamento do aluno <strong>{{ aluno.name }}</strong>?</p>
+
+    <div class="mb-3">
+        <label for="motivo" class="form-label">Motivo do desligamento</label>
+        <textarea name="motivo" id="motivo" class="form-control" rows="4" required></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="senha" class="form-label">Sua senha</label>
+        <input type="password" name="senha" id="senha" class="form-control" required>
+    </div>
+
+    <button type="submit" class="btn btn-danger">Confirmar desligamento</button>
+    <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-secondary">Cancelar</a>
+</form>

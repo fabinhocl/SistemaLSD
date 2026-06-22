@@ -419,7 +419,7 @@ class AlunoForm(forms.ModelForm):
     class Meta:
         model = Aluno
         fields = '__all__'
-        exclude = ('activities',)
+        exclude = ()
         labels = {
             'family': 'Família',
             'name': 'Nome do Aluno',

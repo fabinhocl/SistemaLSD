@@ -1,0 +1,97 @@
+{% extends 'AppLSD/base.html' %}
+{% load static %}
+
+{% block title %}Relatório Alunos sem Atividades{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-end mb-3 gap-2">
+        {% if turma_id %}
+            <a href="{% url 'exportar_alunos_sem_atividades_excel' %}?turma_id={{ turma_id|urlencode }}"
+               class="btn btn-success">
+                Baixar Excel
+            </a>
+        {% else %}
+            <a href="{% url 'exportar_alunos_sem_atividades_excel' %}"
+               class="btn btn-success">
+                Baixar Excel
+            </a>
+        {% endif %}
+    </div>
+
+    {% for rel in relatorios %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <img src="{% static 'img/logo-lar-sao-domingos.png' %}"
+                         alt="Logo Integra+Lar"
+                         style="height: 50px; margin-right: 20px;">
+
+                    <div class="w-100 text-justify">
+                        <h3 class="mb-1">LAR SÃO DOMINGOS - RELATÓRIO DE ATIVIDADES</h3>
+                        <p class="mb-1"><strong>Turma:</strong> {{ rel.turma.grupo|default:"-" }}</p>
+                        <p class="mb-1"><strong>Educadora:</strong> {{ rel.nome_educadora|default:"-" }}</p>
+                        <p class="mb-0">
+                            <strong>Turno:</strong> {{ rel.turma.turno|default:"-" }}
+                            | <strong>Ano Letivo:</strong> {{ rel.turma.ano_letivo }}
+                        </p>
+                    </div>
+                    
+                </div>
+
+                <div class="alert alert-secondary py-2">
+                    {% if rel.atividades %}
+                        {% for atividade in rel.atividades %}
+                            <strong>{{ atividade.sigla }}</strong> - {{ atividade.descricao }}{% if not forloop.last %} | {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Nenhuma atividade cadastrada para o turno desta turma.
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-success">
+                            <tr>
+                                <th>INSC</th>
+                                <th>NOME</th>
+                                <th>NASC.</th>
+                                {% for sigla in rel.siglas %}
+                                    <th>{{ sigla }}</th>
+                                {% endfor %}
+                                <th>TOTAL</th>
+                                <th>SEM ATIVIDADES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linha in rel.linhas %}
+                                <tr>
+                                    <td>{{ linha.inscricao }}</td>
+                                    <td class="text-start">{{ linha.nome }}</td>
+                                    <td>{{ linha.nascimento }}</td>
+                                    {% for marcacao in linha.marcacoes %}
+                                        <td>{% if marcacao.marcado %}X{% endif %}</td>
+                                    {% endfor %}
+                                    <td>{{ linha.total }}</td>
+                                    <td>{% if linha.sem_atividades %}SIM{% endif %}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="20">Nenhum aluno encontrado.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <strong>Total de alunos:</strong> {{ rel.total_alunos }}<br>
+                    <strong>Alunos sem atividades:</strong> {{ rel.total_sem_atividades }}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="alert alert-warning">Nenhuma turma encontrada.</div>
+    {% endfor %}
+</div>
+{% endblock %}
