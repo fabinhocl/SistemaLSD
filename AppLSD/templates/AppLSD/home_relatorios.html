@@ -55,7 +55,7 @@
           <label for="tipo_relatorio" class="form-label">Tipo de Relatório</label>
           <select id="tipo_relatorio" name="tipo_relatorio" class="form-select">
             <option value="">Selecione...</option>
-            <option value="turma">Relatório por Turma</option>
+            <option value="turma">Relatório por Grupo</option>
             <option value="aluno">Relatório Mensal do Aluno</option>
             <option value="atividade">Relatório por Atividade</option>
             <option value="semds">Relatório SEMDS</option>
@@ -74,14 +74,14 @@
         </div>
 
         <div class="col-md-3 mb-3" id="campo_turma">
-          <label for="turma_id" class="form-label">Turma</label>
-          <select id="turma_id" name="turma_id" class="form-select">
-            <option value="">Selecione...</option>
-            {% for turma in turmas %}
-              <option value="{{ turma.id }}">
-                {{ turma.educadora.first_name }} - {{ turma.grupo }} ({{ turma.turno }})
-              </option>
-            {% endfor %}
+          <label for="turma_id" class="form-label">Grupo</label>
+          <select name="turma_id" id="turma_id" class="form-select">
+              <option value="">Todas os grupos</option>
+              {% for turma in turmas %}
+                  <option value="{{ turma.id }}">
+                      {{ turma }}
+                  </option>
+              {% endfor %}
           </select>
         </div>
 
@@ -89,7 +89,7 @@
           <label for="aluno_id" class="form-label">Aluno</label>
           <select id="aluno_id" name="aluno_id" class="form-select">
             <option value="">Selecione...</option>
-            {% for aluno in alunos %}
+            {% for aluno in alunos_busca %}
               <option value="{{ aluno.id }}">
                 {{ aluno.family.registration_number }} - {{ aluno.name }} - ({{ aluno.turma.turno }})
               </option>
@@ -300,6 +300,15 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
+    else if (tipo === 'sem_atividades') {
+      url = "{% url 'relatorio_alunos_sem_atividades_html' %}";
+
+      const turmaId = turmaSelect.value;
+      if (turmaId) {
+        params.push('turma_id=' + encodeURIComponent(turmaId));
+      }
+    }
+
     else if (tipo === 'aluno') {
       const alunoId = alunoSelect.value;
       if (!alunoId) {
@@ -372,16 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
       params.push('data_final=' + encodeURIComponent(dataFinalInput.value));
     }
 
-    else if (tipo === 'sem_atividades') {
-      url = "{% url 'relatorio_alunos_sem_atividades_html' %}";
-
-      const turmaId = turmaSelect.value;
-      if (turmaId) {
-        params.push('turma_id=' + encodeURIComponent(turmaId));
-      }
-    }
-
-        
+            
     else {
       alert('Selecione o tipo de relatório.');
       return;

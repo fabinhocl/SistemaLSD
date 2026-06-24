@@ -52,7 +52,7 @@
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm align-middle">
                         <thead class="table-success">
-                            <tr>
+                            <tr class="text-center">
                                 <th>INSC</th>
                                 <th>NOME</th>
                                 <th>NASC.</th>
@@ -66,14 +66,14 @@
                         <tbody>
                             {% for linha in rel.linhas %}
                                 <tr>
-                                    <td>{{ linha.inscricao }}</td>
-                                    <td class="text-start">{{ linha.nome }}</td>
+                                    <td class="text-center">{{ linha.inscricao }}</td>
+                                    <td class="text-start">{{ linha.nome|upper }}</td>
                                     <td>{{ linha.nascimento }}</td>
                                     {% for marcacao in linha.marcacoes %}
-                                        <td>{% if marcacao.marcado %}X{% endif %}</td>
+                                        <td class="text-center">{% if marcacao.marcado %}X{% endif %}</td>
                                     {% endfor %}
-                                    <td>{{ linha.total }}</td>
-                                    <td>{% if linha.sem_atividades %}SIM{% endif %}</td>
+                                    <td class="text-center">{{ linha.total }}</td>
+                                    <td class="text-center">{% if linha.sem_atividades %}SIM{% endif %}</td>
                                 </tr>
                             {% empty %}
                                 <tr>

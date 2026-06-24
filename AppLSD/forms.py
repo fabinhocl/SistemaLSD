@@ -684,7 +684,7 @@ class AlunoFiltroForm(forms.Form):
 
 class MoverAlunoForm(forms.Form):
     turma_destino = forms.ModelChoiceField(
-        queryset=Turma.objects.all(),
+        queryset=Turma.objects.none(),
         required=False,
         label="Nova Turma",
         empty_label="--- Remover da turma ---",
@@ -695,6 +695,14 @@ class MoverAlunoForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
+
+    def __init__(self, *args, user=None, aluno=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        queryset = Turma.objects.all().order_by('turno', 'grupo')
+
+        self.fields['turma_destino'].queryset = queryset
+        
 
 class RemoverAlunoAtividadeForm(forms.Form):
     motivo = forms.CharField(

@@ -31,8 +31,8 @@
             <option value="">Todos os facilitadores</option>
             {% for facilitador in facilitadores %}
                 <option value="{{ facilitador.id }}"
-                {% if filtro_facilitador == facilitador.id|stringformat:"s" %}selected{% endif %}>
-                {{ facilitador }}
+                    {% if filtro_facilitador == facilitador.id|stringformat:"s" %}selected{% endif %}>
+                    {{ facilitador.first_name }}    
                 </option>
             {% endfor %}
         </select>
@@ -52,7 +52,20 @@
         </select>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-2">
+        <label class="form-label" for="turno">Turno</label>
+        <select name="turno" id="turno" class="form-select">
+            <option value="">Todos os turnos</option>
+            {% for value, label in turnos %}
+                <option value="{{ value }}" {% if filtro_turno == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+
+    <div class="col-md-2">
       <label class="form-label">Dias da Semana</label>
       <select name="dia_semana" class="form-select">
             <option value="">Todos os dias</option>

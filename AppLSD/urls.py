@@ -96,8 +96,10 @@ urlpatterns = [
     path('alunos/<int:aluno_id>/mover/', views_templates.mover_aluno, name='mover_aluno'),
     path('alunos/<int:aluno_id>/ocorrencia/', views_templates.adicionar_ocorrencia, name='adicionar_ocorrencia'),
     path('atividades/<int:activity_id>/remover-aluno/<int:aluno_id>/', views_templates.remover_aluno_da_atividade, name='remover_aluno_da_atividade'),
+    path('alunos/<int:aluno_id>/adicionar-atividade/', views_templates.aluno_add_atividade, name='aluno_add_atividade'),
     path('alunos/<int:aluno_id>/remover-da-atividade/<int:activity_id>/', views_templates.remover_aluno_da_atividade_por_aluno, name='remover_aluno_por_aluno'),
     path('alunos/<int:aluno_id>/desativar/', views_templates.desativar_aluno, name='desativar_aluno'),
+    path('alunos/<int:pk>/relatorio-mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
 
 
     #Turmas

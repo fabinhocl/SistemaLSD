@@ -499,6 +499,8 @@ def dashboard_completo(request):
     alunos = Aluno.objects.all()
 
     total_alunos = Aluno.objects.filter(status_lsd='Frequentando').count()
+    
+    alunos_busca = Aluno.objects.filter(status_lsd='Frequentando').order_by('name')
 
     presentes_hoje_manha = FrequenciaAluno.objects.filter(
         aluno__turma__turno='Matutino',
@@ -563,6 +565,7 @@ def dashboard_completo(request):
         "turmas": turmas,
         "atividades": atividades,
         "alunos": alunos,
+        "alunos_busca": alunos_busca,
     }
     return render(request, "AppLSD/home_relatorios.html", context)
 
@@ -1184,28 +1187,50 @@ def aluno_create(request):
 def aluno_detail(request, pk):
     aluno = get_object_or_404(Aluno, pk=pk)
 
-    is_educadora = request.user.groups.filter(name='Educadora').exists()
+    educadora_status = request.user.groups.filter(name='Educadora').exists()
 
-    turma_atual = aluno.turma  # ajuste se o relacionamento for outro
+    turma_atual = aluno.turma
 
     ct = ContentType.objects.get_for_model(Aluno)
     logs = AppLog.objects.filter(content_type=ct, object_id=aluno.pk)
 
     historico_turmas = MovimentacaoTurmaAluno.objects.filter(
         aluno=aluno
-    ).order_by('-data')   # traz inclusive quando turma_destino é None
+    ).order_by('-data')
 
     pode_desligar_aluno = (
-        not is_educadora and aluno.status_lsd != 'desligado'
+        not educadora_status and aluno.status_lsd != 'desligado'
     )
+
+    is_educadora_da_turma = (
+        educadora_status
+        and aluno.turma is not None
+        and aluno.turma.educadora == request.user
+    )
+
+    pode_mover_aluno = (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+    )
+
+    pode_adicionar_atividade = (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+        or educadora_status
+    )
+
+    atividades_disponiveis = get_atividades_disponiveis_para_aluno(aluno)
 
     context = {
         'aluno': aluno,
         'logs': logs,
         'historico_turmas': historico_turmas,
-        'is_educadora': is_educadora,
+        'is_educadora': educadora_status,
         'turma_atual': turma_atual,
-        "pode_desligar_aluno": pode_desligar_aluno,
+        'pode_desligar_aluno': pode_desligar_aluno,
+        'pode_mover_aluno': pode_mover_aluno,
+        'pode_adicionar_atividade': pode_adicionar_atividade,
+        'atividades_disponiveis': atividades_disponiveis,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
 
@@ -1469,45 +1494,60 @@ def desativar_familia(request, familia_id):
 def _remover_aluno_da_atividade_logic(request, aluno, atividade):
     """
     Lógica comum para remover aluno de atividade com validação de senha.
+    Retorna True em caso de sucesso e False em caso de falha.
     """
-    if not (request.user.is_superuser or is_coordenacao(request.user)):
-        return HttpResponseForbidden('Sem permissão')
 
-    if request.method == 'POST':
-        # ✅ Validar senha
-        senha = request.POST.get('senha', '')
-        if not senha:
-            messages.error(request, 'Senha obrigatória!')
-            return False
-        
-        if not check_password(senha, request.user.password):
-            messages.error(request, 'Senha incorreta!')
-            return False
+    pode_remover = (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+        or atividade.facilitador == request.user
+        or (aluno.turma and aluno.turma.educadora == request.user)
+    )
 
-        motivo = request.POST.get('motivo', '').strip()
+    if not pode_remover:
+        messages.error(request, 'Sem permissão para remover este aluno da atividade.')
+        return False
 
-        atividade.alunos.remove(aluno)
+    if request.method != 'POST':
+        messages.error(request, 'Método inválido para remoção.')
+        return False
 
-        # Log na atividade
-        registrar_log(
-            request.user,
-            atividade,
-            'aluno_removido_da_atividade',
-            f'Aluno {aluno.name} removido da atividade '
-            f'"{atividade.atividade}". Motivo: {motivo or "não informado"}.'
-        )
+    senha = request.POST.get('senha', '').strip()
+    if not senha:
+        messages.error(request, 'Senha obrigatória!')
+        return False
 
-        # Log no aluno
-        registrar_log(
-            request.user,
-            aluno,
-            'aluno_removido_atividade',
-            f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo or "não informado"}.'
-        )
+    if not check_password(senha, request.user.password):
+        messages.error(request, 'Senha incorreta!')
+        return False
 
-        messages.success(request, 'Aluno removido da atividade.')
-        return True
-    return False
+    motivo = request.POST.get('motivo', '').strip()
+    if not motivo:
+        messages.error(request, 'O motivo da remoção é obrigatório.')
+        return False
+
+    if not aluno.atividades.filter(id=atividade.id).exists():
+        messages.warning(request, 'O aluno já não está vinculado a esta atividade.')
+        return False
+
+    aluno.atividades.remove(atividade)
+
+    registrar_log(
+        request.user,
+        atividade,
+        'aluno_removido_da_atividade',
+        f'Aluno {aluno.name} removido da atividade "{atividade.atividade}". Motivo: {motivo}.'
+    )
+
+    registrar_log(
+        request.user,
+        aluno,
+        'aluno_removido_atividade',
+        f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo}.'
+    )
+
+    messages.success(request, 'Aluno removido da atividade.')
+    return True
 
 @login_required
 def remover_aluno_da_atividade(request, activity_id, aluno_id):
@@ -1517,95 +1557,8 @@ def remover_aluno_da_atividade(request, activity_id, aluno_id):
     atividade = get_object_or_404(Activity, id=activity_id)
     aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    if _remover_aluno_da_atividade_logic(request, aluno, atividade):
-        return redirect('activity_detail', activity_id=atividade.id)
-    
+    _remover_aluno_da_atividade_logic(request, aluno, atividade)
     return redirect('activity_detail', activity_id=atividade.id)
-
-
-
-    aluno = get_object_or_404(Aluno, id=aluno_id)
-
-    if not (request.user.is_superuser or is_coordenacao(request.user)):
-        return HttpResponseForbidden('Sem permissão')
-
-    if request.method == 'POST':
-        senha = request.POST.get('senha', '').strip()
-        motivo = request.POST.get('motivo', '').strip()
-
-        if not senha:
-            messages.error(request, 'Senha obrigatória!')
-            return redirect('aluno_detail', pk=aluno.id)
-
-        if not check_password(senha, request.user.password):
-            messages.error(request, 'Senha incorreta!')
-            return redirect('aluno_detail', pk=aluno.id)
-
-        if not motivo:
-            messages.error(request, 'O motivo do desligamento é obrigatório.')
-            return redirect('aluno_detail', pk=aluno.id)
-
-        with transaction.atomic():
-            # Remover de todas as atividades
-            atividades = Activity.objects.filter(alunos=aluno)
-
-            for atividade in atividades:
-                atividade.alunos.remove(aluno)
-
-                registrar_log(
-                    request.user,
-                    atividade,
-                    'aluno_removido_desligamento',
-                    f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" '
-                    f'por desligamento. Motivo: {motivo}.'
-                )
-
-            if atividades.exists():
-                registrar_log(
-                    request.user,
-                    aluno,
-                    'aluno_removido_atividade',
-                    f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
-                )
-
-            # Remover da turma
-            turma_atual = aluno.turma
-            if turma_atual:
-                aluno.turma = None
-
-                registrar_log(
-                    request.user,
-                    turma_atual,
-                    'aluno_removido_desligamento',
-                    f'Aluno {aluno.name} removido da turma por desligamento. Motivo: {motivo}.'
-                )
-
-                registrar_log(
-                    request.user,
-                    aluno,
-                    'aluno_removido_turma',
-                    f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
-                )
-
-            # Desativar aluno
-            aluno.ativo = False
-            aluno.status_lsd = 'Desligado'
-            aluno.save()
-
-            registrar_log(
-                request.user,
-                aluno,
-                'aluno_desativado',
-                f'Aluno desligado. Motivo: {motivo}.'
-            )
-
-        messages.success(
-            request,
-            f'Aluno {aluno.name} desligado com sucesso, removido da turma e das atividades.'
-        )
-        return redirect('aluno_detail', pk=aluno.id)
-
-    return render(request, 'AppLSD/desativar_aluno.html', {'aluno': aluno})
 
 @login_required
 def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
@@ -1631,12 +1584,20 @@ def turma_detail(request, turma_id):
     coordenacao_status = is_coordenacao(request.user)
     educadora_status = is_educadora(request.user)
 
-    # ✅ Educadora só pode mover se for a educadora DESTA turma
     is_educadora_desta_turma = (
         educadora_status and turma.educadora == request.user
     )
 
-    today = timezone.now().date()
+    today = timezone.localdate()
+
+    data_param = request.GET.get('data')
+    if data_param:
+        try:
+            data_referencia = datetime.strptime(data_param, '%Y-%m-%d').date()
+        except ValueError:
+            data_referencia = today
+    else:
+        data_referencia = today
 
     aniversariantes_mes = alunos.filter(
         birth_date__month=today.month
@@ -1644,16 +1605,16 @@ def turma_detail(request, turma_id):
 
     aniversariantes_dia = aniversariantes_mes.filter(birth_date__day=today.day)
 
-    frequencia_hoje = FrequenciaTurma.objects.filter(
+    frequencia_referencia = FrequenciaTurma.objects.filter(
         turma=turma,
-        data=today
+        data=data_referencia
     ).first()
 
     pode_editar = False
     pode_visualizar = False
     pode_iniciar = False
 
-    if frequencia_hoje:
+    if frequencia_referencia:
         pode_iniciar = False
         pode_visualizar = coordenacao_status or educadora_status
         pode_editar = pode_editar_frequencia_turma(request.user, turma)
@@ -1662,14 +1623,18 @@ def turma_detail(request, turma_id):
             pode_iniciar = True
 
     ct = ContentType.objects.get_for_model(Turma)
-    logs = AppLog.objects.filter(content_type=ct, object_id=turma.id).order_by('-criado_em')
+    logs = AppLog.objects.filter(
+        content_type=ct,
+        object_id=turma.id
+    ).order_by('-criado_em')
 
     context = {
         'turma': turma,
         'logs': logs,
         'alunos': alunos,
-        'frequencia_hoje': frequencia_hoje,
-        'ja_tem_frequencia': frequencia_hoje is not None,
+        'frequencia_hoje': FrequenciaTurma.objects.filter(turma=turma, data=today).first(),
+        'frequencia_referencia': frequencia_referencia,
+        'ja_tem_frequencia': frequencia_referencia is not None,
         'pode_editar': pode_editar,
         'pode_visualizar': pode_visualizar,
         'pode_iniciar': pode_iniciar,
@@ -1678,10 +1643,11 @@ def turma_detail(request, turma_id):
         'total_alunos_turma': total_alunos_turma,
         'pode_adicionar_alunos': coordenacao_status,
         'pode_editar_alunos': coordenacao_status,
-        # ✅ Coordenação OU educadora desta turma podem mover
         'pode_mover_alunos': coordenacao_status or is_educadora_desta_turma,
         'aniversariantes_mes': aniversariantes_mes,
         'aniversariantes_dia': aniversariantes_dia,
+        'data_referencia': data_referencia,
+        'data_hoje': today,
     }
     return render(request, 'AppLSD/turma_detail.html', context)
 
@@ -1722,7 +1688,7 @@ class TurmaListView(ListView):
     paginate_by = 20                          # mesmo valor do Paginator
 
     def get_queryset(self):
-        qs = Turma.objects.all().order_by('educadora', 'grupo', 'turno')
+        qs = Turma.objects.all().order_by('faixa_etaria','educadora', 'grupo', 'turno')
 
         turno = self.request.GET.get("turno")
         ano = self.request.GET.get("ano")
@@ -2023,7 +1989,8 @@ def activity_detail(request, activity_id):
         # se tiver controle de permissão, algo como:
         'logs': logs,
         'alunos_atividade': alunos_atividade,
-        'is_coordenacao': is_coordenacao(request.user), 
+        'is_coordenacao': is_coordenacao(request.user),
+        'is_educadora': is_educadora(request.user),
         
     }
     return render(request, 'AppLSD/activity_detail.html', context)
@@ -2045,7 +2012,6 @@ def activity_list(request):
     if facilitador_id:
         atividades = atividades.filter(facilitador_id=facilitador_id)
     if dia_semana:
-        # ✅ CORRIGIDO: Usar icontains sem as aspas
         atividades = atividades.filter(dia_semana__icontains=dia_semana)
     if turno:
         atividades = atividades.filter(turno=turno)
@@ -2054,7 +2020,6 @@ def activity_list(request):
 
     atividades = atividades.order_by('atividade')
 
-    # Listas para os selects
     facilitadores = User.objects.filter(
         id__in=Activity.objects.values('facilitador_id')
     ).order_by('first_name').distinct()
@@ -2067,12 +2032,7 @@ def activity_list(request):
 
     tipos_atividades = Activity.TIPO_CHOICES
     dias_semana_choices = Activity.DIAS_SEMANAS_CHOICES
-
-    turnos = (
-        Activity.objects.order_by('turno')
-        .values_list('turno', flat=True)
-        .distinct()
-    )
+    turnos = Activity.ESCOLHA_TURNO
 
     paginator = Paginator(atividades, 100)
     page_number = request.GET.get('page')
@@ -2090,7 +2050,7 @@ def activity_list(request):
         'filtro_dia_semana': dia_semana,
         'filtro_turno': turno,
         'filtro_tipo': tipo,
-        'is_coordenacao': is_coordenacao(request.user),  
+        'is_coordenacao': is_coordenacao(request.user),
         'is_educadora': is_educadora(request.user),
     }
     return render(request, 'AppLSD/activity_list.html', context)
@@ -2392,11 +2352,11 @@ def mover_aluno(request, aluno_id):
         and aluno.turma.educadora == request.user
     )
 
-    if not (is_coordenacao(request.user) or is_educadora_da_turma):
+    if not (request.user.is_superuser or is_coordenacao(request.user) or is_educadora_da_turma):
         raise PermissionDenied
 
     if request.method == "POST":
-        form = MoverAlunoForm(request.POST)
+        form = MoverAlunoForm(request.POST, user=request.user, aluno=aluno)
         if form.is_valid():
             turma_antiga = aluno.turma
             turma_nova = form.cleaned_data.get('turma_destino')
@@ -2422,7 +2382,7 @@ def mover_aluno(request, aluno_id):
 
             return redirect('aluno_detail', pk=aluno.pk)
     else:
-        form = MoverAlunoForm(initial={'turma_destino': aluno.turma})
+        form = MoverAlunoForm(initial={'turma_destino': aluno.turma}, user=request.user, aluno=aluno)
 
     return render(request, "AppLSD/mover_aluno.html", {"form": form, "aluno": aluno})
 
@@ -2440,6 +2400,81 @@ def adicionar_ocorrencia(request, aluno_id):
         form = OcorrenciaAlunoForm()
     return render(request, 'AppLSD/adicionar_ocorrencia.html', {'form': form, 'aluno': aluno})
 
+# HELPERS PARA ADICIONAR ALUNO EM ATIVIDADE ***
+def get_turno_atividade_permitido(turno_aluno):
+    if turno_aluno == "Matutino":
+        return "Vespertino"
+    elif turno_aluno == "Vespertino":
+        return "Matutino"
+    return None
+
+
+def get_atividades_disponiveis_para_aluno(aluno):
+    turno_permitido = get_turno_atividade_permitido(aluno.turno)
+
+    if not turno_permitido:
+        return Activity.objects.none()
+
+    return (
+        Activity.objects
+        .exclude(alunos=aluno)
+        .filter(turno=turno_permitido)
+        .order_by(Lower("atividade"))
+    )
+
+# ADICIONAR ALUNO NA ATIVIDADE EM DETALHES DO ALUNO
+@login_required
+def aluno_add_atividade(request, aluno_id):
+    aluno = get_object_or_404(Aluno, id=aluno_id)
+
+    if request.method != "POST":
+        return redirect("aluno_detail", pk=aluno.id)
+
+    if not (request.user.is_superuser or is_coordenacao(request.user) or is_educadora(request.user)):
+        messages.error(request, "Sem permissão para adicionar atividade ao aluno.")
+        return redirect("aluno_detail", pk=aluno.id)
+
+    atividade_id = request.POST.get("atividade_id")
+    if not atividade_id:
+        messages.error(request, "Selecione uma atividade.")
+        return redirect("aluno_detail", pk=aluno.id)
+
+    atividade = get_object_or_404(Activity, id=atividade_id)
+
+    atividades_disponiveis_ids = list(
+        get_atividades_disponiveis_para_aluno(aluno).values_list("id", flat=True)
+    )
+
+    if atividade.id not in atividades_disponiveis_ids:
+        messages.error(
+            request,
+            "Esta atividade não é permitida para o turno do aluno ou já está vinculada."
+        )
+        return redirect("aluno_detail", pk=aluno.id)
+
+    aluno.atividades.add(atividade)
+
+    registrar_log(
+        request.user,
+        atividade,
+        "aluno_adicionado_atividade",
+        f'Aluno {aluno.name} adicionado à atividade "{atividade.atividade}".'
+    )
+
+    registrar_log(
+        request.user,
+        aluno,
+        "atividade_adicionada_aluno",
+        f'Aluno inserido na atividade "{atividade.atividade}".'
+    )
+
+    messages.success(request, "Atividade adicionada ao aluno com sucesso.")
+    return redirect("aluno_detail", pk=aluno.id)
+
+
+
+# ADICIONAR ALUNO NA ATIVIDADE EM DETALHES DA ATIVIDADE ***
+@login_required
 def activity_add_alunos(request, activity_id):
     atividade = get_object_or_404(Activity, id=activity_id)
 
@@ -2954,8 +2989,8 @@ def relatorio_atividade_mensal_pdf(request, activity_id):
 
 
 
-def get_contexto_relatorio_aluno_mensal(request):
-    aluno_id = request.GET.get('aluno_id')
+def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
+    aluno_id = aluno_id or request.GET.get('aluno_id')
     mes = request.GET.get('mes')  # YYYY-MM
 
     if not aluno_id:
@@ -2981,6 +3016,17 @@ def get_contexto_relatorio_aluno_mensal(request):
 
     ultimo_dia_num = monthrange(ano, mes_num)[1]
     ultimo_dia = date(ano, mes_num, ultimo_dia_num)
+
+    if mes_num == 1:
+        mes_anterior = f"{ano - 1}-12"
+    else:
+        mes_anterior = f"{ano}-{mes_num - 1:02d}"
+
+    if mes_num == 12:
+        mes_proximo = f"{ano + 1}-01"
+    else:
+        mes_proximo = f"{ano}-{mes_num + 1:02d}"
+
 
     todos_dias = [
         primeiro_dia + timedelta(days=i)
@@ -3018,12 +3064,13 @@ def get_contexto_relatorio_aluno_mensal(request):
             else:
                 status = 'F'
                 faltas += 1
+
         status_por_dia.append({
             'dia': dia,
             'status': status,
         })
 
-        atividades_freq_qs = (
+    atividades_freq_qs = (
         FrequenciaAtividade.objects
         .filter(
             aluno=aluno,
@@ -3050,7 +3097,6 @@ def get_contexto_relatorio_aluno_mensal(request):
         faltas_atividade = 0
 
         for dia in dias_mes:
-            # ajuste conforme o campo dia_semana da activity
             incluir_dia = True
 
             if getattr(atividade, 'dia_semana', None):
@@ -3122,6 +3168,8 @@ def get_contexto_relatorio_aluno_mensal(request):
         'mes': mes,
         'ano': ano,
         'mes_num': mes_num,
+        'mes_anterior': mes_anterior,
+        'mes_proximo': mes_proximo,
         'dias_mes': dias_mes,
         'status_por_dia': status_por_dia,
         'faltas': faltas,
@@ -3137,9 +3185,10 @@ def get_contexto_relatorio_aluno_mensal(request):
 
 
 @login_required
-def relatorio_mensal_aluno(request):
-    context = get_contexto_relatorio_aluno_mensal(request)
+def relatorio_mensal_aluno(request, pk):
+    context = get_contexto_relatorio_aluno_mensal(request, aluno_id=pk)
     return render(request, 'AppLSD/relatorio_mensal_aluno.html', context)
+
 
 #@login_required
 def relatorio_busca_aluno(request):
@@ -4409,7 +4458,7 @@ def exportar_alunos_sem_atividades_excel(request):
 
 @login_required
 def relatorio_alunos_sem_atividades_html(request):
-    turma_id = request.GET.get('turma_id')
+    turma_id = request.GET.get('turma_id') or ''
 
     turmas = Turma.objects.select_related('educadora').order_by('turno', 'grupo')
     if turma_id:
@@ -4487,5 +4536,6 @@ def relatorio_alunos_sem_atividades_html(request):
 
     context = {
         'relatorios': relatorios,
+        'turma_id': turma_id,
     }
     return render(request, 'AppLSD/relatorio_alunos_sem_atividades.html', context)
