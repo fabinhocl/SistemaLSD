@@ -228,25 +228,23 @@
 
       <h2 class="titulo-relatorio">Relatório Mensal do Assistido - {{ aluno.name|upper }}</h2>
 
-      <form method="get" class="d-flex align-items-end gap-2">
-          <div>
-              <label for="mes" class="form-label mb-1">Pesquisar mês</label>
-              <input type="month"
-                    name="mes"
-                    id="mes"
-                    class="form-control"
-                    value="{{ mes }}">
-          </div>
-
-          <button type="submit" class="btn btn-outline-primary">
-              Pesquisar
-          </button>
-
-          <a href="{% url 'relatorio_mensal_aluno' aluno.pk %}?mes={% now 'Y-m' %}"
-            class="btn btn-outline-secondary">
-              Mês atual
+      <div class="d-flex gap-2 align-items-center">
+          <a class="btn btn-outline-secondary"
+            href="{% url 'relatorio_mensal_aluno' %}?aluno_id={{ aluno.id }}&mes={{ mes_anterior }}">
+              Anterior
           </a>
-      </form>
+
+          <form method="get" class="d-flex gap-2">
+              <input type="hidden" name="aluno_id" value="{{ aluno.id }}">
+              <input type="month" name="mes" value="{{ mes }}" class="form-control">
+              <button type="submit" class="btn btn-primary">Ir</button>
+          </form>
+
+          <a class="btn btn-outline-secondary"
+            href="{% url 'relatorio_mensal_aluno' %}?aluno_id={{ aluno.id }}&mes={{ mes_proximo }}">
+              Próximo
+          </a>
+      </div>
 
       <div class="cabecalho-info">
         {% if aluno_sem_turma %}

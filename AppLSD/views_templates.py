@@ -3027,7 +3027,6 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
     else:
         mes_proximo = f"{ano}-{mes_num + 1:02d}"
 
-
     todos_dias = [
         primeiro_dia + timedelta(days=i)
         for i in range((ultimo_dia - primeiro_dia).days + 1)
@@ -3055,6 +3054,7 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
 
     for dia in dias_mes:
         f = freq_dict.get(dia)
+
         if f is None:
             status = ''
         else:
@@ -3185,8 +3185,8 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
 
 
 @login_required
-def relatorio_mensal_aluno(request, pk):
-    context = get_contexto_relatorio_aluno_mensal(request, aluno_id=pk)
+def relatorio_mensal_aluno(request):
+    context = get_contexto_relatorio_aluno_mensal(request)
     return render(request, 'AppLSD/relatorio_mensal_aluno.html', context)
 
 

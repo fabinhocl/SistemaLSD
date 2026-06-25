@@ -1,0 +1,8 @@
+{% extends "AppLSD/base.html" %}
+
+{% block content %}
+<div style="max-width: 340px; margin: 40px auto; padding: 32px;">
+    <h2>Você saiu do sistema!</h2>
+    <a class="btn btn-primary" href="{% url 'login' %}">Entrar novamente</a>
+</div>
+{% endblock %}
