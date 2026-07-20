@@ -2396,6 +2396,7 @@ def visualizar_frequencia_activity(request, activity_id):
     }
     return render(request, 'AppLSD/frequencia_activity_visualizar.html', context)
 
+
 @user_passes_test(is_coordenacao)
 def editar_frequencia_activity(request, activity_id):
     """
@@ -2427,10 +2428,12 @@ def editar_frequencia_activity(request, activity_id):
 
     presencas_dict = {p.aluno.id: p for p in presencas_qs}
 
+    motivos_falta_choices = FrequenciaAtividade._meta.get_field('motivo_falta').choices
+    motivos_validos = {choice[0] for choice in motivos_falta_choices}
+
     if request.method == 'POST':
         erros = []
         presencas_form = {}
-        motivos_validos = {choice[0] for choice in MotivoFaltaChoices.choices}
 
         for aluno in alunos_atividade:
             presente = f'presente_{aluno.id}' in request.POST
@@ -2443,9 +2446,13 @@ def editar_frequencia_activity(request, activity_id):
 
             if not presente:
                 if not motivo_falta:
-                    erros.append(f'O aluno {aluno.name} está com falta e precisa ter um motivo selecionado.')
+                    erros.append(
+                        f'O aluno {aluno.name} está com falta e precisa ter um motivo selecionado.'
+                    )
                 elif motivo_falta not in motivos_validos:
-                    erros.append(f'O motivo da falta do aluno {aluno.name} é inválido.')
+                    erros.append(
+                        f'O motivo da falta do aluno {aluno.name} é inválido.'
+                    )
 
         if erros:
             for erro in erros:
@@ -2457,7 +2464,7 @@ def editar_frequencia_activity(request, activity_id):
                 'presencas': presencas_form,
                 'alunos_atividade': alunos_atividade,
                 'modo_edicao': True,
-                'motivos_falta': MotivoFaltaChoices.choices,
+                'motivos_falta': motivos_falta_choices,
             }
             return render(request, 'AppLSD/frequencia_activity_editar.html', context)
 
@@ -2503,10 +2510,10 @@ def editar_frequencia_activity(request, activity_id):
         'presencas': presencas_form,
         'alunos_atividade': alunos_atividade,
         'modo_edicao': True,
-        'motivos_falta': MotivoFaltaChoices.choices,
+        'motivos_falta': motivos_falta_choices,
     }
 
-    return render(request, 'AppLSD/frequencia_activity_editar.html', context)    
+    return render(request, 'AppLSD/frequencia_activity_editar.html', context)
 
 def turma_add_alunos(request, turma_id):
     turma = get_object_or_404(Turma, pk=turma_id)

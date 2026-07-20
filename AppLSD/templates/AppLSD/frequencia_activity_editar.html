@@ -62,11 +62,11 @@
                         <tbody>
                             {% for aluno in alunos_atividade %}
                                 {% with info=presencas|get_item:aluno.id %}
-                                <tr class="text-center">
-                                    <td>{{ aluno.family.registration_number }}</td>
-                                    <td>{{ aluno.name }}</td>
-                                    <td>{{ aluno.turma.educadora.first_name }}</td>
-                                    <td>
+                                <tr>
+                                    <td class="text-center">{{ aluno.family.registration_number }}</td>
+                                    <td class="text-justify">{{ aluno.name|upper }}</td>
+                                    <td class="text-center">{{ aluno.turma.educadora.first_name }}</td>
+                                    <td class="text-center">
                                         <input type="checkbox"
                                                name="presente_{{ aluno.id }}"
                                                {% if info.presente %}checked{% endif %}>
