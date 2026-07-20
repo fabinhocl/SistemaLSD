@@ -765,19 +765,49 @@ def sincronizar_grupos_perfil(sender, instance, **kwargs):
     # sempre que um PerfilUsuario for salvo, re-sincroniza os grupos
     sincronizar_grupos_usuario(instance.user)
 
-    
-
-
 
 class FrequenciaTurma(AuditModel):
+    class StatusAula(models.TextChoices):
+        NORMAL = 'NORMAL', 'Houve aula'
+        NAO_HOUVE = 'NAO_HOUVE', 'Não houve aula'
+
+    class MotivoNaoAula(models.TextChoices):
+        FERIADO = 'FERIADO', 'Feriado'
+        EVENTO_EXTERNO = 'EVENTO_EXTERNO', 'Evento externo'
+        FALTA_ENERGIA = 'FALTA_ENERGIA', 'Falta de energia'
+        SEM_AGUA = 'SEM_AGUA', 'Sem água'
+        OUTRO = 'OUTRO', 'Outro'
+
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, null=True, blank=True)
     turma = models.ForeignKey('Turma', on_delete=models.CASCADE, null=True, blank=True)
-    
     data = models.DateField(blank=True, null=True)
-    presente = models.BooleanField(default=True)  # True: presente, False: falta
-    
+
+    presente = models.BooleanField(default=True)
+
+    status_aula = models.CharField(
+        max_length=20,
+        choices=StatusAula.choices,
+        default=StatusAula.NORMAL
+    )
+    motivo_nao_aula = models.CharField(
+        max_length=30,
+        choices=MotivoNaoAula.choices,
+        blank=True
+    )
+    observacao_nao_aula = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
     def __str__(self):
-        return f"{self.aluno} - {self.turma} - {self.data} - {'Presente' if self.presente else 'Falta'}"
+        return f"{self.turma} - {self.data} - {self.get_status_aula_display()}"
+
+
+class MotivoFaltaChoices(models.TextChoices):
+        SJ = 'SJ', 'Sem Justificativa'
+        AM = 'AM', 'Atestado Médico'
+        DM = 'DM', 'Declaração Médica'
+        OT = 'OT', 'Outro'
 
 class FrequenciaAtividade(AuditModel):
     """
@@ -787,30 +817,45 @@ class FrequenciaAtividade(AuditModel):
     atividade = models.ForeignKey('Activity', on_delete=models.CASCADE, null=True, blank=True)
     data = models.DateField(blank=True, null=True)
     presente = models.BooleanField(default=True)
-    motivo_falta = models.CharField(max_length=100, blank=True)
-        
+    motivo_falta = models.CharField(
+        max_length=100,
+        choices=MotivoFaltaChoices.choices,
+        blank=True
+    )
+
     class Meta:
         unique_together = ('atividade', 'aluno', 'data')
 
     def __str__(self):
         return f"{self.aluno} - {self.atividade} - {self.data} - {'Presente' if self.presente else 'Falta'}"
-
+    
 
 class FrequenciaAluno(models.Model):
-    
-    #Frequência individual de aluno para uma chamada.
+    class StatusPresenca(models.TextChoices):
+        PRESENTE = 'P', 'Presente'
+        FALTA = 'F', 'Falta'
+        NAO_HOUVE_AULA = 'NHA', 'Não houve aula'
+
     
     chamada = models.ForeignKey(FrequenciaTurma, on_delete=models.CASCADE, related_name='presencas')
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE)
+
     presente = models.BooleanField(default=True)
-    MOTIVO_FALTA_CHOICES = [
-        ('SJ', 'Sem Justificativa'), ('AM', 'Atestado Médico'), ('DM', 'Declaração Médica'), ('OT', 'Outro')
-    ]
-    motivo_falta = models.CharField(max_length=100  , choices=MOTIVO_FALTA_CHOICES, blank=True)
+
+    status = models.CharField(
+        max_length=3,
+        choices=StatusPresenca.choices,
+        default=StatusPresenca.PRESENTE
+    )
+    motivo_falta = models.CharField(
+        max_length=100,
+        choices=MotivoFaltaChoices.choices,
+        blank=True
+    )
 
     def __str__(self):
-        return f"{self.aluno.name} ({'P' if self.presente else 'F'})"
-
+        return f"{self.aluno.name} ({self.get_status_display()})"
+    
 class MovimentacaoTurmaAluno(models.Model):
     aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE)
     turma_origem = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, related_name='+')

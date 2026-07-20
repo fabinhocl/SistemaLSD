@@ -32,10 +32,71 @@ Detalhes da Atividade - {{ atividade.atividade }}
     <div class="tab-pane fade show active" id="pane-resumo" role="tabpanel"
          aria-labelledby="tab-resumo">
 
-      <p><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</p>
-      <p><strong>Tipo:</strong> {{ atividade.get_tipo_display }}</p>
-      <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
-      <p><strong>Turno:</strong> {{ atividade.turno }}</p>
+        <div class="text-muted small">
+          <div><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</div>
+            <div>
+                <strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }} |
+                <strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }} |
+                <strong>Turno:</strong> {{ atividade.get_turno_display }}
+            </div>
+          </div>              
+      <!-- AÇÕES DE FREQUÊNCIA NO TOPO -->
+      <div class="d-flex flex-column gap-3 mb-4">
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+              <div>
+                <h4 class="mb-1">Frequência da Atividade</h4>
+                {% if ja_tem_frequencia %}
+                  <p class="mb-0 text-muted small">A frequência de hoje já foi registrada.</p>
+                {% else %}
+                  <p class="mb-0 text-muted small">Ainda não existe frequência registrada para hoje.</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+            
+              <div class="d-flex flex-wrap gap-2">
+                {% if ja_tem_frequencia %}
+                  {% if pode_editar %}
+                    <a href="{% url 'frequencia_activity_editar' activity_id=atividade.id %}" class="btn btn-warning">
+                      <i class="fas fa-edit"></i> Editar Frequência de Hoje
+                    </a>
+                  {% endif %}
+
+                  {% if pode_visualizar %}
+                    <a href="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}" class="btn btn-info">
+                      <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
+                    </a>
+                  {% endif %}
+                {% else %}
+                  {% if pode_iniciar %}
+                    <a href="{% url 'frequencia_activity_iniciar' activity_id=atividade.id %}" class="btn btn-success">
+                      <i class="fas fa-play"></i> Iniciar Frequência de Hoje
+                    </a>
+                  {% endif %}
+                {% endif %}
+              </div>
+
+              {% if pode_visualizar %}
+                <form method="get" action="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}" class="d-flex flex-wrap align-items-end gap-2 mb-0">
+                  <div>
+                    <label for="data" class="form-label mb-1 small">Consultar frequência por data</label>
+                    <input type="date" name="data" id="data" class="form-control" value="{{ hoje|date:'Y-m-d' }}">
+                  </div>
+                  <div>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-search"></i> Consultar
+                    </button>
+                  </div>
+                </form>
+              {% endif %}
+
+            </div>
+
+          </div>
+        </div>
 
       <h2 class="mt-4 text-center">Alunos da Atividade</h2>
       <table class="table table-striped">
@@ -191,33 +252,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
 
   </div>
 
-  <!-- BOTÕES DE FREQUÊNCIA -->
-      <div class="mt-4">
-        {% if ja_tem_frequencia %}
-          <div class="alert alert-info">
-            Frequência de hoje já foi iniciada.
-          </div>
-
-          {% if pode_editar %}
-          <a href="{% url 'frequencia_activity_editar' activity_id=atividade.id %}" class="btn btn-warning">
-            <i class="fas fa-edit"></i> Editar Frequência de Hoje
-          </a>
-          {% endif %}
-
-          {% if pode_visualizar %}
-          <a href="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}" class="btn btn-info">
-            <i class="fas fa-eye"></i> Visualizar Frequência de Hoje
-          </a>
-          {% endif %}
-
-        {% else %}
-          {% if pode_iniciar %}
-          <a href="{% url 'frequencia_activity_iniciar' activity_id=atividade.id %}" class="btn btn-success">
-            <i class="fas fa-play"></i> Iniciar Frequência
-          </a>
-          {% endif %}
-        {% endif %}
-      </div>
+ 
     <a href="{% url 'activity_add_alunos' activity_id=atividade.id %}" class="btn btn-secondary ms-2">Adicionar alunos</a>
     <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
   

@@ -48,6 +48,33 @@
     </div>
     {% endif %}
 
+    {% if not chamada_nao_encontrada and chamada.status_aula == 'NAO_HOUVE' %}
+    <div class="alert alert-warning mt-3">
+        <h5 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Não houve aula nesta data</h5>
+        <p class="mb-1"><strong>Motivo:</strong> {{ chamada.get_motivo_nao_aula_display }}</p>
+        {% if chamada.observacao_nao_aula %}
+            <p class="mb-0"><strong>Observação:</strong> {{ chamada.observacao_nao_aula }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+                {% if pode_editar and not chamada_nao_encontrada %}
+                <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Editar Frequência
+                </a>
+                {% endif %}
+
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+
+                <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar para Turma
+                </a>
+            </div>
+            
+    {% if not chamada_nao_encontrada and chamada.status_aula != 'NAO_HOUVE' %}
     <div>
         <div class="row mt-4">
             <div class="col">
@@ -76,6 +103,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div class="card mt-3">
         <div class="card-header">
@@ -83,77 +111,65 @@
         </div>
 
         <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr class="text-center">
-                        <th>Inscrição</th>
-                        <th>Nome do Aluno</th>
-                        <th>Status</th>
-                        <th>Motivo da Falta</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if chamada_nao_encontrada %}
-                        {% for aluno in alunos_turma %}
+            {% if not chamada_nao_encontrada and chamada.status_aula == 'NAO_HOUVE' %}
+                <div class="text-center text-muted py-4">
+                    Não houve aula nesta data, portanto não há lista de presença individual.
+                </div>
+            {% else %}
+                <table class="table table-striped">
+                    <thead>
                         <tr class="text-center">
-                            <td>{{ aluno.family.registration_number }}</td>
-                            <td>{{ aluno.name|upper }}</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <th>Inscrição</th>
+                            <th>Nome do Aluno</th>
+                            <th>Status</th>
+                            <th>Motivo da Falta</th>
                         </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">Nenhum aluno inscrito nesta turma.</td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        {% for presenca in presencas %}
-                        <tr>
-                            <td class="text-center">{{ presenca.aluno.family.registration_number }}</td>
-                            <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
-                            <td class="text-center">
-                                {% if presenca.presente %}
-                                    Presente
-                                {% else %}
-                                    Falta
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if not presenca.presente and presenca.motivo_falta %}
-                                    {% if presenca.motivo_falta == 'SJ' or presenca.motivo_falta == 'AM' or presenca.motivo_falta == 'DM' or presenca.motivo_falta == 'OT' %}
+                    </thead>
+                    <tbody>
+                        {% if chamada_nao_encontrada %}
+                            {% for aluno in alunos_turma %}
+                            <tr class="text-center">
+                                <td>{{ aluno.family.registration_number }}</td>
+                                <td>{{ aluno.name|upper }}</td>
+                                <td>-</td>
+                                <td>-</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nenhum aluno inscrito nesta turma.</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for presenca in presencas %}
+                            <tr>
+                                <td class="text-center">{{ presenca.aluno.family.registration_number }}</td>
+                                <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
+                                <td class="text-center">
+                                    {% if presenca.presente %}
+                                        Presente
+                                    {% else %}
+                                        Falta
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if not presenca.presente and presenca.motivo_falta %}
                                         {{ presenca.get_motivo_falta_display }}
                                     {% else %}
-                                        {{ presenca.motivo_falta }}
+                                        -
                                     {% endif %}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
-                        </tr>
-                        {% endfor %}
-                    {% endif %}
-                </tbody>
-            </table>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            {% endif %}
 
-            <div class="mt-4">
-                {% if pode_editar and not chamada_nao_encontrada %}
-                <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
-                    <i class="fas fa-edit"></i> Editar Frequência
-                </a>
-                {% endif %}
-
-                <button onclick="window.print()" class="btn btn-secondary">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-
-                <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Voltar para Turma
-                </a>
-            </div>
+            
         </div>
     </div>
 </div>

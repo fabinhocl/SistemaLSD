@@ -10,8 +10,11 @@ def filter_by_aluno(presencas_dict, aluno_id):
     return presencas_dict.get(aluno_id, {'presente': True, 'justificativa': ''})
 
 @register.filter
+
 def presentes_count(presencas):
-    return sum(1 for p in presencas if p.presente)
+    if presencas:
+        return sum(1 for p in presencas if p.presente)
+    return 0
 
 @register.filter
 def faltas_count(presencas):
@@ -19,4 +22,6 @@ def faltas_count(presencas):
 
 @register.filter
 def get_item(dictionary, key):
-    return dictionary.get(key)
+    if dictionary:
+        return dictionary.get(key)
+    return None

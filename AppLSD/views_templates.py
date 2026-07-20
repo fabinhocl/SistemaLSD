@@ -1615,12 +1615,12 @@ def turma_detail(request, turma_id):
     pode_iniciar = False
 
     if frequencia_referencia:
-        pode_iniciar = False
-        pode_visualizar = coordenacao_status or educadora_status
+        pode_visualizar = coordenacao_status or is_educadora_desta_turma
         pode_editar = pode_editar_frequencia_turma(request.user, turma)
     else:
         if coordenacao_status or is_educadora_desta_turma:
             pode_iniciar = True
+            pode_visualizar = True
 
     ct = ContentType.objects.get_for_model(Turma)
     logs = AppLog.objects.filter(
@@ -1640,6 +1640,7 @@ def turma_detail(request, turma_id):
         'pode_iniciar': pode_iniciar,
         'is_coordenacao': coordenacao_status,
         'is_educadora': educadora_status,
+        'is_educadora_desta_turma': is_educadora_desta_turma,
         'total_alunos_turma': total_alunos_turma,
         'pode_adicionar_alunos': coordenacao_status,
         'pode_editar_alunos': coordenacao_status,
@@ -1648,6 +1649,7 @@ def turma_detail(request, turma_id):
         'aniversariantes_dia': aniversariantes_dia,
         'data_referencia': data_referencia,
         'data_hoje': today,
+        'consultando_hoje': data_referencia == today,
     }
     return render(request, 'AppLSD/turma_detail.html', context)
 
@@ -1761,6 +1763,7 @@ def iniciar_frequencia_turma(request, turma_id):
     Inicia uma nova frequência para a turma.
     Só cria/salva frequência no POST.
     Permite iniciar frequência em uma data informada.
+    Também permite registrar quando não houve aula.
     """
     turma = get_object_or_404(Turma, id=turma_id)
 
@@ -1777,29 +1780,92 @@ def iniciar_frequencia_turma(request, turma_id):
     else:
         data_referencia = timezone.now().date()
 
-    
     alunos = Aluno.objects.filter(turma=turma).order_by('name')
 
+    status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL) if request.method == 'POST' else FrequenciaTurma.StatusAula.NORMAL
+    motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip() if request.method == 'POST' else ''
+    observacao_nao_aula = request.POST.get('observacao_nao_aula', '').strip() if request.method == 'POST' else ''
+
     if request.method == "POST":
-        # cria/obtém a chamada SOMENTE aqui
         chamada, created = FrequenciaTurma.objects.get_or_create(
             turma=turma,
             data=data_referencia,
             defaults={
-                'presente': True,      # se ainda usar esse campo
+                'presente': True,
                 'criado_por': request.user,
             }
         )
 
+        chamada.status_aula = status_aula
+        chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+        chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+        chamada.editado_por = request.user if not created else None
+
+        if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+            if not motivo_nao_aula:
+                messages.error(request, 'Selecione o motivo de não haver aula.')
+
+                return render(
+                    request,
+                    'AppLSD/frequencia_turma_iniciar.html',
+                    {
+                        'turma': turma,
+                        'alunos': alunos,
+                        'data_hoje': data_referencia,
+                        'status_aula': status_aula,
+                        'motivo_nao_aula': motivo_nao_aula,
+                        'observacao_nao_aula': observacao_nao_aula,
+                        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+                    }
+                )
+
+            chamada.presente = False
+            chamada.save()
+
+            FrequenciaAluno.objects.filter(chamada=chamada).delete()
+
+            messages.success(request, 'Registro salvo: não houve aula nesta data.')
+
+            registrar_log(
+                request.user,
+                turma,
+                'frequencia_nao_houve_aula',
+                f'Na turma {turma.grupo}, foi registrado que não houve aula em {data_referencia.strftime("%d/%m/%Y")} '
+                f'por motivo de {chamada.get_motivo_nao_aula_display()}.',
+            )
+
+            return redirect('frequencia_visualizar', frequencia_id=chamada.id)
+
+        chamada.presente = True
+        chamada.save()
+
         for aluno in alunos:
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+            if not presente and not motivo_falta:
+                messages.error(request, f'Selecione o motivo da falta para o aluno {aluno.name}.')
+
+                return render(
+                    request,
+                    'AppLSD/frequencia_turma_iniciar.html',
+                    {
+                        'turma': turma,
+                        'alunos': alunos,
+                        'data_hoje': data_referencia,
+                        'status_aula': status_aula,
+                        'motivo_nao_aula': motivo_nao_aula,
+                        'observacao_nao_aula': observacao_nao_aula,
+                        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+                    }
+                )
 
             FrequenciaAluno.objects.update_or_create(
                 chamada=chamada,
                 aluno=aluno,
                 defaults={
                     'presente': presente,
+                    'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
                     'motivo_falta': motivo_falta if not presente else '',
                 }
             )
@@ -1815,7 +1881,6 @@ def iniciar_frequencia_turma(request, turma_id):
         )
         return redirect('frequencia_visualizar', frequencia_id=chamada.id)
 
-    # GET: apenas mostra o formulário, NÃO cria chamada nem registros
     return render(
         request,
         'AppLSD/frequencia_turma_iniciar.html',
@@ -1823,87 +1888,93 @@ def iniciar_frequencia_turma(request, turma_id):
             'turma': turma,
             'alunos': alunos,
             'data_hoje': data_referencia,
+            'status_aula': FrequenciaTurma.StatusAula.NORMAL,
+            'motivo_nao_aula': '',
+            'observacao_nao_aula': '',
+            'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
         }
     )
 
 
+@login_required
 def visualizar_frequencia_turma(request, frequencia_id):
-    """
-    Visualiza a frequência em modo somente leitura
-    Permite pesquisar outra chamada da mesma turma por data.
-    Se não existir, oferece opção de iniciar frequência para aquela data.
-    """
-    chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
+    chamada_base = get_object_or_404(
+        FrequenciaTurma.objects.select_related('turma', 'turma__educadora'),
+        id=frequencia_id
+    )
 
-    data_busca = request.GET.get('data')
-    chamada_nao_encontrada = False
-    data_pesquisada = None
-    data_pesquisada_br = None
+    turma = chamada_base.turma
 
-    if data_busca:
+    if not (
+        is_coordenacao(request.user)
+        or (is_educadora(request.user) and turma.educadora == request.user)
+    ):
+        raise PermissionDenied("Você não tem permissão para visualizar esta frequência.")
+
+    data_param = request.GET.get('data')
+
+    if data_param:
         try:
-            data_obj = datetime.strptime(data_busca, '%Y-%m-%d').date()
+            data_consulta = datetime.strptime(data_param, '%Y-%m-%d').date()
         except ValueError:
-            data_obj = None
+            data_consulta = chamada_base.data
+    else:
+        data_consulta = chamada_base.data
 
-        if data_obj:
-            chamada_data = FrequenciaTurma.objects.filter(
-                turma=chamada.turma,
-                data=data_obj
-            ).first()
+    chamada = FrequenciaTurma.objects.filter(
+        turma=turma,
+        data=data_consulta
+    ).select_related('turma', 'turma__educadora').first()
 
-            if chamada_data:
-                return redirect('frequencia_visualizar', frequencia_id=chamada_data.id)
-            else:
-                chamada_nao_encontrada = True
-                data_pesquisada = data_obj.strftime('%Y-%m-%d')
-                data_pesquisada_br = data_obj.strftime('%d/%m/%Y')
-                messages.warning(request, 'Não foi encontrada chamada para a data informada.')
-    
-    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno').order_by('aluno__name')
-    
-    # Buscar alunos da turma
-    alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
-    
-    # contadores padrão da chamada atual
-    presentes = presencas.filter(presente=True).count()
-    faltas = presencas.filter(presente=False).count()
-    total = alunos_turma.count()
+    alunos_turma = Aluno.objects.filter(
+        turma=turma
+    ).select_related('family').order_by('name')
 
-    # se não há chamada para a data pesquisada, zera contadores
+    chamada_nao_encontrada = chamada is None
+
     if chamada_nao_encontrada:
+        chamada = chamada_base
+        presencas = []
         presentes = 0
         faltas = 0
+        total_alunos = alunos_turma.count()
+    else:
+        presencas = FrequenciaAluno.objects.filter(
+            chamada=chamada
+        ).select_related('aluno', 'aluno__family').order_by('aluno__name')
 
-    # Verificar permissão
-    #is_coordenadora = request.user.groups.filter(name='Coordenadora').exists() or request.user.is_superuser
-    pode_editar = pode_editar_frequencia_turma(request.user, chamada.turma)
+        if chamada.status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+            presentes = 0
+            faltas = 0
+            total_alunos = alunos_turma.count()
+        else:
+            presentes = presencas.filter(presente=True).count()
+            faltas = presencas.filter(presente=False).count()
+            total_alunos = alunos_turma.count()
+
+    pode_editar = pode_editar_frequencia_turma(request.user, turma)
     pode_iniciar_data = (
-        is_coordenacao(request.user) or
-        (is_educadora(request.user) and chamada.turma.educadora == request.user)
+        is_coordenacao(request.user)
+        or (is_educadora(request.user) and turma.educadora == request.user)
     )
 
     context = {
         'chamada': chamada,
+        'turma': turma,
         'presencas': presencas,
         'alunos_turma': alunos_turma,
-        'modo_visualizacao': True,
-        'pode_editar': pode_editar,
-        'data_busca': data_pesquisada or chamada.data.strftime('%Y-%m-%d'),
-        'chamada_nao_encontrada': chamada_nao_encontrada,
-        'data_pesquisada': data_pesquisada,
-        'data_pesquisada_br': data_pesquisada_br,
-        'pode_iniciar_data': pode_iniciar_data,
         'presentes': presentes,
         'faltas': faltas,
-        'total_alunos': total,
+        'total_alunos': total_alunos,
+        'pode_editar': pode_editar,
+        'chamada_nao_encontrada': chamada_nao_encontrada,
+        'data_pesquisada': data_consulta.strftime('%Y-%m-%d') if data_param else '',
+        'data_pesquisada_br': data_consulta.strftime('%d/%m/%Y') if data_param else '',
+        'data_busca': data_consulta.strftime('%Y-%m-%d'),
+        'pode_iniciar_data': pode_iniciar_data,
     }
-    
+
     return render(request, 'AppLSD/frequencia_turma_visualizar.html', context)
-"""
-def is_coordenacao(user):
-    return user.groups.filter(name='Coordenacao').exists() or user.is_superuser
-"""
 
 #@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
 @login_required
@@ -1920,31 +1991,65 @@ def editar_frequencia_turma(request, frequencia_id):
     alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
 
     if request.method == 'POST':
+        status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL)
+        motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip()
+        observacao_nao_aula = request.POST.get('observacao_nao_aula', '').strip()
+
+        chamada.status_aula = status_aula
+        chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+        chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
         chamada.editado_por = request.user
-        chamada.save()
 
-        for aluno in alunos_turma:
-            presente = f'presente_{aluno.id}' in request.POST
-            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+        if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+            if not motivo_nao_aula:
+                messages.error(request, 'Selecione o motivo de não haver aula.')
+            else:
+                chamada.presente = False
+                chamada.save()
 
-            FrequenciaAluno.objects.update_or_create(
-                chamada=chamada,
-                aluno=aluno,
-                defaults={
-                    'presente': presente,
-                    'motivo_falta': motivo_falta if not presente else ''
-                }
-            )
+                FrequenciaAluno.objects.filter(chamada=chamada).delete()
 
-        messages.success(request, 'Frequência atualizada com sucesso!')
+                messages.success(request, 'Registro atualizado: não houve aula nesta data.')
 
-        registrar_log(
-            request.user,
-            chamada.turma,
-            'frequencia_editada',
-            f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela coordenadora ({request.user.get_full_name() or request.user.username}).',
-        )
-        return redirect('turma_detail', turma_id=chamada.turma.id)
+                registrar_log(
+                    request.user,
+                    chamada.turma,
+                    'frequencia_editada_nao_houve_aula',
+                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} alterada para "não houve aula" '
+                    f'pela coordenadora ({request.user.get_full_name() or request.user.username}).',
+                )
+                return redirect('turma_detail', turma_id=chamada.turma.id)
+        else:
+            chamada.presente = True
+            chamada.save()
+
+            for aluno in alunos_turma:
+                presente = f'presente_{aluno.id}' in request.POST
+                motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+                if not presente and not motivo_falta:
+                    messages.error(request, f'Selecione o motivo da falta para o aluno {aluno.name}.')
+                    break
+
+                FrequenciaAluno.objects.update_or_create(
+                    chamada=chamada,
+                    aluno=aluno,
+                    defaults={
+                        'presente': presente,
+                        'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
+                        'motivo_falta': motivo_falta if not presente else ''
+                    }
+                )
+            else:
+                messages.success(request, 'Frequência atualizada com sucesso!')
+
+                registrar_log(
+                    request.user,
+                    chamada.turma,
+                    'frequencia_editada',
+                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela coordenadora ({request.user.get_full_name() or request.user.username}).',
+                )
+                return redirect('turma_detail', turma_id=chamada.turma.id)
 
     presencas_map = {p.aluno_id: p for p in presencas}
 
@@ -1960,6 +2065,7 @@ def editar_frequencia_turma(request, frequencia_id):
         'chamada': chamada,
         'alunos_com_presenca': alunos_com_presenca,
         'modo_edicao': True,
+        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
     }
 
     return render(request, 'AppLSD/frequencia_turma_editar.html', context)
@@ -1967,34 +2073,40 @@ def editar_frequencia_turma(request, frequencia_id):
 @login_required
 def activity_detail(request, activity_id):
     atividade = get_object_or_404(Activity, id=activity_id)
-    
+
     hoje = timezone.now().date()
-    tem_frequencia_hoje = FrequenciaAtividade.objects.filter(
+    ja_tem_frequencia = FrequenciaAtividade.objects.filter(
         atividade=atividade,
         data=hoje,
     ).exists()
 
-    # alunos vinculados à atividade em ordem alfabética
     alunos_atividade = Aluno.objects.filter(
         atividades=atividade
-    ).order_by('name')  # ou 'nome', conforme o campo no model
+    ).order_by('name')
 
-    from django.contrib.contenttypes.models import ContentType
     ct = ContentType.objects.get_for_model(Activity)
-    logs = AppLog.objects.filter(content_type=ct, object_id=atividade.pk)
+    logs = AppLog.objects.filter(
+        content_type=ct,
+        object_id=atividade.pk
+    ).order_by('-criado_em')
+
+    user_is_coordenacao = is_coordenacao(request.user) or request.user.is_superuser
+    user_is_educadora = is_educadora(request.user)
 
     context = {
         'atividade': atividade,
-        'tem_frequencia_hoje': tem_frequencia_hoje,
-        # se tiver controle de permissão, algo como:
+        'ja_tem_frequencia': ja_tem_frequencia,
+        'tem_frequencia_hoje': ja_tem_frequencia,
         'logs': logs,
         'alunos_atividade': alunos_atividade,
-        'is_coordenacao': is_coordenacao(request.user),
-        'is_educadora': is_educadora(request.user),
-        
+        'is_coordenacao': user_is_coordenacao,
+        'is_educadora': user_is_educadora,
+        'pode_visualizar': user_is_coordenacao or user_is_educadora,
+        'pode_iniciar': user_is_coordenacao or user_is_educadora,
+        'pode_editar': user_is_coordenacao,
     }
+
     return render(request, 'AppLSD/activity_detail.html', context)
-    
 
 
 @login_required
@@ -2107,39 +2219,82 @@ def activity_delete(request, pk):
         return redirect('activity_list')
     return render(request, 'AppLSD/activity_confirm_delete.html', {'activity': activity})
 
+
 @login_required
 def iniciar_frequencia_activity(request, activity_id):
     """
     Inicia ou registra a frequência de uma atividade.
     Educadoras registram a presença dos alunos vinculados à atividade.
+    Coordenação pode registrar frequência de qualquer aluno da atividade.
+    Se já houver falta registrada na turma na mesma data, replica para a atividade.
     """
     atividade = get_object_or_404(Activity, id=activity_id)
-    if request.user.is_superuser or request.user.groups.filter(name='Coordenacao').exists():
-        # coordenação pode ver todos os alunos da atividade
-        alunos = Aluno.objects.filter(atividades=atividade).order_by('name')
+
+    user_is_coordenacao = request.user.is_superuser or is_coordenacao(request.user)
+
+    if user_is_coordenacao:
+        alunos = Aluno.objects.filter(atividades=atividade).select_related(
+            'family', 'turma', 'turma__educadora'
+        ).order_by('name')
     else:
-        # educadora vê só alunos de turmas dela
         alunos = Aluno.objects.filter(
             atividades=atividade,
             turma__educadora=request.user,
+        ).select_related(
+            'family', 'turma', 'turma__educadora'
         ).order_by('name')
-    # Data da chamada: se vier no POST usa, senão hoje
-    if request.method == 'POST' and request.POST.get('data'):
-        data_chamada = date.fromisoformat(request.POST['data'])
+
+    data_param = request.POST.get('data') if request.method == 'POST' else request.GET.get('data')
+    if data_param:
+        try:
+            data_chamada = date.fromisoformat(data_param)
+        except ValueError:
+            data_chamada = timezone.now().date()
     else:
         data_chamada = timezone.now().date()
 
-    if request.method == 'POST':
+    presencas_form = {}
 
-        # verifica se já existia frequência para essa atividade e data
+    if request.method == 'POST':
+        erros = []
+
         ja_existia = FrequenciaAtividade.objects.filter(
             atividade=atividade,
             data=data_chamada,
         ).exists()
 
-        # Processamento da presença
+        motivos_validos = {
+            choice[0] for choice in FrequenciaAtividade.MotivoFalta.choices
+        }
+
         for aluno in alunos:
-            # Checkbox marcado = presente
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+            presencas_form[aluno.id] = {
+                'presente': presente,
+                'motivo_falta': motivo_falta,
+            }
+
+            if not presente:
+                if not motivo_falta:
+                    erros.append(f'O aluno {aluno.name} está com falta e precisa ter um motivo selecionado.')
+                elif motivo_falta not in motivos_validos:
+                    erros.append(f'O motivo da falta do aluno {aluno.name} é inválido.')
+
+        if erros:
+            for erro in erros:
+                messages.error(request, erro)
+
+            return render(request, 'AppLSD/frequencia_activity_iniciar.html', {
+                'atividade': atividade,
+                'alunos': alunos,
+                'data': data_chamada,
+                'presencas_form': presencas_form,
+                'motivos_falta': FrequenciaAtividade.MotivoFalta.choices,
+            })
+
+        for aluno in alunos:
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
 
@@ -2150,92 +2305,166 @@ def iniciar_frequencia_activity(request, activity_id):
                 defaults={
                     'presente': presente,
                     'motivo_falta': motivo_falta if not presente else '',
-                    #'editado_por': request.user,
                     'criado_por': request.user,
                 }
             )
 
         messages.success(request, 'Frequência da atividade registrada com sucesso!')
 
-        # Log na atividade
         registrar_log(
             request.user,
             atividade,
             'frequencia_atividade_criada' if not ja_existia else 'frequencia_atividade_editada',
             (
                 f'Frequência da atividade "{atividade.atividade}" em '
-                f'{data_chamada.strftime("%d/%m/%Y")} registrada pela educadora '
+                f'{data_chamada.strftime("%d/%m/%Y")} registrada por '
                 f'{request.user.get_full_name() or request.user.username}.'
             ),
         )
 
         return redirect('frequencia_activity_visualizar', activity_id=atividade.id)
 
-    # GET: renderiza formulário de presença
+    for aluno in alunos:
+        freq_aluno_turma = FrequenciaAluno.objects.filter(
+            aluno=aluno,
+            chamada__data=data_chamada
+        ).select_related('chamada').first()
+
+        if freq_aluno_turma:
+            presencas_form[aluno.id] = {
+                'presente': freq_aluno_turma.presente,
+                'motivo_falta': '' if freq_aluno_turma.presente else (freq_aluno_turma.motivo_falta or ''),
+            }
+        else:
+            presencas_form[aluno.id] = {
+                'presente': True,
+                'motivo_falta': '',
+            }
+
     return render(request, 'AppLSD/frequencia_activity_iniciar.html', {
         'atividade': atividade,
         'alunos': alunos,
         'data': data_chamada,
+        'presencas_form': presencas_form,
+        'motivos_falta': FrequenciaAtividade.MotivoFalta.choices,
     })
-
 
 @login_required
 def visualizar_frequencia_activity(request, activity_id):
+    """
+    Visualiza a frequência da atividade.
+    Coordenação e educadoras podem visualizar.
+    """
     atividade = get_object_or_404(Activity, id=activity_id)
-    data = request.GET.get('data')  # ou outra forma de escolher o dia
+
+    user_is_coordenacao = is_coordenacao(request.user) or request.user.is_superuser
+    user_is_educadora = is_educadora(request.user)
+
+    if not user_is_coordenacao and not user_is_educadora:
+        messages.error(request, 'Você não tem permissão para visualizar a frequência desta atividade.')
+        return redirect('activity_detail', activity_id=atividade.id)
+
+    data = request.GET.get('data')
     if data:
-        data_chamada = date.fromisoformat(data)
+        try:
+            data_chamada = date.fromisoformat(data)
+        except ValueError:
+            messages.warning(request, 'Data inválida. Exibindo a data de hoje.')
+            data_chamada = timezone.now().date()
     else:
         data_chamada = timezone.now().date()
 
-    # pega a "cabeça" da chamada (se você usa o mesmo model) apenas como referência
-    chamada = FrequenciaAtividade.objects.filter(
-        atividade=atividade,
-        data=data_chamada,
-    ).order_by('id').first()
-
-    # lista de presenças por aluno (pode ser o mesmo queryset)
     presencas = FrequenciaAtividade.objects.filter(
         atividade=atividade,
         data=data_chamada,
-    ).select_related('aluno').order_by('aluno__name')
+    ).select_related('aluno', 'aluno__turma', 'aluno__family').order_by('aluno__name')
+
+    if user_is_educadora and not user_is_coordenacao:
+        presencas = presencas.filter(aluno__turma__educadora=request.user)
+
+    chamada = presencas.first()
 
     context = {
         'atividade': atividade,
         'data_chamada': data_chamada,
         'chamada': chamada,
         'presencas': presencas,
+        'is_coordenacao': user_is_coordenacao,
+        'is_educadora': user_is_educadora,
+        'pode_editar': user_is_coordenacao and presencas.exists(),
+        'total_presencas': presencas.count(),
     }
     return render(request, 'AppLSD/frequencia_activity_visualizar.html', context)
 
-
-@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
+@user_passes_test(is_coordenacao)
 def editar_frequencia_activity(request, activity_id):
     """
-    Edita a frequência - apenas coordenadoras
+    Edita a frequência da atividade.
+    Apenas coordenação pode editar.
     """
     atividade = get_object_or_404(Activity, id=activity_id)
-    alunos_atividade = Aluno.objects.filter(atividade=atividade)        
-    
-    if request.method == 'POST' and request.POST.get('data'):
-        data_chamada = date.fromisoformat(request.POST['data'])
+
+    alunos_atividade = Aluno.objects.filter(
+        atividades=atividade
+    ).select_related(
+        'family', 'turma', 'turma__educadora'
+    ).order_by('name')
+
+    data_param = request.POST.get('data') if request.method == 'POST' else request.GET.get('data')
+
+    if data_param:
+        try:
+            data_chamada = date.fromisoformat(data_param)
+        except ValueError:
+            data_chamada = timezone.now().date()
     else:
         data_chamada = timezone.now().date()
 
-    presencas = FrequenciaAtividade.objects.filter(
+    presencas_qs = FrequenciaAtividade.objects.filter(
         atividade=atividade,
         data=data_chamada
     ).select_related('aluno')
 
-        # Processar alterações
+    presencas_dict = {p.aluno.id: p for p in presencas_qs}
+
     if request.method == 'POST':
+        erros = []
+        presencas_form = {}
+        motivos_validos = {choice[0] for choice in MotivoFaltaChoices.choices}
+
         for aluno in alunos_atividade:
-           # Mesmo padrão da view de iniciar: checkbox marcado = presente
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
-            
-            
-            # Se não existe, cria novo registro
+
+            presencas_form[aluno.id] = {
+                'presente': presente,
+                'motivo_falta': motivo_falta,
+            }
+
+            if not presente:
+                if not motivo_falta:
+                    erros.append(f'O aluno {aluno.name} está com falta e precisa ter um motivo selecionado.')
+                elif motivo_falta not in motivos_validos:
+                    erros.append(f'O motivo da falta do aluno {aluno.name} é inválido.')
+
+        if erros:
+            for erro in erros:
+                messages.error(request, erro)
+
+            context = {
+                'atividade': atividade,
+                'data_chamada': data_chamada,
+                'presencas': presencas_form,
+                'alunos_atividade': alunos_atividade,
+                'modo_edicao': True,
+                'motivos_falta': MotivoFaltaChoices.choices,
+            }
+            return render(request, 'AppLSD/frequencia_activity_editar.html', context)
+
+        for aluno in alunos_atividade:
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
             FrequenciaAtividade.objects.update_or_create(
                 atividade=atividade,
                 aluno=aluno,
@@ -2246,6 +2475,7 @@ def editar_frequencia_activity(request, activity_id):
                     'editado_por': request.user,
                 }
             )
+
         messages.success(request, 'Frequência atualizada com sucesso!')
 
         registrar_log(
@@ -2253,23 +2483,30 @@ def editar_frequencia_activity(request, activity_id):
             atividade,
             'frequencia_atividade_editada',
             f'Frequência da atividade "{atividade.atividade}" em '
-            f'{data_chamada.strftime("%d/%m/%Y")} editada pela coordenadora' 
-            f' ({request.user.get_full_name() or request.user.username}).',
+            f'{data_chamada.strftime("%d/%m/%Y")} editada pela coordenação '
+            f'({request.user.get_full_name() or request.user.username}).',
         )
-        return redirect('activity_detail', atividade.id)
-            
-    # Criar dicionário de presenças para facilitar no template
-    presencas_dict = {p.aluno.id: p for p in presencas}
+
+        return redirect('activity_detail', activity_id=atividade.id)
+
+    presencas_form = {}
+    for aluno in alunos_atividade:
+        presenca = presencas_dict.get(aluno.id)
+        presencas_form[aluno.id] = {
+            'presente': presenca.presente if presenca else True,
+            'motivo_falta': presenca.motivo_falta if presenca and not presenca.presente else '',
+        }
+
     context = {
         'atividade': atividade,
         'data_chamada': data_chamada,
-        'presencas': presencas_dict,
+        'presencas': presencas_form,
         'alunos_atividade': alunos_atividade,
         'modo_edicao': True,
+        'motivos_falta': MotivoFaltaChoices.choices,
     }
-    
-    return render(request, 'AppLSD/frequencia_activity_editar.html', context)
-    
+
+    return render(request, 'AppLSD/frequencia_activity_editar.html', context)    
 
 def turma_add_alunos(request, turma_id):
     turma = get_object_or_404(Turma, pk=turma_id)

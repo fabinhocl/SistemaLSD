@@ -3,136 +3,151 @@
 {% load frequencia_filters %}
 {% block content %}
 
+<div class="container mt-4">
 
-    <div class="container mt-4">
-    <h1>Frequência da Atividade: {{ atividade.atividade }} </h1>
-    <h2>Facilitador(a): {{ atividade.facilitador }}</h2>
-    <p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
-    <p><strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }}</p>
-    <p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
-    <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
-  
-    
-    <div class="card mb-4">
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
-            <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label for="data" class="form-label"><strong>Pesquisar chamada por data</strong></label>
-                    <input
-                        type="date"
-                        name="data"
-                        id="data"
-                        class="form-control"
-                        value="{{ data_busca }}"
-                    >
+
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <h2 class="mb-1">Frequência da Atividade: {{ atividade.atividade }}</h2>
+                    <div class="text-muted small">
+                        <div><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</div>
+                        <div>
+                            <strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }} |
+                            <strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }} |
+                            <strong>Turno:</strong> {{ atividade.get_turno_display }}
+                        </div>
+                        <div><strong>Data consultada:</strong> {{ data_chamada|date:"d/m/Y" }}</div>
+                    </div>
                 </div>
-                <div class="col-md-auto">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Pesquisar
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'activity_detail' activity_id=atividade.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="fas fa-print"></i> Imprimir
                     </button>
                 </div>
+            </div>
+
+            <form method="get" action="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label for="data" class="form-label mb-1">Selecionar outra data</label>
+                        <input type="date" name="data" id="data" class="form-control" value="{{ data_chamada|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Consultar
+                        </button>
+                    </div>
+                    <div class="col-md-auto">
+                        {% if is_coordenacao and presencas %}
+                            <a href="{% url 'frequencia_activity_editar' activity_id=atividade.id %}?data={{ data_chamada|date:'Y-m-d' }}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Editar esta Data
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
             </form>
+
         </div>
     </div>
 
-    
-    <div class="card">
-        <!-- Resumo -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
             {% with presentes=presencas|presentes_count faltas=presencas|faltas_count %}
-                <div class="row mt-4">
-                    <div class="col">
-                        <div class="card bg-success text-white">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white h-100">
                             <div class="card-body text-center">
-                                <h4>Presentes</h4>
+                                <h5 class="mb-1">Presentes</h5>
                                 <span style="font-size:2em">{{ presentes }}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="card bg-danger text-white">
+                    <div class="col-md-4">
+                        <div class="card bg-danger text-white h-100">
                             <div class="card-body text-center">
-                                <h4>Faltas</h4>
+                                <h5 class="mb-1">Faltas</h5>
                                 <span style="font-size:2em">{{ faltas }}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="card bg-info text-white">
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white h-100">
                             <div class="card-body text-center">
-                                <h4>Total</h4>
-                                <span style="font-size:2em">{{ alunos_turma|length }}</span>
+                                <h5 class="mb-1">Total</h5>
+                                <span style="font-size:2em">{{ total_presencas }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             {% endwith %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
         <div class="card-header">
-            <h4 class="text-center">Lista de Presença</h4>
+            <h4 class="text-center mb-0">Lista de Presença</h4>
         </div>
         <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr class="text-center">
-                        <th>Inscrição</th>
-                        <th>Nome do Aluno</th>
-                        <th>Turma</th>
-                        <th>Status</th>
-                        <th>Motivo Falta</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for presenca in presencas %}
-                    <tr class="text-center">
-                        <td>{{ presenca.aluno.family.registration_number }}</td>
-                        <td>{{ presenca.aluno }}</td>
-                        <td>{{ presenca.aluno.turma.educadora }}</td>
-                        <td class="text-center">
-                            {% if presenca and presenca.presente %}Presente
-                                {% elif presenca %}Falta
-                                {% else %}-
-                                {% endif %}
-                        </td>
-                        <td>
-                            {% if not presenca.presente and presenca.motivo_falta %}
-                                {{ presenca.motivo_falta }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            
-
-  
-    
-    <!-- Botões -->
-    <div class="mt-4">
-        {% if pode_editar %}
-        <a href="{% url 'frequencia_atividade_editar' atividade.id %}" class="btn btn-warning">
-            <i class="fas fa-edit"></i> Editar Frequência
-        </a>
-        {% endif %}
-        
-        <button onclick="window.print()" class="btn btn-secondary">
-            <i class="fas fa-print"></i> Imprimir
-        </button>
-        
-        <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Voltar para Atividade
-        </a>
+            {% if presencas %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr class="text-center">
+                                <th>Inscrição</th>
+                                <th>Nome do Aluno</th>
+                                <th>Turma</th>
+                                <th>Status</th>
+                                <th>Motivo Falta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for presenca in presencas %}
+                                <tr>
+                                    <td  class="text-center">{{ presenca.aluno.family.registration_number }}</td>
+                                    <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
+                                    <td class="text-center">{{ presenca.aluno.turma.educadora.first_name }}</td>
+                                    <td>
+                                        {% if presenca.presente %}
+                                            <span class="badge bg-success">Presente</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Falta</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if not presenca.presente and presenca.motivo_falta %}
+                                            {{ presenca.get_motivo_falta_display }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning mb-0 text-center">
+                    Nenhum registro de presença encontrado para {{ data_chamada|date:"d/m/Y" }}.
+                </div>
+            {% endif %}
+        </div>
     </div>
+
 </div>
 
 <style>
 @media print {
-    .btn, .alert { display: none; }
+    .btn, form, .alert {
+        display: none !important;
+    }
 }
 </style>
+
 {% endblock %}

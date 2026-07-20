@@ -6,13 +6,48 @@
 <div class="container mt-4">
     <h1>Editar Frequência - {{ chamada.turma.grupo }}</h1>
     <h3>Faixa Etária: {{ chamada.turma.faixa_etaria }}</h3>
-    <h3>Educadora: {{ chamada.turma.educadora.first_name }} </h3>
+    <h3>Educadora: {{ chamada.turma.educadora.first_name }}</h3>
+    <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
-        
+
     <form method="post" id="formFrequencia">
         {% csrf_token %}
-        
-        <div class="card">
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="status_aula" class="form-label"><strong>Status da aula</strong></label>
+                        <select name="status_aula" id="status_aula" class="form-select">
+                            <option value="NORMAL" {% if chamada.status_aula == 'NORMAL' %}selected{% endif %}>Houve aula</option>
+                            <option value="NAO_HOUVE" {% if chamada.status_aula == 'NAO_HOUVE' %}selected{% endif %}>Não houve aula</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4" id="motivo-nao-aula-wrapper">
+                        <label for="motivo_nao_aula" class="form-label"><strong>Motivo</strong></label>
+                        <select name="motivo_nao_aula" id="motivo_nao_aula" class="form-select">
+                            <option value="">Selecione o motivo</option>
+                            {% for valor, label in motivos_nao_aula %}
+                                <option value="{{ valor }}" {% if chamada.motivo_nao_aula == valor %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4" id="observacao-nao-aula-wrapper">
+                        <label for="observacao_nao_aula" class="form-label"><strong>Observação</strong></label>
+                        <input type="text"
+                               name="observacao_nao_aula"
+                               id="observacao_nao_aula"
+                               class="form-control"
+                               value="{{ chamada.observacao_nao_aula|default:'' }}"
+                               placeholder="Detalhes, se necessário">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="bloco-presencas">
             <div class="card-header bg-warning">
                 <h4>Lista de Presença - Edição</h4>
             </div>
@@ -34,21 +69,21 @@
                             <td class="text-justify">{{ aluno.name|upper }}</td>
                             <td class="text-center">
                                 <div class="form-check form-check-inline">
-                                    <input 
-                                        class="form-check-input" 
-                                        type="checkbox" 
-                                        name="presente_{{ aluno.id }}" 
-                                        id="presente_{{ aluno.id }}" 
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        name="presente_{{ aluno.id }}"
+                                        id="presente_{{ aluno.id }}"
                                         value="on"
                                         {% if presenca and presenca.presente %}checked{% endif %}
                                         onchange="toggleMotivo({{ aluno.id }})">
-                                    
+
                                     <label class="form-check-label" for="presente_{{ aluno.id }}">
                                         <i class="fas fa-check text-success"></i>
                                     </label>
                                 </div>
                             </td>
-                            
+
                             <td>
                                 <select
                                     name="motivo_{{ aluno.id }}"
@@ -69,13 +104,12 @@
                 </table>
             </div>
         </div>
-        
-        <!-- Botões -->
+
         <div class="mt-4">
             <button type="submit" class="btn btn-primary btn-lg">
                 <i class="fas fa-save"></i> Salvar Alterações
             </button>
-            
+
             <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary btn-lg">
                 <i class="fas fa-times"></i> Cancelar
             </a>
@@ -97,5 +131,31 @@ function toggleMotivo(alunoId) {
         select.disabled = false;
     }
 }
+
+function atualizarStatusAula() {
+    const statusAula = document.getElementById('status_aula');
+    const motivoWrapper = document.getElementById('motivo-nao-aula-wrapper');
+    const observacaoWrapper = document.getElementById('observacao-nao-aula-wrapper');
+    const blocoPresencas = document.getElementById('bloco-presencas');
+
+    const naoHouve = statusAula.value === 'NAO_HOUVE';
+
+    motivoWrapper.style.display = naoHouve ? 'block' : 'none';
+    observacaoWrapper.style.display = naoHouve ? 'block' : 'none';
+    blocoPresencas.style.display = naoHouve ? 'none' : 'block';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[type="checkbox"][name^="presente_"]').forEach(function (checkbox) {
+        const alunoId = checkbox.name.split('_')[1];
+        toggleMotivo(alunoId);
+    });
+
+    const statusAula = document.getElementById('status_aula');
+    if (statusAula) {
+        statusAula.addEventListener('change', atualizarStatusAula);
+        atualizarStatusAula();
+    }
+});
 </script>
 {% endblock %}

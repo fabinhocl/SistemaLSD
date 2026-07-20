@@ -40,6 +40,40 @@
         {# Se quiser garantir compatibilidade, pode manter o hidden (opcional se o type=date já tem name=data) #}
         {# <input type="hidden" name="data" value="{{ data_hoje|date:'Y-m-d' }}"> #}
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="status_aula" class="form-label"><strong>Status da aula</strong></label>
+                        <select name="status_aula" id="status_aula" class="form-select">
+                            <option value="NORMAL" {% if status_aula == 'NORMAL' %}selected{% endif %}>Houve aula</option>
+                            <option value="NAO_HOUVE" {% if status_aula == 'NAO_HOUVE' %}selected{% endif %}>Não houve aula</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4" id="motivo-nao-aula-wrapper">
+                        <label for="motivo_nao_aula" class="form-label"><strong>Motivo</strong></label>
+                        <select name="motivo_nao_aula" id="motivo_nao_aula" class="form-select">
+                            <option value="">Selecione o motivo</option>
+                            {% for valor, label in motivos_nao_aula %}
+                                <option value="{{ valor }}" {% if motivo_nao_aula == valor %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4" id="observacao-nao-aula-wrapper">
+                        <label for="observacao_nao_aula" class="form-label"><strong>Observação</strong></label>
+                        <input type="text"
+                            name="observacao_nao_aula"
+                            id="observacao_nao_aula"
+                            class="form-control"
+                            value="{{ observacao_nao_aula|default:'' }}"
+                            placeholder="Detalhes, se necessário">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <table class="table table-bordered mt-3">
             <thead>
                 <tr class="text-center">
@@ -101,32 +135,50 @@
 
 
 <script>
-// Habilitar/desabilitar campo justificativa conforme seleção
-document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const alunoId = this.name.split('_')[1];
-        const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
-        
-        if (this.checked === false) {
-            motivoFaltaField.disabled = false;
-            motivoFaltaField.focus();
-        } else {
-            motivoFaltaField.disabled = true;
-            motivoFaltaField    .value = '';
-        }
-    });
-});
-
-// Inicializar estado dos campos ao carregar
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+    const statusAula = document.getElementById('status_aula');
+    const motivoNaoAulaWrapper = document.getElementById('motivo-nao-aula-wrapper');
+    const observacaoNaoAulaWrapper = document.getElementById('observacao-nao-aula-wrapper');
+    const blocoPresencas = document.getElementById('bloco-presencas');
+
+    function atualizarStatusAula() {
+        const naoHouve = statusAula.value === 'NAO_HOUVE';
+
+        motivoNaoAulaWrapper.style.display = naoHouve ? 'block' : 'none';
+        observacaoNaoAulaWrapper.style.display = naoHouve ? 'block' : 'none';
+        blocoPresencas.style.display = naoHouve ? 'none' : 'block';
+    }
+
+    document.querySelectorAll('input[type="checkbox"][name^="presente_"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const alunoId = this.name.split('_')[1];
+            const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
+
+            if (!motivoFaltaField) return;
+
+            if (this.checked === false) {
+                motivoFaltaField.disabled = false;
+                motivoFaltaField.focus();
+            } else {
+                motivoFaltaField.disabled = true;
+                motivoFaltaField.value = '';
+            }
+        });
+    });
+
+    document.querySelectorAll('input[type="checkbox"][name^="presente_"]:checked').forEach(checkbox => {
         const alunoId = checkbox.name.split('_')[1];
         const motivoFaltaField = document.getElementById(`motivo_${alunoId}`);
-        
-        if (checkbox.checked) {
+
+        if (motivoFaltaField) {
             motivoFaltaField.disabled = true;
         }
     });
+
+    if (statusAula) {
+        statusAula.addEventListener('change', atualizarStatusAula);
+        atualizarStatusAula();
+    }
 });
 </script>
 {% endblock %}
