@@ -8,7 +8,7 @@
     <h1>Frequência: {{ chamada.turma.grupo }}</h1>
     <h3>Faixa Etária: {{ chamada.turma.faixa_etaria }}</h3>
     <h2>Educadora: {{ chamada.turma.educadora.first_name }}</h2>
-    <p><strong>Data:</strong> {{ chamada.data|date:"d/m/Y" }}</p>
+    <p><strong>Data:</strong> {{ data_busca|date:"d/m/Y" }}</p>
     <p><strong>Turno:</strong> {{ chamada.turma.turno }}</p>
 
     <div class="card mb-4">
@@ -58,22 +58,6 @@
     </div>
     {% endif %}
 
-    <div class="mt-4">
-                {% if pode_editar and not chamada_nao_encontrada %}
-                <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
-                    <i class="fas fa-edit"></i> Editar Frequência
-                </a>
-                {% endif %}
-
-                <button onclick="window.print()" class="btn btn-secondary">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-
-                <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Voltar para Turma
-                </a>
-            </div>
-            
     {% if not chamada_nao_encontrada and chamada.status_aula != 'NAO_HOUVE' %}
     <div>
         <div class="row mt-4">
@@ -126,50 +110,59 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if chamada_nao_encontrada %}
-                            {% for aluno in alunos_turma %}
-                            <tr class="text-center">
-                                <td>{{ aluno.family.registration_number }}</td>
-                                <td>{{ aluno.name|upper }}</td>
-                                <td>-</td>
-                                <td>-</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center">Nenhum aluno inscrito nesta turma.</td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            {% for presenca in presencas %}
-                            <tr>
-                                <td class="text-center">{{ presenca.aluno.family.registration_number }}</td>
-                                <td class="text-justify">{{ presenca.aluno.name|upper }}</td>
-                                <td class="text-center">
+                        {% for item in alunos_com_presenca %}
+                        {% with aluno=item.aluno presenca=item.presenca %}
+                        <tr>
+                            <td class="text-center">{{ aluno.family.registration_number }}</td>
+                            <td class="text-justify">{{ aluno.name|upper }}</td>
+                            <td class="text-center">
+                                {% if chamada_nao_encontrada %}
+                                    -
+                                {% elif presenca %}
                                     {% if presenca.presente %}
                                         Presente
                                     {% else %}
                                         Falta
                                     {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    {% if not presenca.presente and presenca.motivo_falta %}
-                                        {{ presenca.get_motivo_falta_display }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center">Nenhum registro de presença encontrado.</td>
-                            </tr>
-                            {% endfor %}
-                        {% endif %}
+                                {% else %}
+                                    Não registrado
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if chamada_nao_encontrada %}
+                                    -
+                                {% elif presenca and not presenca.presente and presenca.motivo_falta %}
+                                    {{ presenca.get_motivo_falta_display }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Nenhum aluno inscrito nesta turma.</td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             {% endif %}
 
-            
+            <div class="mt-4">
+                {% if pode_editar and not chamada_nao_encontrada %}
+                <a href="{% url 'frequencia_editar' chamada.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Editar Frequência
+                </a>
+                {% endif %}
+
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+
+                <a href="{% url 'turma_detail' chamada.turma.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar para Turma
+                </a>
+            </div>
         </div>
     </div>
 </div>

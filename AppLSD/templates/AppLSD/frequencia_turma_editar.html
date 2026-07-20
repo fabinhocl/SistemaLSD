@@ -75,7 +75,7 @@
                                         name="presente_{{ aluno.id }}"
                                         id="presente_{{ aluno.id }}"
                                         value="on"
-                                        {% if presenca and presenca.presente %}checked{% endif %}
+                                        {% if presenca.presente %}checked{% endif %}
                                         onchange="toggleMotivo({{ aluno.id }})">
 
                                     <label class="form-check-label" for="presente_{{ aluno.id }}">
@@ -88,14 +88,20 @@
                                 <select
                                     name="motivo_{{ aluno.id }}"
                                     id="motivo_{{ aluno.id }}"
-                                    class="form-select"
-                                    {% if presenca and presenca.presente %}disabled{% endif %}>
+                                    class="form-select {% if erros_motivo|get_item:aluno.id %}is-invalid{% endif %}"
+                                    {% if presenca.presente %}disabled{% endif %}>
                                     <option value="">Selecione o motivo</option>
-                                    <option value="SJ" {% if presenca and presenca.motivo_falta == 'SJ' %}selected{% endif %}>Sem Justificativa</option>
-                                    <option value="AM" {% if presenca and presenca.motivo_falta == 'AM' %}selected{% endif %}>Atestado Médico</option>
-                                    <option value="DM" {% if presenca and presenca.motivo_falta == 'DM' %}selected{% endif %}>Declaração Médica</option>
-                                    <option value="OT" {% if presenca and presenca.motivo_falta == 'OT' %}selected{% endif %}>Outro</option>
+                                    <option value="SJ" {% if presenca.motivo_falta == 'SJ' %}selected{% endif %}>Sem Justificativa</option>
+                                    <option value="AM" {% if presenca.motivo_falta == 'AM' %}selected{% endif %}>Atestado Médico</option>
+                                    <option value="DM" {% if presenca.motivo_falta == 'DM' %}selected{% endif %}>Declaração Médica</option>
+                                    <option value="OT" {% if presenca.motivo_falta == 'OT' %}selected{% endif %}>Outro</option>
                                 </select>
+
+                                {% if erros_motivo|get_item:aluno.id %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ erros_motivo|get_item:aluno.id }}
+                                    </div>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endwith %}
@@ -127,6 +133,7 @@ function toggleMotivo(alunoId) {
     if (checkbox.checked) {
         select.value = '';
         select.disabled = true;
+        select.classList.remove('is-invalid');
     } else {
         select.disabled = false;
     }

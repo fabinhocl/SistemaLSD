@@ -1780,26 +1780,33 @@ def iniciar_frequencia_turma(request, turma_id):
     else:
         data_referencia = timezone.now().date()
 
-    alunos = Aluno.objects.filter(turma=turma).order_by('name')
+    alunos = Aluno.objects.filter(turma=turma).select_related('family').order_by('name')
 
-    status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL) if request.method == 'POST' else FrequenciaTurma.StatusAula.NORMAL
+    status_aula = request.POST.get(
+        'status_aula',
+        FrequenciaTurma.StatusAula.NORMAL
+    ) if request.method == 'POST' else FrequenciaTurma.StatusAula.NORMAL
+
     motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip() if request.method == 'POST' else ''
     observacao_nao_aula = request.POST.get('observacao_nao_aula', '').strip() if request.method == 'POST' else ''
 
-    if request.method == "POST":
-        chamada, created = FrequenciaTurma.objects.get_or_create(
-            turma=turma,
-            data=data_referencia,
-            defaults={
-                'presente': True,
-                'criado_por': request.user,
-            }
-        )
+    presencas_form = {
+        aluno.id: {'presente': True, 'motivo_falta': ''}
+        for aluno in alunos
+    }
+    erros_motivo = {}
 
-        chamada.status_aula = status_aula
-        chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
-        chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
-        chamada.editado_por = request.user if not created else None
+    if request.method == "POST":
+        erros = []
+
+        for aluno in alunos:
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+            presencas_form[aluno.id] = {
+                'presente': presente,
+                'motivo_falta': motivo_falta,
+            }
 
         if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
             if not motivo_nao_aula:
@@ -1816,35 +1823,21 @@ def iniciar_frequencia_turma(request, turma_id):
                         'motivo_nao_aula': motivo_nao_aula,
                         'observacao_nao_aula': observacao_nao_aula,
                         'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+                        'presencas_form': presencas_form,
+                        'erros_motivo': erros_motivo,
                     }
                 )
+        else:
+            for aluno in alunos:
+                presente = presencas_form[aluno.id]['presente']
+                motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
-            chamada.presente = False
-            chamada.save()
+                if not presente and not motivo_falta:
+                    erros.append(f'Selecione o motivo da falta para o aluno {aluno.name}.')
+                    erros_motivo[aluno.id] = 'Selecione um motivo da falta.'
 
-            FrequenciaAluno.objects.filter(chamada=chamada).delete()
-
-            messages.success(request, 'Registro salvo: não houve aula nesta data.')
-
-            registrar_log(
-                request.user,
-                turma,
-                'frequencia_nao_houve_aula',
-                f'Na turma {turma.grupo}, foi registrado que não houve aula em {data_referencia.strftime("%d/%m/%Y")} '
-                f'por motivo de {chamada.get_motivo_nao_aula_display()}.',
-            )
-
-            return redirect('frequencia_visualizar', frequencia_id=chamada.id)
-
-        chamada.presente = True
-        chamada.save()
-
-        for aluno in alunos:
-            presente = f'presente_{aluno.id}' in request.POST
-            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
-
-            if not presente and not motivo_falta:
-                messages.error(request, f'Selecione o motivo da falta para o aluno {aluno.name}.')
+            if erros:
+                messages.error(request, 'Existem alunos com falta sem motivo selecionado.')
 
                 return render(
                     request,
@@ -1857,18 +1850,64 @@ def iniciar_frequencia_turma(request, turma_id):
                         'motivo_nao_aula': motivo_nao_aula,
                         'observacao_nao_aula': observacao_nao_aula,
                         'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+                        'presencas_form': presencas_form,
+                        'erros_motivo': erros_motivo,
                     }
                 )
 
-            FrequenciaAluno.objects.update_or_create(
-                chamada=chamada,
-                aluno=aluno,
+        with transaction.atomic():
+            chamada, created = FrequenciaTurma.objects.get_or_create(
+                turma=turma,
+                data=data_referencia,
                 defaults={
-                    'presente': presente,
-                    'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
-                    'motivo_falta': motivo_falta if not presente else '',
+                    'presente': True,
+                    'criado_por': request.user,
                 }
             )
+
+            chamada.status_aula = status_aula
+            chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+            chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+
+            if created:
+                chamada.criado_por = request.user
+            else:
+                chamada.editado_por = request.user
+
+            if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+                chamada.presente = False
+                chamada.save()
+
+                FrequenciaAluno.objects.filter(chamada=chamada).delete()
+
+                messages.success(request, 'Registro salvo: não houve aula nesta data.')
+
+                registrar_log(
+                    request.user,
+                    turma,
+                    'frequencia_nao_houve_aula',
+                    f'Na turma {turma.grupo}, foi registrado que não houve aula em {data_referencia.strftime("%d/%m/%Y")} '
+                    f'por motivo de {chamada.get_motivo_nao_aula_display()}.',
+                )
+
+                return redirect('frequencia_visualizar', frequencia_id=chamada.id)
+
+            chamada.presente = True
+            chamada.save()
+
+            for aluno in alunos:
+                presente = presencas_form[aluno.id]['presente']
+                motivo_falta = presencas_form[aluno.id]['motivo_falta']
+
+                FrequenciaAluno.objects.update_or_create(
+                    chamada=chamada,
+                    aluno=aluno,
+                    defaults={
+                        'presente': presente,
+                        'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
+                        'motivo_falta': motivo_falta if not presente else '',
+                    }
+                )
 
         messages.success(request, 'Frequência registrada com sucesso!')
 
@@ -1892,6 +1931,8 @@ def iniciar_frequencia_turma(request, turma_id):
             'motivo_nao_aula': '',
             'observacao_nao_aula': '',
             'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+            'presencas_form': presencas_form,
+            'erros_motivo': erros_motivo,
         }
     )
 
@@ -1932,25 +1973,37 @@ def visualizar_frequencia_turma(request, frequencia_id):
 
     chamada_nao_encontrada = chamada is None
 
+    alunos_com_presenca = []
+    presentes = 0
+    faltas = 0
+    total_alunos = alunos_turma.count()
+
     if chamada_nao_encontrada:
         chamada = chamada_base
-        presencas = []
-        presentes = 0
-        faltas = 0
-        total_alunos = alunos_turma.count()
+        presencas = FrequenciaAluno.objects.none()
     else:
         presencas = FrequenciaAluno.objects.filter(
             chamada=chamada
         ).select_related('aluno', 'aluno__family').order_by('aluno__name')
 
-        if chamada.status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
-            presentes = 0
-            faltas = 0
-            total_alunos = alunos_turma.count()
-        else:
-            presentes = presencas.filter(presente=True).count()
-            faltas = presencas.filter(presente=False).count()
-            total_alunos = alunos_turma.count()
+    presencas_map = {p.aluno_id: p for p in presencas}
+
+    for aluno in alunos_turma:
+        presenca = presencas_map.get(aluno.id)
+        alunos_com_presenca.append({
+            'aluno': aluno,
+            'presenca': presenca,
+        })
+
+    if not chamada_nao_encontrada and chamada.status_aula != FrequenciaTurma.StatusAula.NAO_HOUVE:
+        presentes = sum(
+            1 for item in alunos_com_presenca
+            if item['presenca'] and item['presenca'].presente
+        )
+        faltas = sum(
+            1 for item in alunos_com_presenca
+            if item['presenca'] and not item['presenca'].presente
+        )
 
     pode_editar = pode_editar_frequencia_turma(request.user, turma)
     pode_iniciar_data = (
@@ -1963,6 +2016,7 @@ def visualizar_frequencia_turma(request, frequencia_id):
         'turma': turma,
         'presencas': presencas,
         'alunos_turma': alunos_turma,
+        'alunos_com_presenca': alunos_com_presenca,
         'presentes': presentes,
         'faltas': faltas,
         'total_alunos': total_alunos,
@@ -1984,30 +2038,55 @@ def editar_frequencia_turma(request, frequencia_id):
     if not pode_editar_frequencia_turma(request.user, chamada.turma):
         raise PermissionDenied("Você não tem permissão para editar esta frequência.")
 
+    alunos_turma = Aluno.objects.filter(
+        turma=chamada.turma
+    ).select_related('family').order_by('name')
+
     presencas = FrequenciaAluno.objects.filter(
         chamada=chamada
     ).select_related('aluno').order_by('aluno__name')
 
-    alunos_turma = Aluno.objects.filter(turma=chamada.turma).order_by('name')
+    presencas_map = {p.aluno_id: p for p in presencas}
+
+    presencas_form = {}
+    for aluno in alunos_turma:
+        presenca = presencas_map.get(aluno.id)
+        presencas_form[aluno.id] = {
+            'presente': presenca.presente if presenca else True,
+            'motivo_falta': presenca.motivo_falta if presenca and not presenca.presente else '',
+        }
+
+    erros_motivo = {}
 
     if request.method == 'POST':
         status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL)
         motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip()
         observacao_nao_aula = request.POST.get('observacao_nao_aula', '').strip()
 
-        chamada.status_aula = status_aula
-        chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
-        chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
-        chamada.editado_por = request.user
+        erros = {}
+
+        for aluno in alunos_turma:
+            presente = f'presente_{aluno.id}' in request.POST
+            motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+
+            presencas_form[aluno.id] = {
+                'presente': presente,
+                'motivo_falta': motivo_falta,
+            }
 
         if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
             if not motivo_nao_aula:
                 messages.error(request, 'Selecione o motivo de não haver aula.')
             else:
-                chamada.presente = False
-                chamada.save()
+                with transaction.atomic():
+                    chamada.status_aula = status_aula
+                    chamada.motivo_nao_aula = motivo_nao_aula
+                    chamada.observacao_nao_aula = observacao_nao_aula
+                    chamada.editado_por = request.user
+                    chamada.presente = False
+                    chamada.save()
 
-                FrequenciaAluno.objects.filter(chamada=chamada).delete()
+                    FrequenciaAluno.objects.filter(chamada=chamada).delete()
 
                 messages.success(request, 'Registro atualizado: não houve aula nesta data.')
 
@@ -2020,27 +2099,38 @@ def editar_frequencia_turma(request, frequencia_id):
                 )
                 return redirect('turma_detail', turma_id=chamada.turma.id)
         else:
-            chamada.presente = True
-            chamada.save()
-
             for aluno in alunos_turma:
-                presente = f'presente_{aluno.id}' in request.POST
-                motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
+                presente = presencas_form[aluno.id]['presente']
+                motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
                 if not presente and not motivo_falta:
-                    messages.error(request, f'Selecione o motivo da falta para o aluno {aluno.name}.')
-                    break
+                    erros_motivo[aluno.id] = 'Selecione um motivo da falta.'
 
-                FrequenciaAluno.objects.update_or_create(
-                    chamada=chamada,
-                    aluno=aluno,
-                    defaults={
-                        'presente': presente,
-                        'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
-                        'motivo_falta': motivo_falta if not presente else ''
-                    }
-                )
+            if erros_motivo:
+                messages.error(request, 'Existem alunos com falta sem motivo selecionado.')
             else:
+                with transaction.atomic():
+                    chamada.status_aula = FrequenciaTurma.StatusAula.NORMAL
+                    chamada.motivo_nao_aula = ''
+                    chamada.observacao_nao_aula = ''
+                    chamada.editado_por = request.user
+                    chamada.presente = True
+                    chamada.save()
+
+                    for aluno in alunos_turma:
+                        presente = presencas_form[aluno.id]['presente']
+                        motivo_falta = presencas_form[aluno.id]['motivo_falta']
+
+                        FrequenciaAluno.objects.update_or_create(
+                            chamada=chamada,
+                            aluno=aluno,
+                            defaults={
+                                'presente': presente,
+                                'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
+                                'motivo_falta': motivo_falta if not presente else ''
+                            }
+                        )
+
                 messages.success(request, 'Frequência atualizada com sucesso!')
 
                 registrar_log(
@@ -2051,14 +2141,15 @@ def editar_frequencia_turma(request, frequencia_id):
                 )
                 return redirect('turma_detail', turma_id=chamada.turma.id)
 
-    presencas_map = {p.aluno_id: p for p in presencas}
+        chamada.status_aula = status_aula
+        chamada.motivo_nao_aula = motivo_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
+        chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
 
     alunos_com_presenca = []
     for aluno in alunos_turma:
-        presenca = presencas_map.get(aluno.id)
         alunos_com_presenca.append({
             'aluno': aluno,
-            'presenca': presenca,
+            'presenca': presencas_form.get(aluno.id),
         })
 
     context = {
@@ -2066,6 +2157,7 @@ def editar_frequencia_turma(request, frequencia_id):
         'alunos_com_presenca': alunos_com_presenca,
         'modo_edicao': True,
         'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+        'erros_motivo': erros_motivo,
     }
 
     return render(request, 'AppLSD/frequencia_turma_editar.html', context)
