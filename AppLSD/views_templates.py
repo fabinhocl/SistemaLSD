@@ -2255,6 +2255,9 @@ def iniciar_frequencia_activity(request, activity_id):
 
     presencas_form = {}
 
+    motivos_falta_choices = FrequenciaAtividade._meta.get_field('motivo_falta').choices
+    motivos_validos = {choice[0] for choice in motivos_falta_choices}
+
     if request.method == 'POST':
         erros = []
 
@@ -2262,10 +2265,6 @@ def iniciar_frequencia_activity(request, activity_id):
             atividade=atividade,
             data=data_chamada,
         ).exists()
-
-        motivos_validos = {
-            choice[0] for choice in FrequenciaAtividade.MotivoFalta.choices
-        }
 
         for aluno in alunos:
             presente = f'presente_{aluno.id}' in request.POST
@@ -2291,7 +2290,7 @@ def iniciar_frequencia_activity(request, activity_id):
                 'alunos': alunos,
                 'data': data_chamada,
                 'presencas_form': presencas_form,
-                'motivos_falta': FrequenciaAtividade.MotivoFalta.choices,
+                'motivos_falta': motivos_falta_choices,
             })
 
         for aluno in alunos:
@@ -2346,7 +2345,7 @@ def iniciar_frequencia_activity(request, activity_id):
         'alunos': alunos,
         'data': data_chamada,
         'presencas_form': presencas_form,
-        'motivos_falta': FrequenciaAtividade.MotivoFalta.choices,
+        'motivos_falta': motivos_falta_choices,
     })
 
 @login_required
