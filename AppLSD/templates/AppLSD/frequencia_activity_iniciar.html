@@ -4,11 +4,17 @@
 {% block title %}Frequência - {{ atividade.atividade }}{% endblock %}
 {% block content %}
 
-<h1>Atividade: {{ atividade.atividade }}</h1>
-<h2>Facilitador(a): {{ atividade.facilitador }}</h2>
-<p><strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }}</p>
-<p><strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }}</p>
-<p><strong>Turno:</strong> {{ atividade.get_turno_display }}</p>
+                <h2 class="mb-1">Frequência da Atividade: {{ atividade.atividade }}</h2>
+                    <div class="text-muted small">
+                        <div><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</div>
+                        <div>
+                            <strong>Dias da Semana:</strong> {{ atividade.get_dia_semana_display }} |
+                            <strong>Horário:</strong> {{ atividade.horario_inicio }} às {{ atividade.horario_fim }} |
+                            <strong>Turno:</strong> {{ atividade.get_turno_display }}
+                        </div>
+                        <div><strong>Data consultada:</strong> {{ data_chamada|date:"d/m/Y" }}</div>
+                    </div>
+                </div>
 
 <div class="card mb-4">
     <div class="card-body">
