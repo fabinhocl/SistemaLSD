@@ -56,9 +56,9 @@
             {% for aluno in alunos %}
                 {% with info=presencas_form|get_item:aluno.id %}
                 <tr>
-                    <td>{{ aluno.family.registration_number }}</td>
-                    <td class="text-justify">{{ aluno.name }}</td>
-                    <td>{{ aluno.turma.educadora.first_name }}</td>
+                    <td class="text-center">{{ aluno.family.registration_number }}</td>
+                    <td class="text-justify">{{ aluno.name|upper }}</td>
+                    <td>{{ aluno.turma.educadora.first_name|upper }}</td>
                     <td class="text-center">
                         <input type="checkbox"
                                name="presente_{{ aluno.id }}"
