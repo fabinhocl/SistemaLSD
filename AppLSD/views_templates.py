@@ -1219,6 +1219,12 @@ def aluno_detail(request, pk):
         or educadora_status
     )
 
+    pode_remover_atividade = (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+        or is_educadora_da_turma
+    )
+
     atividades_disponiveis = get_atividades_disponiveis_para_aluno(aluno)
 
     context = {
@@ -1230,6 +1236,7 @@ def aluno_detail(request, pk):
         'pode_desligar_aluno': pode_desligar_aluno,
         'pode_mover_aluno': pode_mover_aluno,
         'pode_adicionar_atividade': pode_adicionar_atividade,
+        'pode_remover_atividade': pode_remover_atividade,
         'atividades_disponiveis': atividades_disponiveis,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
