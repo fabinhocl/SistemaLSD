@@ -3544,8 +3544,8 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
 
 
 @login_required
-def relatorio_mensal_aluno(request):
-    context = get_contexto_relatorio_aluno_mensal(request)
+def relatorio_mensal_aluno(request, pk):
+    context = get_contexto_relatorio_aluno_mensal(request, aluno_id=pk)
     return render(request, 'AppLSD/relatorio_mensal_aluno.html', context)
 
 
@@ -3781,17 +3781,21 @@ def export_family_excel(request):
 @login_required
 def export_aluno_excel(request):
     campos = request.GET.getlist('campos')
-    
-       
-    alunos = Aluno.objects.select_related('family', 'turma').all().order_by('name')
-    
+
+    alunos = (
+        Aluno.objects
+        .select_related('family', 'turma')
+        .prefetch_related('atividades', 'atividades__facilitador')
+        .all()
+        .order_by('name')
+    )
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Alunos"
-    
-    # Dicionário com TODOS os campos possíveis
+
     campos_info = {
-        'criado_em': {'label': 'Criado em'},  # novo
+        'criado_em': {'label': 'Criado em'},
         'inscricao': {'label': 'Inscrição', 'field': 'family__registration_number'},
         'name': {'label': 'Nome', 'field': 'name'},
         'responsavel': {'label': 'Responsável', 'field': 'family__responsible_name'},
@@ -3813,70 +3817,93 @@ def export_aluno_excel(request):
         'dias_semana': {'label': 'Dias da Semana', 'field': 'dias_semana'},
         'status_lsd': {'label': 'Status LSD', 'field': 'status_lsd'},
         'turma': {'label': 'Turma', 'field': 'turma__name'},
+        'atividades': {'label': 'Atividades'},
+        'facilitadores': {'label': 'Facilitadores'},
     }
 
     if not campos:
-        campos = list(campos_info.keys())  # se não vier campos, exporta todos os campos disponíveis
-    
-    # Cabeçalhos NA ORDEM dos campos selecionados
+        campos = list(campos_info.keys())
+
     headers = []
     for campo in campos:
         if campo in campos_info:
             headers.append(campos_info[campo]['label'])
-    
+
     ws.append(headers)
-    
-    # Estilo do cabeçalho
+
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         cell.alignment = Alignment(horizontal="center")
-    
-    # Dados NA ORDEM dos campos selecionados
+
     for aluno in alunos:
         row = []
+
+        atividades_aluno = list(aluno.atividades.all())
+
         for campo in campos:
             if campo in campos_info:
                 valor = ''
-                
-                # Campos especiais
+
                 if campo == 'inscricao':
                     valor = aluno.family.registration_number if aluno.family else ''
+
                 elif campo == 'responsavel':
                     valor = aluno.family.responsible_name if aluno.family else ''
+
                 elif campo == 'birth_date':
                     valor = aluno.birth_date.strftime('%d/%m/%Y') if aluno.birth_date else ''
+
                 elif campo == 'idade':
                     valor = aluno.idade if hasattr(aluno, 'idade') else ''
+
                 elif campo == 'criado_em':
                     dt = get_created_at_for_instance(aluno, 'aluno_criado')
                     valor = dt.strftime('%d/%m/%Y %H:%M') if dt else ''
+
+                elif campo == 'turma':
+                    if aluno.turma:
+                        valor = f'{aluno.turma.educadora.first_name} - {aluno.turma.faixa_etaria}'
+                    else:
+                        valor = ''
+
+                elif campo == 'atividades':
+                    valor = ', '.join(
+                        atividade.atividade for atividade in atividades_aluno
+                    )
+
+                elif campo == 'facilitadores':
+                    valor = ', '.join(
+                        atividade.facilitador.first_name
+                        for atividade in atividades_aluno
+                        if atividade.facilitador
+                    )
+
                 else:
                     valor = getattr(aluno, campo, '')
-                
+
                 row.append(str(valor) if valor else '')
-        
+
         ws.append(row)
-    
-    # Ajusta largura das colunas
+
     for column in ws.columns:
         max_length = 0
         column_letter = column[0].column_letter
         for cell in column:
             try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
+                if cell.value and len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
             except:
                 pass
         adjusted_width = min((max_length + 2), 50)
         ws.column_dimensions[column_letter].width = adjusted_width
-    
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     filename = f'alunos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
+
     wb.save(response)
     return response
 
