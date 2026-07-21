@@ -3,158 +3,159 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Relatório Mensal - {{ turma.grupo }} ({{ turma.turno }})</title>
-  <style>
-    @page {
-      size: A4 landscape;
-      margin: 10mm;
-    }
+    <title>Relatório Mensal - {{ turma.grupo }} ({{ turma.turno }})</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
 
-    body {
-      font-family: Arial, sans-serif;
-      color: #222;
-      margin: 0;
-      padding: 0;
-    }
+        body {
+          font-family: Arial, sans-serif;
+          color: #222;
+          margin: 0;
+          padding: 0;
+        }
 
-    .container {
-      padding: 18px;
-    }
+        .container {
+          padding: 18px;
+        }
 
-    .acoes {
-      margin-bottom: 18px;
-    }
+        .acoes {
+          margin-bottom: 18px;
+        }
 
-    .acoes button,
-    .acoes a {
-      padding: 10px 14px;
-      border: none;
-      background: #6c757d;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-right: 8px;
-      display: inline-block;
-    }
+        .acoes button,
+        .acoes a {
+          padding: 10px 14px;
+          border: none;
+          background: #6c757d;
+          color: #fff;
+          text-decoration: none;
+          border-radius: 6px;
+          cursor: pointer;
+          margin-right: 8px;
+          display: inline-block;
+        }
 
-    .topo {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-      gap: 16px;
-    }
+        .topo {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 16px;
+          gap: 16px;
+        }
 
-    .topo img {
-      height: 60px;
-      max-width: 180px;
-      object-fit: contain;
-    }
+        .topo img {
+          height: 60px;
+          max-width: 180px;
+          object-fit: contain;
+        }
 
-    h1 {
-      margin: 0 0 8px 0;
-      font-size: 22px;
-    }
+        h1 {
+          margin: 0 0 8px 0;
+          font-size: 22px;
+        }
 
-    .meta {
-      font-size: 15px;
-      margin-bottom: 10px;
-    }
+        .meta {
+          font-size: 15px;
+          margin-bottom: 10px;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 11px;
-    }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          font-size: 11px;
+        }
 
-    th, td {
-      border: 1px solid #222;
-      padding: 4px 3px;
-      text-align: center;
-      vertical-align: middle;
-    }
+        th, td {
+          border: 1px solid #222;
+          padding: 4px 3px;
+          text-align: center;
+          vertical-align: middle;
+        }
 
-    th {
-      background: #ececec;
-      font-weight: 700;
-    }
+        th {
+          background: #ececec;
+          font-weight: 700;
+        }
 
-    thead {
-      display: table-header-group;
-    }
+        thead {
+          display: table-header-group;
+        }
 
-    tr {
-      page-break-inside: avoid;
-    }
+        tr {
+          page-break-inside: avoid;
+        }
 
-    .col-aluno {
-      width: 270px;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding-left: 6px;
-    }
+        .col-aluno {
+          width: 270px;
+          text-align: left;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-left: 6px;
+        }
 
-    .col-dia {
-      width: 34px;
-      font-size: 9px;
-      line-height: 1.1;
-      padding: 2px 1px;
-    }
+        .col-dia {
+          width: 34px;
+          font-size: 9px;
+          line-height: 1.1;
+          padding: 2px 1px;
+        }
 
-    .col-faltas {
-      width: 52px;
-    }
+        .col-faltas {
+          width: 52px;
+        }
 
-    .col-percentual {
-      width: 72px;
-    }
+        .col-percentual {
+          width: 72px;
+        }
 
-    .col-justificativas {
-      width: 240px;
-      text-align: left;
-      white-space: normal;
-      word-break: break-word;
-      padding-left: 6px;
-    }
+        .col-justificativas {
+          width: 240px;
+          text-align: left;
+          white-space: normal;
+          word-break: break-word;
+          padding-left: 6px;
+        }
 
-    @media print {
-      .acoes,
-      .navbar,
-      .sidebar,
-      .menu,
-      .btn {
-        display: none !important;
-      }
+        @media print {
+          .acoes,
+          .navbar,
+          .sidebar,
+          .menu,
+          .btn {
+            display: none !important;
+          }
 
-      .container {
-        padding: 0;
-      }
+          .container {
+            padding: 0;
+          }
 
-      table {
-        font-size: 10px;
-      }
+          table {
+            font-size: 10px;
+          }
 
-      .col-aluno {
-        width: 290px;
-        white-space: nowrap;
-        overflow: visible;
-        text-overflow: clip;
-      }
+          .col-aluno {
+            width: 290px;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+          }
 
-      .col-dia {
-        width: 30px;
-        font-size: 8px;
-      }
+          .col-dia {
+            width: 30px;
+            font-size: 8px;
+          }
 
-      .col-justificativas {
-        width: 220px;
-      }
-    }
-  </style>
+          .col-justificativas {
+            width: 220px;
+          }
+        }
+      </style>
+      
 </head>
 <body>
   <div class="container">
@@ -173,6 +174,17 @@
       </div>
       <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
     </div>
+
+          {% if dias_nao_houve_aula %}
+        <div style="margin-bottom: 10px; font-size: 12px;">
+          <strong>Legenda:</strong> NH = Não houve aula
+          <br>
+          <strong>Dias sem aula:</strong>
+          {% for item in dias_nao_houve_aula %}
+            {{ item.data|date:"d/m" }}{% if item.motivo %} ({{ item.motivo }}){% endif %}{% if item.observacao %} - {{ item.observacao }}{% endif %}{% if not forloop.last %} | {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
 
     <table>
       <thead>

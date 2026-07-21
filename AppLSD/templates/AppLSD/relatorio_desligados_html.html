@@ -1,71 +1,357 @@
 {% extends 'AppLSD/base.html' %}
+{% load static %}
 
 {% block content %}
-<h2>Relatório de Desligados</h2>
+<style>
+  .relatorio-wrapper {
+    padding: 24px;
+    width: 100%;
+  }
 
-<p><strong>Período:</strong> {{ data_inicial }} até {{ data_final }}</p>
+  .topo-relatorio {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
 
-{% if erro %}
-  <div class="alert alert-danger">{{ erro }}</div>
-{% endif %}
+  .titulo-bloco {
+    flex: 1 1 420px;
+    min-width: 320px;
+  }
 
-<h4>Famílias Desligadas</h4>
-<table class="table table-bordered">
-  <thead>
-    <tr class="text-center">
-      <th>Data</th>
-      <th>Inscrição</th>
-      <th>Família</th>
-      <th>Ação</th>
-      <th>Descrição</th>
-      <th>Usuário</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in familias_desligadas %}
-      <tr>
-        <td>{{ item.data|date:"d/m/Y" }}</td>
-        <td class="text-center">{{ item.inscricao }} </td>
-        <td>{{ item.familia|upper }} </td>
-        <td>{{ item.acao }}</td>
-        <td>{{ item.descricao }}</td>
-        <td>{{ item.usuario }}</td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4">Nenhuma família desligada no período.</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  .titulo-relatorio {
+    margin: 0 0 6px 0;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
 
-<h4>Alunos Desligados</h4>
-<table class="table table-bordered">
-  <thead>
-    <tr class="text-center">
-      <th>Data</th>
-      <th>Inscrição</th>
-      <th>Aluno</th>
-      <th>Ação</th>
-      <th>Descrição</th>
-      <th>Usuário</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in alunos_desligados %}
-      <tr>
-        <td>{{ item.data|date:"d/m/Y" }}</td>
-        <td class="text-center">{{ item.inscricao }}</td>
-        <td>{{ item.aluno|upper }}
-        <td>{{ item.acao }}</td>
-        <td>{{ item.descricao }}</td>
-        <td>{{ item.usuario }}</td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4">Nenhum aluno desligado no período.</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  .periodo-relatorio {
+    margin: 0;
+    font-size: 1rem;
+    color: #444;
+  }
+
+  .acoes-relatorio {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .btn-relatorio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    min-height: 42px;
+    white-space: nowrap;
+  }
+
+  .btn-relatorio-primary {
+    background-color: #6c757d;
+    color: #fff;
+    border-color: #6c757d;
+  }
+
+  .btn-relatorio-primary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: #fff;
+  }
+
+  .btn-relatorio-secondary {
+    background-color: #f8f9fa;
+    color: #495057;
+    border-color: #ced4da;
+  }
+
+  .btn-relatorio-secondary:hover {
+    background-color: #e9ecef;
+    color: #212529;
+  }
+
+  .secao-relatorio {
+    margin-top: 28px;
+  }
+
+  .secao-relatorio h4 {
+    margin-bottom: 12px;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .tabela-relatorio {
+    width: 100%;
+    font-size: 14px;
+    table-layout: auto;
+    border-collapse: collapse;
+  }
+
+  .tabela-relatorio th,
+  .tabela-relatorio td {
+    vertical-align: top;
+    padding: 10px 8px;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .tabela-relatorio th {
+    text-align: center;
+    white-space: normal;
+  }
+
+  .col-data {
+    min-width: 90px;
+    width: 90px;
+    text-align: center;
+  }
+
+  .col-inscricao {
+    min-width: 90px;
+    width: 90px;
+    text-align: center;
+  }
+
+  .col-nome {
+    min-width: 220px;
+  }
+
+  .col-acao {
+    min-width: 140px;
+  }
+
+  .col-descricao {
+    min-width: 320px;
+  }
+
+  .col-usuario {
+    min-width: 90px;
+    width: 90px;
+    text-align: center;
+  }
+
+  @media print {
+    html, body {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .no-print,
+    nav,
+    .navbar,
+    .sidebar,
+    footer,
+    header {
+      display: none !important;
+    }
+
+    .container,
+    .container-fluid,
+    .content,
+    main {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .relatorio-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .topo-relatorio {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .titulo-bloco {
+      min-width: auto;
+    }
+
+    .titulo-relatorio {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .periodo-relatorio {
+      font-size: 11px;
+    }
+
+    .secao-relatorio {
+      margin-top: 14px;
+    }
+
+    .secao-relatorio h4 {
+      font-size: 16px;
+      margin: 0 0 6px 0;
+    }
+
+    .tabela-relatorio {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: auto !important;
+      font-size: 10px;
+      border-collapse: collapse;
+    }
+
+    .tabela-relatorio th,
+    .tabela-relatorio td {
+      padding: 4px 5px;
+      vertical-align: top;
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+
+    .tabela-relatorio th {
+      white-space: nowrap;
+    }
+
+    .col-data {
+      width: 70px !important;
+      min-width: 70px !important;
+    }
+
+    .col-inscricao {
+      width: 70px !important;
+      min-width: 70px !important;
+    }
+
+    .col-nome {
+      width: 170px !important;
+      min-width: 170px !important;
+    }
+
+    .col-acao {
+      width: 120px !important;
+      min-width: 120px !important;
+    }
+
+    .col-descricao {
+      width: auto !important;
+      min-width: 220px !important;
+    }
+
+    .col-usuario {
+      width: 80px !important;
+      min-width: 80px !important;
+    }
+
+    tr, td, th {
+      page-break-inside: avoid !important;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+  }
+</style>
+
+<div class="relatorio-wrapper">
+  <div class="topo-relatorio">
+    <div class="titulo-bloco">
+      <h2 class="titulo-relatorio">Relatório de Desligados</h2>
+      <p class="periodo-relatorio"><strong>Período:</strong> {{ data_inicial }} até {{ data_final }}</p>
+    </div>
+
+    <div class="acoes-relatorio no-print">
+      <button type="button" class="btn-relatorio btn-relatorio-primary" onclick="window.print()">
+        Imprimir / Salvar em PDF
+      </button>
+      <a href="{% url 'home_relatorios' %}" class="btn-relatorio btn-relatorio-secondary">
+        Voltar para Relatórios
+      </a>
+    </div>
+  </div>
+
+  {% if erro %}
+    <div class="alert alert-danger">{{ erro }}</div>
+  {% endif %}
+
+  <div class="secao-relatorio">
+    <h4 class="text-center">Famílias Desligadas</h4>
+    <table class="table table-bordered table-hover tabela-relatorio">
+      <thead>
+        <tr class="text-center">
+          <th class="col-data">Data</th>
+          <th class="col-inscricao">Inscrição</th>
+          <th class="col-nome">Família</th>
+          <th class="col-acao">Ação</th>
+          <th class="col-descricao">Descrição</th>
+          <th class="col-usuario">Usuário</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in familias_desligadas %}
+          <tr>
+            <td class="col-data">{{ item.data|date:"d/m/Y" }}</td>
+            <td class="col-inscricao">{{ item.inscricao }}</td>
+            <td class="col-nome">{{ item.familia|upper }}</td>
+            <td class="col-acao">{{ item.acao }}</td>
+            <td class="col-descricao">{{ item.descricao }}</td>
+            <td class="col-usuario">{{ item.usuario }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center">Nenhuma família desligada no período.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="secao-relatorio">
+    <h4 class="text-center">Alunos Desligados</h4>
+    <table class="table table-bordered table-hover tabela-relatorio">
+      <thead>
+        <tr class="text-center">
+          <th class="col-data">Data</th>
+          <th class="col-inscricao">Inscrição</th>
+          <th class="col-nome">Aluno</th>
+          <th class="col-acao">Ação</th>
+          <th class="col-descricao">Descrição</th>
+          <th class="col-usuario">Usuário</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in alunos_desligados %}
+          <tr>
+            <td class="col-data">{{ item.data|date:"d/m/Y" }}</td>
+            <td class="col-inscricao">{{ item.inscricao }}</td>
+            <td class="col-nome">{{ item.aluno|upper }}</td>
+            <td class="col-acao">{{ item.acao }}</td>
+            <td class="col-descricao">{{ item.descricao }}</td>
+            <td class="col-usuario">{{ item.usuario }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center">Nenhum aluno desligado no período.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

@@ -3005,6 +3005,16 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
         for f in frequencias
     }
 
+    dias_nao_houve_aula = []
+    for dia in dias_mes:
+        chamada = chamadas_por_data.get(dia)
+        if chamada and chamada.status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+            dias_nao_houve_aula.append({
+                'data': dia,
+                'motivo': chamada.get_motivo_nao_aula_display() if chamada.motivo_nao_aula else '',
+                'observacao': chamada.observacao_nao_aula or '',
+            })
+
     linhas = []
     for aluno in alunos:
         linha_status = []
@@ -3013,27 +3023,33 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
         justificativas = []
 
         for dia in dias_mes:
-            f = freq_dict.get((aluno.id, dia))
+            chamada = chamadas_por_data.get(dia)
 
-            if f is None:
-                status = ''
+            if chamada and chamada.status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
+                status = 'NH'
             else:
-                if f.presente:
-                    status = 'P'
-                    presencas += 1
+                f = freq_dict.get((aluno.id, dia))
+
+                if f is None:
+                    status = ''
                 else:
-                    status = 'F'
-                    faltas += 1
+                    if f.presente:
+                        status = 'P'
+                        presencas += 1
+                    else:
+                        status = 'F'
+                        faltas += 1
 
-                    motivo = (
-                        getattr(f, 'motivo_falta', None)
-                        or getattr(f, 'justificativa', None)
-                        or getattr(f, 'motivo', None)
-                        or ''
-                    )
+                        motivo = (
+                            getattr(f, 'get_motivo_falta_display', lambda: '')()
+                            or getattr(f, 'motivo_falta', None)
+                            or getattr(f, 'justificativa', None)
+                            or getattr(f, 'motivo', None)
+                            or ''
+                        )
 
-                    if motivo:
-                        justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")
+                        if motivo:
+                            justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")
 
             linha_status.append(status)
 
@@ -3056,6 +3072,7 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
         'mes_num': mes_num,
         'dias_mes': dias_mes,
         'linhas': linhas,
+        'dias_nao_houve_aula': dias_nao_houve_aula,
     }
 
 @login_required

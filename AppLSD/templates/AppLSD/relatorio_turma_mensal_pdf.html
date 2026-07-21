@@ -52,6 +52,12 @@
       margin-bottom: 8px;
     }
 
+    .legenda {
+      font-size: 10px;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
     table.relatorio {
       width: 100%;
       border-collapse: collapse;
@@ -119,6 +125,17 @@
           <div class="meta">
             Mês: {{ mes }} | Educadora: {{ turma.educadora.first_name }} {{ turma.educadora.last_name }}
           </div>
+
+          {% if dias_nao_houve_aula %}
+            <div class="legenda">
+              <strong>Legenda:</strong> NH = Não houve aula
+              <br>
+              <strong>Dias sem aula:</strong>
+              {% for item in dias_nao_houve_aula %}
+                {{ item.data|date:"d/m" }}{% if item.motivo %} ({{ item.motivo }}){% endif %}{% if item.observacao %} - {{ item.observacao }}{% endif %}{% if not forloop.last %} | {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
         </td>
         <td class="logo">
           <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Integra+Lar">
