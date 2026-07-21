@@ -230,19 +230,21 @@
 
       <div class="d-flex gap-2 align-items-center">
           <a class="btn btn-outline-secondary"
-            href="{% url 'relatorio_mensal_aluno' %}?aluno_id={{ aluno.id }}&mes={{ mes_anterior }}">
-              Anterior
+            href="{% url 'relatorio_mensal_aluno' aluno.id %}?mes={{ mes_anterior }}"
+            class="btn btn-outline-secondary">
+            Anterior
           </a>
 
-          <form method="get" class="d-flex gap-2">
-              <input type="hidden" name="aluno_id" value="{{ aluno.id }}">
+          <form method="get" class="d-flex gap-2"
+              action="{% url 'relatorio_mensal_aluno' aluno.id %}">
               <input type="month" name="mes" value="{{ mes }}" class="form-control">
               <button type="submit" class="btn btn-primary">Ir</button>
           </form>
 
           <a class="btn btn-outline-secondary"
-            href="{% url 'relatorio_mensal_aluno' %}?aluno_id={{ aluno.id }}&mes={{ mes_proximo }}">
-              Próximo
+            href="{% url 'relatorio_mensal_aluno' aluno.id %}?mes={{ mes_proximo }}"
+            class="btn btn-outline-secondary">
+            Próximo
           </a>
       </div>
 

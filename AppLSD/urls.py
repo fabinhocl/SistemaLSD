@@ -159,7 +159,7 @@ urlpatterns = [
     path('relatorios/', views_templates.dashboard_completo, name='home_relatorios'),
     path('relatorio/aluno/grafico/', views_templates.relatorio_grafico_mensal_aluno, name='relatorio_grafico_mensal_aluno'),
     path('relatorio/aluno/export_excel/', views_templates.exportar_frequencia_mensal_aluno_excel, name='exportar_frequencia_mensal_aluno_excel'),
-    path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
+    #path('relatorio/aluno/mensal/', views_templates.relatorio_mensal_aluno, name='relatorio_mensal_aluno'),
     #path('relatorio/aluno/mensal/pdf/', views_templates.relatorio_mensal_aluno_pdf, name='relatorio_mensal_aluno_pdf'),
     path('relatorio/aluno/busca/', views_templates.relatorio_busca_aluno, name='relatorio_busca_aluno'),
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
