@@ -1,0 +1,338 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Frequência Manual - {{ atividade.atividade }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0.6cm;
+    }
+
+    html, body {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      color: #222;
+      background: #fff;
+    }
+
+    body {
+      padding: 12px;
+    }
+
+    .folha-print {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .cabecalho {
+      border-bottom: 2px solid #444;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .topo-principal {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .topo-esquerda {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo-relatorio {
+      height: 54px;
+      width: auto;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .titulo-box {
+      min-width: 0;
+    }
+
+    .titulo {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .subtitulo {
+      margin-top: 2px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .acoes-topo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .acoes-topo form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .acoes-topo input[type="month"] {
+      min-width: 150px;
+    }
+
+    .info-topo {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 3px 24px;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .info-topo div {
+      line-height: 1.35;
+    }
+
+    .tabela-frequencia,
+    .tabela-frequencia th,
+    .tabela-frequencia td {
+      border: 1px solid #444 !important;
+    }
+
+    .tabela-frequencia {
+      width: 100%;
+      border-collapse: collapse !important;
+      table-layout: fixed !important;
+      background: #fff;
+    }
+
+    .tabela-frequencia th,
+    .tabela-frequencia td {
+      padding: 5px 4px !important;
+      font-size: 10px;
+      vertical-align: middle !important;
+      text-align: center;
+    }
+
+    .tabela-frequencia th {
+      background: #e9ecef !important;
+      font-weight: 700 !important;
+    }
+
+    .col-inscricao {
+      width: 7%;
+    }
+
+    .col-aluno {
+      width: 23%;
+      text-align: center !important;
+      font-weight: 700;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .col-aluno-nome {
+      width: 23%;
+      text-align: left !important;
+      font-weight: 700;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .col-educadora {
+      width: 14%;
+      text-align: center !important;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .col-educadora-nome {
+      width: 14%;
+      text-align: left !important;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .col-dia {
+      width: 3%;
+      min-width: 20px;
+      height: 20px;
+      font-size: 9px !important;
+      padding: 3px 1px !important;
+    }
+
+    .col-total {
+      width: 5%;
+    }
+
+    .col-obs {
+      width: 10%;
+    }
+
+    .assinaturas {
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .assinatura-box {
+      width: 48%;
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .linha-assinatura {
+      border-top: 1px solid #333;
+      padding-top: 4px;
+      font-size: 12px;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+
+      body {
+        padding: 0 !important;
+      }
+
+      .folha-print {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+      }
+
+      .logo-relatorio {
+        height: 48px !important;
+      }
+
+      .cabecalho {
+        margin-bottom: 10px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="folha-print">
+    <div class="cabecalho">
+
+      <div class="topo-principal">
+        <div class="topo-esquerda">
+          <img src="{% static 'img/logo-lar-sao-domingos.png' %}" alt="Logo Integra + Lar" class="logo-relatorio">
+
+          <div class="titulo-box">
+            <h2 class="titulo">Lista de Frequência Manual da Atividade</h2>
+            <div class="subtitulo">
+              {{ atividade.atividade }}{% if atividade.turno %} - {{ atividade.turno }}{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="acoes-topo no-print">
+          <a href="{% url 'frequencia_manual_atividade' atividade.id %}?mes={{ mes_anterior }}"
+             class="btn btn-outline-secondary btn-sm">
+            Anterior
+          </a>
+
+          <form method="get" action="{% url 'frequencia_manual_atividade' atividade.id %}">
+            <input type="month" name="mes" value="{{ mes }}" class="form-control form-control-sm">
+            <button type="submit" class="btn btn-primary btn-sm">Ir</button>
+          </form>
+
+          <a href="{% url 'frequencia_manual_atividade' atividade.id %}?mes={{ mes_proximo }}"
+             class="btn btn-outline-secondary btn-sm">
+            Próximo
+          </a>
+
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            Imprimir / Salvar em PDF
+          </button>
+          <a href="{% url 'activity_detail' atividade.id %}" class="btn btn-secondary ms-2">Voltar à atividades</a>
+        </div>
+      </div>
+
+      <div class="info-topo">
+        <div><strong>Atividade:</strong> {{ atividade.atividade }}</div>
+        <div><strong>Facilitador(a):</strong> {{ atividade.facilitador.first_name }}</div>
+        <div><strong>Turno:</strong> {{ atividade.turno }}</div>
+        <div><strong>Dia da Semana:</strong> {{ atividade.dia_semana }}</div>
+        <div><strong>Mês:</strong> {{ mes }}</div>
+        <div><strong>Total de alunos:</strong> {{ alunos|length }}</div>
+        <div><strong>Total de encontros no mês:</strong> {{ dias_atividade|length }}</div>
+      </div>
+    </div>
+
+    <table class="tabela-frequencia">
+      <thead>
+        <tr>
+          <th class="col-inscricao">Inscrição</th>
+          <th class="col-aluno">Aluno</th>
+          <th class="col-educadora">Educadora</th>
+          {% for dia in dias_atividade %}
+            <th class="col-dia">
+              {{ dia|date:"d" }}<br>
+              {{ dia|date:"D" }}
+            </th>
+          {% endfor %}
+          
+          <th class="col-obs">Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for aluno in alunos %}
+          <tr>
+            <td class="col-inscricao">
+              {% if aluno.family %}{{ aluno.family.registration_number }}{% endif %}
+            </td>
+            <td class="col-aluno-nome">{{ aluno.name|upper }}</td>
+            <td class="col-educadora-nome">
+              {% if aluno.turma and aluno.turma.educadora %}
+                {{ aluno.turma.educadora.first_name }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% for dia in dias_atividade %}
+              <td class="col-dia"></td>
+            {% endfor %}
+            
+            <td class="col-obs"></td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{{ dias_atividade|length|add:5 }}">
+              Nenhum aluno vinculado a esta atividade.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="assinaturas">
+      <div class="assinatura-box">
+        <div class="linha-assinatura">Facilitador(a)</div>
+      </div>
+      <div class="assinatura-box">
+        <div class="linha-assinatura">Coordenação / Conferência</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -3610,6 +3610,91 @@ def exportar_frequencia_mensal_aluno_excel(request):
     wb.save(response)
     return response
 
+@login_required
+def frequencia_manual_atividade(request, activity_id):
+    atividade = get_object_or_404(
+        Activity.objects.select_related('facilitador'),
+        id=activity_id
+    )
+
+    mes = request.GET.get('mes')
+    hoje = date.today()
+
+    if not mes:
+        mes = f"{hoje.year}-{hoje.month:02d}"
+
+    try:
+        ano, mes_num = mes.split('-')
+        ano = int(ano)
+        mes_num = int(mes_num)
+        primeiro_dia = date(ano, mes_num, 1)
+    except (ValueError, TypeError):
+        ano = hoje.year
+        mes_num = hoje.month
+        mes = f"{ano}-{mes_num:02d}"
+        primeiro_dia = date(ano, mes_num, 1)
+
+    ultimo_dia_num = monthrange(ano, mes_num)[1]
+    ultimo_dia = date(ano, mes_num, ultimo_dia_num)
+
+    todos_dias = [
+        primeiro_dia + timedelta(days=i)
+        for i in range((ultimo_dia - primeiro_dia).days + 1)
+    ]
+
+    mapa_dias = {
+        'segunda': 0,
+        'terça': 1,
+        'terca': 1,
+        'quarta': 2,
+        'quinta': 3,
+        'sexta': 4,
+        'sábado': 5,
+        'sabado': 5,
+        'domingo': 6,
+    }
+
+    dias_atividade = []
+    dia_semana_atividade = str(getattr(atividade, 'dia_semana', '')).lower().strip()
+
+    if dia_semana_atividade:
+        numeros_dias = []
+        for nome, numero in mapa_dias.items():
+            if nome in dia_semana_atividade and numero not in numeros_dias:
+                numeros_dias.append(numero)
+
+        dias_atividade = [d for d in todos_dias if d.weekday() in numeros_dias]
+    else:
+        dias_atividade = [d for d in todos_dias if d.weekday() < 5]
+
+    alunos = (
+        atividade.alunos.all()
+        .select_related('family', 'turma', 'turma__educadora')
+        .order_by('name')
+    )
+
+    if mes_num == 1:
+        mes_anterior = f"{ano - 1}-12"
+    else:
+        mes_anterior = f"{ano}-{mes_num - 1:02d}"
+
+    if mes_num == 12:
+        mes_proximo = f"{ano + 1}-01"
+    else:
+        mes_proximo = f"{ano}-{mes_num + 1:02d}"
+
+    context = {
+        'atividade': atividade,
+        'alunos': alunos,
+        'mes': mes,
+        'ano': ano,
+        'mes_num': mes_num,
+        'dias_atividade': dias_atividade,
+        'mes_anterior': mes_anterior,
+        'mes_proximo': mes_proximo,
+    }
+    return render(request, 'AppLSD/frequencia_manual_atividade.html', context)
+
 """ 
 @login_required
 def home_relatorios(request):

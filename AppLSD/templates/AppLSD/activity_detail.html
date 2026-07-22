@@ -81,6 +81,10 @@ Detalhes da Atividade - {{ atividade.atividade }}
 
               {% if pode_visualizar %}
                 <form method="get" action="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}" class="d-flex flex-wrap align-items-end gap-2 mb-0">
+                  <a href="{% url 'frequencia_manual_atividade' atividade.id %}?mes={% now 'Y-m' %}"
+                    class="btn btn-outline-secondary btn-sm">
+                    Lista de frequência manual
+                  </a>
                   <div>
                     <label for="data" class="form-label mb-1 small">Consultar frequência por data</label>
                     <input type="date" name="data" id="data" class="form-control" value="{{ hoje|date:'Y-m-d' }}">
@@ -97,8 +101,15 @@ Detalhes da Atividade - {{ atividade.atividade }}
 
           </div>
         </div>
-
+      
       <h2 class="mt-4 text-center">Alunos da Atividade</h2>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{% url 'activity_add_alunos' activity_id=atividade.id %}" class="btn btn-secondary ms-2">Adicionar alunos</a>
+          <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+          <a href="{% url 'activity_list' %}" class="btn btn-secondary ms-2">Voltar à lista de atividades</a>
+        </div>
+      </div>
       <table class="table table-striped">
         <thead>
           <tr class="text-center">
@@ -250,12 +261,6 @@ Detalhes da Atividade - {{ atividade.atividade }}
       </table>
     </div>
 
-  </div>
-
- 
-    <a href="{% url 'activity_add_alunos' activity_id=atividade.id %}" class="btn btn-secondary ms-2">Adicionar alunos</a>
-    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
-  
-  <a href="{% url 'activity_list' %}" class="btn btn-secondary ms-2">Voltar à lista de atividades</a>
+  </div> {# fim Histórico #}
 </div>
 {% endblock %}

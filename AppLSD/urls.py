@@ -154,6 +154,7 @@ urlpatterns = [
     path('frequencia/activity/<int:activity_id>/', views_templates.iniciar_frequencia_activity, name='frequencia_activity_iniciar'),
     path('frequencia/activity/<int:activity_id>/editar/', views_templates.editar_frequencia_activity, name='frequencia_activity_editar'),
     path('frequencia/activity/<int:activity_id>/visualizar/', views_templates.visualizar_frequencia_activity, name='frequencia_activity_visualizar'),
+    path('atividades/<int:activity_id>/frequencia-manual/', views_templates.frequencia_manual_atividade, name='frequencia_manual_atividade'),
     
     #Relatórios
     path('relatorios/', views_templates.dashboard_completo, name='home_relatorios'),
