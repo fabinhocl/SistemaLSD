@@ -82,7 +82,7 @@ Detalhes da Atividade - {{ atividade.atividade }}
               {% if pode_visualizar %}
                 <form method="get" action="{% url 'frequencia_activity_visualizar' activity_id=atividade.id %}" class="d-flex flex-wrap align-items-end gap-2 mb-0">
                   <a href="{% url 'frequencia_manual_atividade' atividade.id %}?mes={% now 'Y-m' %}"
-                    class="btn btn-outline-secondary btn-sm">
+                    class="btn btn-secondary btn-sm">
                     Lista de frequência manual
                   </a>
                   <div>
