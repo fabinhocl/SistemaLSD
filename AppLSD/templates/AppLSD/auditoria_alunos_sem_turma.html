@@ -1,0 +1,99 @@
+{% extends 'AppLSD/base.html' %}
+{% block title %}Auditoria de Alunos sem Turma{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Auditoria de Alunos sem Turma</h2>
+
+  <div class="alert alert-warning">
+    Esta tela lista alunos sem turma vinculada, sem movimentação registrada e com indício de cadastro ainda ativo.
+  </div>
+
+  <div class="mb-3 d-flex gap-2">
+    <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para Home</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header">
+      <strong>Total de casos suspeitos: {{ total }}</strong>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
+          <thead>
+            <tr class="text-center">
+              <th>Inscrição</th>
+              <th>Aluno</th>
+              <th>Status</th>
+              <th>Turma Atual</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for aluno in alunos %}
+              <tr>
+                <td class="text-center">
+                  {% if aluno.family %}{{ aluno.family.registration_number }}{% else %}-{% endif %}
+                </td>
+                <td>{{ aluno.name }}</td>
+                <td class="text-center">{{ aluno.status_lsd|default:"-" }}</td>
+                <td class="text-center">
+                  {% if aluno.turma %}{{ aluno.turma }}{% else %}<span class="text-danger">Sem turma</span>{% endif %}
+                </td>
+                <td class="text-center">
+                  <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-info btn-sm">
+                    Visualizar aluno
+                  </a>
+
+                  <button type="button"
+                          class="btn btn-warning btn-sm"
+                          data-bs-toggle="modal"
+                          data-bs-target="#modalRegularizar{{ aluno.id }}">
+                    Regularizar saída
+                  </button>
+                </td>
+              </tr>
+
+              <div class="modal fade" id="modalRegularizar{{ aluno.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <form method="post" action="{% url 'registrar_saida_manual_turma' aluno.id %}">
+                      {% csrf_token %}
+                      <div class="modal-header">
+                        <h5 class="modal-title">Regularizar saída de turma</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <p class="mb-2"><strong>Aluno:</strong> {{ aluno.name }}</p>
+
+                        <div class="mb-3">
+                          <label class="form-label">Data da saída</label>
+                          <input type="date" name="data_saida" class="form-control">
+                        </div>
+
+                        <div class="mb-3">
+                          <label class="form-label">Motivo da regularização</label>
+                          <textarea name="motivo" class="form-control" rows="3" required></textarea>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning">Registrar</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center">Nenhum caso suspeito encontrado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

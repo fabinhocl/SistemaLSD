@@ -405,21 +405,43 @@ class AlunoForm(forms.ModelForm):
         required=False,
         widget=forms.CheckboxSelectMultiple
     )
+
     cpf = forms.CharField(
         label='CPF',
         required=False,
         max_length=14,
         widget=forms.TextInput(attrs={'id': 'cpf', 'placeholder': 'xxx.xxx.xxx-xx'}),
     )
+
     nis = forms.CharField(
         max_length=11,
         required=False,
         validators=[RegexValidator(r'^\d{11}$', message='NIS deve ter 11 dígitos numéricos')]
     )
+
     class Meta:
         model = Aluno
-        fields = '__all__'
-        exclude = ()
+        fields = [
+            'family',
+            'name',
+            'cpf',
+            'nis',
+            'parentesco',
+            'birth_date',
+            'sex',
+            'school',
+            'rede_ensino',
+            'ensino',
+            'serie',
+            'turno',
+            'health_problem',
+            'special_need',
+            'uso_medicacao',
+            'qual_medicacao',
+            'frequencia_tipo',
+            'dias_semana',
+            'status_lsd',
+        ]
         labels = {
             'family': 'Família',
             'name': 'Nome do Aluno',
@@ -441,7 +463,6 @@ class AlunoForm(forms.ModelForm):
             'frequencia_tipo': 'Tipo de Frequência',
             'dias_semana': 'Dias da Semana',
             'status_lsd': 'Situação Atual no Lar',
-            
         }
         widgets = {
             'family': forms.Select(attrs={'class': 'form-select'}),
@@ -474,11 +495,11 @@ class AlunoForm(forms.ModelForm):
             'special_need',
             'uso_medicacao',
             'qual_medicacao',
+            'frequencia_tipo',
+            'dias_semana',
             'status_lsd',
-            
         )
 
-        # se quiser garantir valor default para radios ao criar:
         if not self.instance.pk:
             self.fields['health_problem'].initial = 'não'
             self.fields['uso_medicacao'].initial = 'não'
@@ -490,8 +511,7 @@ class AlunoForm(forms.ModelForm):
         return hoje.year - birth_date.year - (
             (hoje.month, hoje.day) < (birth_date.month, birth_date.day)
         )
-    
-    
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -505,10 +525,14 @@ class AlunoForm(forms.ModelForm):
         if frequencia_tipo == 'especificos' and not dias_semana:
             self.add_error('dias_semana', 'Selecione pelo menos um dia da semana.')
 
-        birth_date = cleaned_data.get("birth_date")
-        if birth_date:
-            idade = self.calcular_idade(birth_date)
-            #cleaned_data["faixa_etaria"] = self.calcular_faixa_etaria(idade)
+        status_lsd = cleaned_data.get('status_lsd')
+        turma_atual = self.instance.turma if self.instance and self.instance.pk else None
+
+        if self.instance and self.instance.pk:
+            if status_lsd != 'desligado' and not turma_atual:
+                raise forms.ValidationError(
+                    'Aluno ativo/frequentando deve estar vinculado a uma turma.'
+                )
 
         return cleaned_data
 
@@ -520,7 +544,7 @@ class AlunoForm(forms.ModelForm):
         if not cpf_validator.validate(digits):
             raise forms.ValidationError("CPF inválido.")
         return cpf_validator.mask(digits)
-    
+
     def clean_nis(self):
         nis = self.cleaned_data.get('nis')
         if nis and not nis.isdigit():
@@ -534,8 +558,6 @@ class AlunoForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-    
-
 
 AlunoInlineFormSet = forms.inlineformset_factory(
     Family, Aluno, form=AlunoForm,
@@ -552,6 +574,8 @@ AlunoInlineFormSet = forms.inlineformset_factory(
     ],
     extra=0, can_delete=True
 )
+
+
 
 AdultFormSet = inlineformset_factory(
     Family, Adult,

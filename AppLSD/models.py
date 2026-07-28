@@ -540,6 +540,10 @@ class Aluno(AuditModel):
 
     def __str__(self):
             return self.name
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
     
     @property
     def idade(self):
@@ -611,6 +615,13 @@ class Aluno(AuditModel):
             return '13 a 17 anos'
         return None
 
+    def clean(self):
+        super().clean()
+
+        if self.status_lsd != 'desligado' and self.turma is None:
+            raise ValidationError(
+                'Aluno ativo/frequentando deve estar vinculado a uma turma.'
+            )
 
 """
     Representa uma turma de assistidos.
@@ -857,11 +868,22 @@ class FrequenciaAluno(models.Model):
         return f"{self.aluno.name} ({self.get_status_display()})"
     
 class MovimentacaoTurmaAluno(models.Model):
-    aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE)
-    turma_origem = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, related_name='+')
-    turma_destino = models.ForeignKey(Turma, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    motivo = models.CharField(max_length=255, blank=True)
-    data = models.DateTimeField(auto_now_add=True)
+    aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, related_name='movimentacoes_turma')
+    turma_origem = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimentacoes_saida')
+    turma_destino = models.ForeignKey('Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimentacoes_entrada')
+    data = models.DateTimeField(default=timezone.now)
+    motivo = models.TextField(blank=True, null=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimentacoes_turma_criadas'
+    )
+
+    def __str__(self):
+        return f'{self.aluno} - {self.data:%d/%m/%Y}'
+
 
 class OcorrenciaAluno(models.Model):
     aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, related_name="ocorrencias")

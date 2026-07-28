@@ -1247,80 +1247,79 @@ def aluno_edit(request, pk):
         raise PermissionDenied("Colaborador não pode editar aluno.")
 
     aluno = get_object_or_404(Aluno, pk=pk)
+    turma_original = aluno.turma
     status_anterior = aluno.status_lsd
 
     if request.method == 'POST':
+        acao = request.POST.get('acao')
+
+        if acao == 'confirmar_desligamento':
+            senha = request.POST.get('senha', '').strip()
+            motivo = request.POST.get('motivo', '').strip()
+
+            form = AlunoForm(request.POST, instance=aluno)
+
+            if not senha:
+                messages.error(request, 'Senha obrigatória!')
+                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
+                return render(request, 'AppLSD/aluno_form.html', context)
+
+            if not check_password(senha, request.user.password):
+                messages.error(request, 'Senha incorreta!')
+                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
+                return render(request, 'AppLSD/aluno_form.html', context)
+
+            if not motivo:
+                messages.error(request, 'O motivo do desligamento é obrigatório.')
+                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
+                return render(request, 'AppLSD/aluno_form.html', context)
+
+            with transaction.atomic():
+                desligar_aluno_logic(
+                    request_user=request.user,
+                    aluno=aluno,
+                    motivo=motivo,
+                    origem='edicao'
+                )
+
+            messages.success(request, f'Aluno {aluno.name} desligado com sucesso.')
+            return redirect('aluno_detail', pk=aluno.pk)
+
         form = AlunoForm(request.POST, instance=aluno)
         if form.is_valid():
             aluno_editado = form.save(commit=False)
             novo_status = aluno_editado.status_lsd
 
+            if status_anterior != 'desligado' and novo_status == 'desligado':
+                context = {
+                    'form': form,
+                    'aluno': aluno,
+                    'abrir_modal_desligamento': True,
+                }
+                return render(request, 'AppLSD/aluno_form.html', context)
+
             with transaction.atomic():
-                if status_anterior != 'desligado' and novo_status == 'desligado':
-                    motivo = 'Desligamento realizado pela edição do aluno'
-
-                    atividades = list(aluno.atividades.all())
-
-                    for atividade in atividades:
-                        atividade.alunos.remove(aluno)
-
-                        registrar_log(
-                            request.user,
-                            atividade,
-                            'aluno_removido_desligamento',
-                            f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento via edição. Motivo: {motivo}.'
-                        )
-
-                    if atividades:
-                        registrar_log(
-                            request.user,
-                            aluno,
-                            'aluno_removido_atividades',
-                            f'Aluno removido de todas as atividades por desligamento via edição. Motivo: {motivo}.'
-                        )
-
-                    if aluno.turma:
-                        turma_atual = aluno.turma
-                        aluno.turma = None
-
-                        registrar_log(
-                            request.user,
-                            turma_atual,
-                            'aluno_removido_turma',
-                            f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento via edição. Motivo: {motivo}.'
-                        )
-
-                        registrar_log(
-                            request.user,
-                            aluno,
-                            'aluno_removido_turma',
-                            f'Aluno removido da turma "{turma_atual.grupo}" por desligamento via edição. Motivo: {motivo}.'
-                        )
-
-                    aluno.status_lsd = 'desligado'
-                    aluno.editado_por = request.user
-                    aluno.motivo_desligamento = motivo
-                    aluno.data_desligamento = timezone.now()
-                    aluno.desligado_por = request.user
-                    aluno.save()
-
-                    registrar_log(
-                        request.user,
-                        aluno,
-                        'aluno_desligado',
-                        f'Aluno {aluno.name} desligado com sucesso via edição. Motivo: {motivo}.'
+                if novo_status != 'desligado' and not turma_original:
+                    messages.error(
+                        request,
+                        'Aluno ativo/frequentando deve estar vinculado a uma turma.'
                     )
-                else:
-                    aluno_editado.editado_por = request.user
-                    aluno_editado.save()
-                    form.save_m2m()
+                    return render(request, 'AppLSD/aluno_form.html', {
+                        'form': form,
+                        'aluno': aluno,
+                    })
 
-                    registrar_log(
-                        request.user,
-                        aluno_editado,
-                        'aluno_editado',
-                        f'Aluno {aluno_editado.name} editado com sucesso.'
-                    )
+                aluno_editado.turma = turma_original
+                aluno_editado.editado_por = request.user
+                aluno_editado.save()
+                form.save_m2m()
+
+                registrar_log(
+                    request.user,
+                    aluno_editado,
+                    'aluno_editado',
+                    f'Aluno {aluno_editado.name} editado com sucesso.'
+                )
 
             messages.success(request, 'Aluno atualizado com sucesso.')
             return redirect('aluno_detail', pk=aluno.pk)
@@ -1364,64 +1363,75 @@ def aluno_delete_confirm(request, pk):
 def desligar_aluno_logic(*, request_user, aluno, motivo, origem='manual', familia=None):
     motivo = (motivo or '').strip() or 'Não informado'
 
-    atividades = Activity.objects.filter(alunos=aluno)
+    with transaction.atomic():
+        atividades = Activity.objects.filter(alunos=aluno)
 
-    for atividade in atividades:
-        atividade.alunos.remove(aluno)
+        for atividade in atividades:
+            atividade.alunos.remove(aluno)
 
-        registrar_log(
-            request_user,
-            atividade,
-            'aluno_removido_desligamento',
-            f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento. Motivo: {motivo}.'
-        )
+            registrar_log(
+                request_user,
+                atividade,
+                'aluno_removido_desligamento',
+                f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento. Motivo: {motivo}.'
+            )
 
-    if atividades.exists():
+        if atividades.exists():
+            registrar_log(
+                request_user,
+                aluno,
+                'aluno_removido_atividades',
+                f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
+            )
+
+        if aluno.turma:
+            turma_atual = aluno.turma
+
+            MovimentacaoTurmaAluno.objects.create(
+                aluno=aluno,
+                turma_origem=turma_atual,
+                turma_destino=None,
+                data=timezone.now(),
+                motivo=motivo,
+                criado_por=request_user if hasattr(MovimentacaoTurmaAluno, 'criado_por') else None,
+            )
+
+            aluno.turma = None
+
+            registrar_log(
+                request_user,
+                turma_atual,
+                'aluno_removido_turma',
+                f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+            )
+
+            registrar_log(
+                request_user,
+                aluno,
+                'aluno_removido_turma',
+                f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+            )
+
+        aluno.status_lsd = 'desligado'
+        aluno.editado_por = request_user
+
+        if hasattr(aluno, 'motivo_desligamento'):
+            aluno.motivo_desligamento = motivo
+
+        if hasattr(aluno, 'data_desligamento'):
+            aluno.data_desligamento = timezone.now()
+
+        if hasattr(aluno, 'desligado_por'):
+            aluno.desligado_por = request_user
+
+        aluno.save()
+
         registrar_log(
             request_user,
             aluno,
-            'aluno_removido_atividades',
-            f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
+            'aluno_desligado',
+            f'Aluno {aluno.name} desligado com sucesso. Motivo: {motivo}.'
         )
-
-    if aluno.turma:
-        turma_atual = aluno.turma
-        aluno.turma = None
-
-        registrar_log(
-            request_user,
-            turma_atual,
-            'aluno_removido_turma',
-            f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
-        )
-
-        registrar_log(
-            request_user,
-            aluno,
-            'aluno_removido_turma',
-            f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
-        )
-
-    aluno.status_lsd = 'Desligado'
-    aluno.editado_por = request_user
-
-    if hasattr(aluno, 'motivo_desligamento'):
-        aluno.motivo_desligamento = motivo
-
-    if hasattr(aluno, 'data_desligamento'):
-        aluno.data_desligamento = timezone.now()
-
-    if hasattr(aluno, 'desligado_por'):
-        aluno.desligado_por = request_user
-
-    aluno.save()
-
-    registrar_log(
-        request_user,
-        aluno,
-        'aluno_desligado',
-        f'Aluno {aluno.name} desligado com sucesso. Motivo: {motivo}.'
-    )
 
 @login_required
 def desativar_aluno(request, aluno_id):
@@ -1430,21 +1440,25 @@ def desativar_aluno(request, aluno_id):
     if not (request.user.is_superuser or is_coordenacao(request.user)):
         return HttpResponseForbidden('Sem permissão')
 
+    if aluno.status_lsd == 'desligado':
+        messages.warning(request, 'Este aluno já está desligado.')
+        return redirect('aluno_detail', pk=aluno.id)
+
     if request.method == 'POST':
         senha = request.POST.get('senha', '').strip()
         motivo = request.POST.get('motivo', '').strip()
 
         if not senha:
             messages.error(request, 'Senha obrigatória!')
-            return redirect('aluno_detail', pk=aluno.id)
+            return redirect('desativar_aluno', aluno_id=aluno.id)
 
         if not check_password(senha, request.user.password):
             messages.error(request, 'Senha incorreta!')
-            return redirect('aluno_detail', pk=aluno.id)
+            return redirect('desativar_aluno', aluno_id=aluno.id)
 
         if not motivo:
             messages.error(request, 'O motivo do desligamento é obrigatório.')
-            return redirect('aluno_detail', pk=aluno.id)
+            return redirect('desativar_aluno', aluno_id=aluno.id)
 
         with transaction.atomic():
             desligar_aluno_logic(
@@ -1461,7 +1475,6 @@ def desativar_aluno(request, aluno_id):
         return redirect('aluno_detail', pk=aluno.id)
 
     return render(request, 'AppLSD/desativar_aluno.html', {'aluno': aluno})
-
 
 @login_required
 def desativar_familia(request, familia_id):
@@ -5010,3 +5023,71 @@ def relatorio_alunos_sem_atividades_html(request):
         'turma_id': turma_id,
     }
     return render(request, 'AppLSD/relatorio_alunos_sem_atividades.html', context)
+
+
+#Função Auditoria
+@login_required
+def auditoria_alunos_sem_turma(request):
+    mov_qs = MovimentacaoTurmaAluno.objects.filter(aluno=OuterRef('pk'))
+
+    alunos = (
+        Aluno.objects
+        .select_related('family', 'turma')
+        .annotate(tem_movimentacao=Exists(mov_qs))
+        .filter(turma__isnull=True)
+        .order_by('name')
+    )
+
+    alunos_suspeitos = []
+    for aluno in alunos:
+        status = getattr(aluno, 'status_lsd', '')
+        status_normalizado = str(status).strip().lower() if status else ''
+
+        if status_normalizado not in ['desligado', 'egresso', 'inativo'] and not aluno.tem_movimentacao:
+            alunos_suspeitos.append(aluno)
+
+    context = {
+        'alunos': alunos_suspeitos,
+        'total': len(alunos_suspeitos),
+    }
+    return render(request, 'AppLSD/auditoria_alunos_sem_turma.html', context)
+
+
+
+@login_required
+def registrar_saida_manual_turma(request, aluno_id):
+    aluno = get_object_or_404(Aluno, pk=aluno_id)
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo', '').strip()
+        data_saida = request.POST.get('data_saida', '').strip()
+
+        if not motivo:
+            messages.error(request, 'Informe o motivo da regularização.')
+            return redirect('auditoria_alunos_sem_turma')
+
+        data_mov = timezone.now()
+        if data_saida:
+            try:
+                from datetime import datetime
+                data_mov = datetime.strptime(data_saida, '%Y-%m-%d')
+                data_mov = timezone.make_aware(
+                    datetime.combine(data_mov.date(), datetime.min.time()),
+                    timezone.get_current_timezone()
+                )
+            except Exception:
+                messages.error(request, 'Data inválida.')
+                return redirect('auditoria_alunos_sem_turma')
+
+        MovimentacaoTurmaAluno.objects.create(
+            aluno=aluno,
+            turma_origem=None,
+            turma_destino=None,
+            motivo=f'Regularização manual: {motivo}',
+            data=data_mov,
+        )
+
+        messages.success(request, f'Movimentação de regularização registrada para {aluno.name}.')
+        return redirect('auditoria_alunos_sem_turma')
+
+    return redirect('auditoria_alunos_sem_turma')

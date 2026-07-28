@@ -1,7 +1,7 @@
 {% extends 'AppLSD/base.html' %}
 {% block content %}
 <h2>Relatório do Aluno (Consolidado)</h2>
-<form method="get" action="{% url 'relatorio_mensal_aluno' %}" class="row g-3 justify-content-center">
+<form method="get" action="{% url 'relatorio_busca_aluno' %}" class="row g-3 justify-content-center">
   <div class="col-md-5">
     <select name="aluno_id" class="form-select" required>
       <option value="">Selecione o aluno</option>

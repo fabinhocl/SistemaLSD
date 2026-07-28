@@ -1,6 +1,13 @@
 <form method="post">
     {% csrf_token %}
-    <p>Confirma o desligamento do aluno <strong>{{ aluno.name }}</strong>?</p>
+
+    <div class="alert alert-warning">
+        Esta ação irá desligar o aluno do Lar, remover o vínculo com a turma e retirar o aluno das atividades.
+    </div>
+
+    <p>
+        Confirma o desligamento do aluno <strong>{{ aluno.name }}</strong>?
+    </p>
 
     <div class="mb-3">
         <label for="motivo" class="form-label">Motivo do desligamento</label>

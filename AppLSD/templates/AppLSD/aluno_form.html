@@ -119,8 +119,28 @@
             </div>
 
             <div class="modal-body">
-                Ao salvar com status <strong>Desligado</strong>, o aluno será removido da turma e das atividades vinculadas.
-                Deseja continuar?
+                <p>
+                    Ao salvar com status <strong>Desligado</strong>, o aluno será removido da turma
+                    e das atividades vinculadas. Deseja continuar?
+                </p>
+
+                <input type="hidden" name="acao" id="acaoDesligamentoEdicao" value="">
+
+                <div class="mb-3">
+                    <label for="motivoDesligamentoEdicao" class="form-label">
+                        Motivo do desligamento
+                    </label>
+                    <textarea name="motivo" id="motivoDesligamentoEdicao"
+                              class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="senhaDesligamentoEdicao" class="form-label">
+                        Sua senha
+                    </label>
+                    <input type="password" name="senha" id="senhaDesligamentoEdicao"
+                           class="form-control">
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -350,6 +370,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnConfirmar = document.getElementById('btnConfirmarDesligamentoEdicao');
     const statusField = document.getElementById('id_status_lsd');
     const modalElement = document.getElementById('modalConfirmarDesligamentoEdicao');
+    const motivoField = document.getElementById('motivoDesligamentoEdicao');
+    const senhaField = document.getElementById('senhaDesligamentoEdicao');
+    const acaoField = document.getElementById('acaoDesligamentoEdicao');
 
     if (!form || !btnSalvar || !btnConfirmar || !statusField || !modalElement) {
         return;
@@ -377,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
             !envioConfirmado
         ) {
             bloqueandoSubmit = true;
+            if (acaoField) acaoField.value = '';
             modal.show();
             return;
         }
@@ -386,8 +410,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     btnConfirmar.addEventListener('click', function () {
+        const motivo = motivoField ? motivoField.value.trim() : '';
+        const senha = senhaField ? senhaField.value.trim() : '';
+
+        if (!motivo) {
+            alert('Informe o motivo do desligamento.');
+            motivoField.focus();
+            return;
+        }
+
+        if (!senha) {
+            alert('Informe sua senha.');
+            senhaField.focus();
+            return;
+        }
+
         envioConfirmado = true;
         bloqueandoSubmit = false;
+
+        if (acaoField) {
+            acaoField.value = 'confirmar_desligamento';
+        }
+
         modal.hide();
         form.submit();
     });
@@ -395,9 +439,9 @@ document.addEventListener('DOMContentLoaded', function () {
     modalElement.addEventListener('hidden.bs.modal', function () {
         if (!envioConfirmado) {
             bloqueandoSubmit = true;
+            if (acaoField) acaoField.value = '';
         }
     });
 });
 </script>
-
 {% endblock %}

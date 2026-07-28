@@ -179,6 +179,10 @@ urlpatterns = [
     
    #path('families/autocomplete/', views_templates.family_autocomplete, name="family_autocomplete"),
 
+   #Auditoria
+   path('auditoria/alunos-sem-turma/', views_templates.auditoria_alunos_sem_turma, name='auditoria_alunos_sem_turma'),
+   path('auditoria/alunos-sem-turma/<int:aluno_id>/registrar-saida/', views_templates.registrar_saida_manual_turma, name='registrar_saida_manual_turma'),
+
 
     # se desejar, adicione outras rotas para Child, Turma e Activity em views_templates.py aqui
     
