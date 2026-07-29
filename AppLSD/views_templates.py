@@ -3914,7 +3914,7 @@ def export_aluno_excel(request):
         'frequencia_tipo': {'label': 'Tipo de Frequência', 'field': 'frequencia_tipo'},
         'dias_semana': {'label': 'Dias da Semana', 'field': 'dias_semana'},
         'status_lsd': {'label': 'Status LSD', 'field': 'status_lsd'},
-        'turma': {'label': 'Turma', 'field': 'turma__name'},
+        'turma': {'label': 'Grupo / Educadora', 'field': 'turma__name'},
         'atividades': {'label': 'Atividades'},
         'facilitadores': {'label': 'Facilitadores'},
     }
@@ -3961,7 +3961,7 @@ def export_aluno_excel(request):
 
                 elif campo == 'turma':
                     if aluno.turma:
-                        valor = f'{aluno.turma.educadora.first_name} - {aluno.turma.faixa_etaria}'
+                        valor = f'{aluno.turma} - {aluno.turma.faixa_etaria}'
                     else:
                         valor = ''
 
