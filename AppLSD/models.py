@@ -618,9 +618,13 @@ class Aluno(AuditModel):
     def clean(self):
         super().clean()
 
-        if self.status_lsd != 'desligado' and self.turma is None:
+        if (
+            self.pk
+            and self.status_lsd == 'frequentando'
+            and self.turma_id is None
+        ):
             raise ValidationError(
-                'Aluno ativo/frequentando deve estar vinculado a uma turma.'
+                'Aluno com status Frequentando deve estar vinculado a uma turma.'
             )
 
 """

@@ -526,12 +526,13 @@ class AlunoForm(forms.ModelForm):
             self.add_error('dias_semana', 'Selecione pelo menos um dia da semana.')
 
         status_lsd = cleaned_data.get('status_lsd')
-        turma_atual = self.instance.turma if self.instance and self.instance.pk else None
 
         if self.instance and self.instance.pk:
-            if status_lsd != 'desligado' and not turma_atual:
+            turma_atual = getattr(self.instance, 'turma', None)
+
+            if status_lsd == 'frequentando' and not turma_atual:
                 raise forms.ValidationError(
-                    'Aluno ativo/frequentando deve estar vinculado a uma turma.'
+                    'Aluno com status Frequentando deve estar vinculado a uma turma.'
                 )
 
         return cleaned_data

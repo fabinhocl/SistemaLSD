@@ -1253,6 +1253,14 @@ def aluno_edit(request, pk):
     if request.method == 'POST':
         acao = request.POST.get('acao')
 
+        logger.debug(
+            "POST aluno_edit: pk=%s, acao=%s, status_lsd=%s",
+            pk,
+            acao,
+            request.POST.get('status_lsd'),
+        )
+
+        # Confirmação do desligamento pelo modal
         if acao == 'confirmar_desligamento':
             senha = request.POST.get('senha', '').strip()
             motivo = request.POST.get('motivo', '').strip()
@@ -1261,54 +1269,89 @@ def aluno_edit(request, pk):
 
             if not senha:
                 messages.error(request, 'Senha obrigatória!')
-                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
-                return render(request, 'AppLSD/aluno_form.html', context)
+
+                return render(request, 'AppLSD/aluno_form.html', {
+                    'form': form,
+                    'aluno': aluno,
+                    'abrir_modal_desligamento': True,
+                })
 
             if not check_password(senha, request.user.password):
                 messages.error(request, 'Senha incorreta!')
-                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
-                return render(request, 'AppLSD/aluno_form.html', context)
+
+                return render(request, 'AppLSD/aluno_form.html', {
+                    'form': form,
+                    'aluno': aluno,
+                    'abrir_modal_desligamento': True,
+                })
 
             if not motivo:
-                messages.error(request, 'O motivo do desligamento é obrigatório.')
-                context = {'form': form, 'aluno': aluno, 'abrir_modal_desligamento': True}
-                return render(request, 'AppLSD/aluno_form.html', context)
+                messages.error(
+                    request,
+                    'O motivo do desligamento é obrigatório.'
+                )
+
+                return render(request, 'AppLSD/aluno_form.html', {
+                    'form': form,
+                    'aluno': aluno,
+                    'abrir_modal_desligamento': True,
+                })
 
             with transaction.atomic():
                 desligar_aluno_logic(
                     request_user=request.user,
                     aluno=aluno,
                     motivo=motivo,
-                    origem='edicao'
+                    origem='edicao',
                 )
 
-            messages.success(request, f'Aluno {aluno.name} desligado com sucesso.')
+            messages.success(
+                request,
+                f'Aluno {aluno.name} desligado com sucesso.'
+            )
+
             return redirect('aluno_detail', pk=aluno.pk)
 
+        # Edição normal do aluno
         form = AlunoForm(request.POST, instance=aluno)
+
         if form.is_valid():
             aluno_editado = form.save(commit=False)
             novo_status = aluno_editado.status_lsd
 
-            if status_anterior != 'desligado' and novo_status == 'desligado':
-                context = {
+            logger.debug(
+                "Formulário válido ao editar aluno %s: status_anterior=%s, "
+                "novo_status=%s",
+                aluno.pk,
+                status_anterior,
+                novo_status,
+            )
+
+            # Se mudou de ativo/frequentando para desligado,
+            # interrompe o salvamento normal e abre o modal.
+            if (
+                status_anterior != 'desligado'
+                and novo_status == 'desligado'
+            ):
+                return render(request, 'AppLSD/aluno_form.html', {
                     'form': form,
                     'aluno': aluno,
                     'abrir_modal_desligamento': True,
-                }
-                return render(request, 'AppLSD/aluno_form.html', context)
+                })
 
             with transaction.atomic():
-                if novo_status != 'desligado' and not turma_original:
-                    messages.error(
-                        request,
-                        'Aluno ativo/frequentando deve estar vinculado a uma turma.'
+                if novo_status == 'frequentando' and not turma_original:
+                    form.add_error(
+                        'status_lsd',
+                        'Aluno com status Frequentando deve estar vinculado a uma turma.'
                     )
+
                     return render(request, 'AppLSD/aluno_form.html', {
                         'form': form,
                         'aluno': aluno,
                     })
 
+                # A edição comum preserva a turma já existente.
                 aluno_editado.turma = turma_original
                 aluno_editado.editado_por = request.user
                 aluno_editado.save()
@@ -1321,18 +1364,39 @@ def aluno_edit(request, pk):
                     f'Aluno {aluno_editado.name} editado com sucesso.'
                 )
 
-            messages.success(request, 'Aluno atualizado com sucesso.')
+            messages.success(
+                request,
+                'Aluno atualizado com sucesso.'
+            )
+
             return redirect('aluno_detail', pk=aluno.pk)
+
+        else:
+            # Formulário inválido: permanece na tela e mostra os erros.
+            logger.warning(
+                "Formulário inválido ao editar aluno %s: %s",
+                aluno.pk,
+                form.errors.as_json(),
+            )
+
+            return render(request, 'AppLSD/aluno_form.html', {
+                'form': form,
+                'aluno': aluno,
+            })
+
     else:
         form = AlunoForm(instance=aluno)
 
-    context = {
+    logger.debug(
+        "Ensino: %s, Série: %s",
+        aluno.ensino,
+        aluno.serie,
+    )
+
+    return render(request, 'AppLSD/aluno_form.html', {
         'form': form,
         'aluno': aluno,
-    }
-
-    logger.debug(f"Ensino: {aluno.ensino}, Série: {aluno.serie}")
-    return render(request, 'AppLSD/aluno_form.html', context)
+    })
 
 @login_required
 def aluno_delete_confirm(request, pk):
