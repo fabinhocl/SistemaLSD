@@ -54,8 +54,8 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'channels',          # Necessário para websocket no Dash
     'dpd_static_support', # Para servir assets do Dash
-    'pgvector.django',
-    'AppGED.apps.AppgedConfig',
+    #'pgvector.django',
+    #'AppGED.apps.AppgedConfig',
     #'django_select2',
     #'django_multiselectfield',
 ]

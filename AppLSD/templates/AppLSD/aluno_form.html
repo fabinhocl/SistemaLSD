@@ -121,7 +121,17 @@
                 <button type="submit" class="btn btn-primary" id="btnSalvarAluno">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
-                <a href="{% url 'aluno_detail' form.instance.pk %}" class="btn btn-secondary ms-2">Voltar</a>
+                {% if form.instance.pk %}
+                    <a href="{% url 'aluno_detail' form.instance.pk %}"
+                    class="btn btn-secondary">
+                        Cancelar
+                    </a>
+                {% else %}
+                    <a href="{% url 'home' %}"
+                    class="btn btn-secondary">
+                        Cancelar
+                    </a>
+                {% endif %}
             </form>
         </div>
     </div>

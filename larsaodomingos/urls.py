@@ -8,7 +8,7 @@ from django.urls import path, include
 urlpatterns = [
     #path('admin/', admin.site.urls),
     path('', include('AppLSD.urls')),
-    path('ged/', include('AppGED.urls', namespace='ged')),
+    #path('ged/', include('AppGED.urls', namespace='ged')),
     #path('', include('dashboard_lsd.urls')),     # Inclui todas as rotas do app, sem prefixo extra
 ]
 
