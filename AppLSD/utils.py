@@ -1,4 +1,5 @@
 """
+Arquivo utils.py
 Funções auxiliares e decorators para controle de permissões
 """
 from django.core.exceptions import PermissionDenied
@@ -147,3 +148,30 @@ def pode_editar_frequencia_turma(user, turma):
         return True
 
     return False
+
+def pode_inativar_familia(user):
+    """
+    Permite inativação da família ao Serviço Social
+    e ao superusuário.
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    return (
+        user.is_superuser
+        or usuario_tem_perfil(user, 'servicosocial')
+    )
+
+
+def pode_desligar_assistido(user):
+    """
+    Permite desligamento individual à Coordenação
+    e ao superusuário.
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    return (
+        user.is_superuser
+        or usuario_tem_perfil(user, 'coordenacao')
+    )

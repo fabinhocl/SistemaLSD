@@ -1,0 +1,23 @@
+# Django GED - Dependncias adicionais
+# Adicionar ao requirements.txt existente do SistemaLSD
+
+# Vector search (pgvector)
+pgvector>=0.2.5
+
+# OCR
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Processamento de PDF
+PyPDF2>=3.0.0
+
+# Hash SHA256 para arquivos
+# (j incluso no Python stdlib - hashlib)
+
+# Opcionais para OCR avanado:
+# paddlepaddle>=2.5.0
+# paddleocr>=2.7.0
+
+# Opcionais para processamento de documentos:
+# python-docx>=1.0.0  # Word
+# openpyxl>=3.1.0     # Excel

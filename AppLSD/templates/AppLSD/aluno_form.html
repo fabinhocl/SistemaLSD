@@ -26,7 +26,7 @@
                         <strong>Existem erros no formulário.</strong>
                     </div>
                 {% endif %}
-                
+
                 <div class="row mb-3">
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
                 {% if family %}
@@ -46,6 +46,11 @@
                     <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.cpf|as_crispy_field }}</div>
                     <div class="col-md-3">{{ form.nis|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.possui_sisc|as_crispy_field }}</div>
+                    <div class="col-md-8" id="justificativa-sisc-group" style="display:none;">
+                        {{ form.justificativa_sisc|as_crispy_field }}
+                    </div>
+
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-5">{{ form.birth_date|as_crispy_field }}</div>
@@ -87,10 +92,12 @@
                         <input type="text" id="qual_medicacao" name="qual_medicacao" class="form-control" disabled>
                     </div>
                 </div>
+                
+
                 <div class="form-row d-flex align-items-start">
-                <div class="form-group col-md-4">
-                    {{ form.frequencia_tipo|as_crispy_field }}
-                </div>
+                    <div class="form-group col-md-4">
+                        {{ form.frequencia_tipo|as_crispy_field }}
+                    </div>
 
                 <div class="form-group col-md-8" id="dias-semana-wrapper">
                     <label>Dias da semana</label>
@@ -114,57 +121,82 @@
                 <button type="submit" class="btn btn-primary" id="btnSalvarAluno">
                 {% if form.instance.pk %}Salvar Alterações{% else %}Salvar{% endif %}
                 </button>
-                <a href="{% url 'family_list' %}" class="btn btn-secondary ms-2">Voltar</a>
+                <a href="{% url 'aluno_detail' form.instance.pk %}" class="btn btn-secondary ms-2">Voltar</a>
             </form>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalConfirmarDesligamentoEdicao" tabindex="-1"
-     aria-labelledby="modalConfirmarDesligamentoEdicaoLabel" aria-hidden="true">
+<div class="modal fade"
+     id="modalConfirmarDesligamentoEdicao"
+     tabindex="-1"
+     aria-labelledby="modalConfirmarDesligamentoEdicaoLabel"
+     aria-hidden="true">
+
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="modalConfirmarDesligamentoEdicaoLabel">
-                    Confirmar desligamento
-                </h5>
-                <button type="button" class="btn-close btn-close-white"
-                        data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
 
-            <div class="modal-body">
-                <p>
-                    Ao salvar com status <strong>Desligado</strong>, o aluno será removido da turma
-                    e das atividades vinculadas. Deseja continuar?
-                </p>
+            <form method="post"
+                  id="formConfirmarDesligamento"
+                  action="">
 
-                <input type="hidden" name="acao" id="acaoDesligamentoEdicao" value="">
+                {% csrf_token %}
 
-                <div class="mb-3">
-                    <label for="motivoDesligamentoEdicao" class="form-label">
-                        Motivo do desligamento
-                    </label>
-                    <textarea name="motivo" id="motivoDesligamentoEdicao"
-                              class="form-control" rows="3"></textarea>
+                <input type="hidden" name="acao" value="confirmar_desligamento">
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalConfirmarDesligamentoEdicaoLabel">
+                        Confirmar desligamento
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Fechar">
+                    </button>
                 </div>
 
-                <div class="mb-3">
-                    <label for="senhaDesligamentoEdicao" class="form-label">
-                        Sua senha
-                    </label>
-                    <input type="password" name="senha" id="senhaDesligamentoEdicao"
-                           class="form-control">
-                </div>
-            </div>
+                <div class="modal-body">
+                    <p>O aluno será removido da turma e das atividades vinculadas.</p>
+                    <p>Confirma o desligamento de <strong>{{ aluno.name }}</strong>?</p>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    Cancelar
-                </button>
-                <button type="button" class="btn btn-danger" id="btnConfirmarDesligamentoEdicao">
-                    Confirmar desligamento
-                </button>
-            </div>
+                    <div class="mb-3">
+                        <label for="motivoDesligamentoEdicao" class="form-label">
+                            Motivo do desligamento
+                        </label>
+                        <select name="motivo" id="motivoDesligamentoEdicao"
+                                class="form-select" required>
+                            <option value="">Selecione o motivo</option>
+                            {% for valor, rotulo in motivos_desligamento %}
+                                <option value="{{ valor }}">{{ rotulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observacaoDesligamentoEdicao" class="form-label">
+                            Observação (opcional)
+                        </label>
+                        <textarea name="observacao" id="observacaoDesligamentoEdicao"
+                                  class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="senhaDesligamentoEdicao" class="form-label">
+                            Sua senha
+                        </label>
+                        <input type="password" name="senha"
+                               id="senhaDesligamentoEdicao"
+                               class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        Confirmar desligamento
+                    </button>
+                </div>
+
+            </form>
         </div>
     </div>
 </div>
@@ -205,7 +237,6 @@ function selecionaFamilia(id, registro, nome, cpf) {
 </script>
 
 <script>
-
 document.addEventListener('DOMContentLoaded', function() {
   // Mapeamento de ensino e séries
   const ensinoSeries = {
@@ -379,83 +410,55 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('alunoEditForm');
-    const btnSalvar = document.getElementById('btnSalvarAluno');
-    const btnConfirmar = document.getElementById('btnConfirmarDesligamentoEdicao');
+    const editForm = document.getElementById('alunoEditForm');
+    const saveButton = document.getElementById('btnSalvarAluno');
     const statusField = document.getElementById('id_status_lsd');
-    const modalElement = document.getElementById('modalConfirmarDesligamentoEdicao');
-    const motivoField = document.getElementById('motivoDesligamentoEdicao');
-    const senhaField = document.getElementById('senhaDesligamentoEdicao');
-    const acaoField = document.getElementById('acaoDesligamentoEdicao');
+    const modalElement = document.getElementById(
+        'modalConfirmarDesligamentoEdicao'
+    );
 
-    if (!form || !btnSalvar || !btnConfirmar || !statusField || !modalElement) {
+    if (!editForm || !saveButton || !statusField || !modalElement) {
+        console.warn('Elementos da edição não encontrados.');
         return;
     }
 
     const modal = new bootstrap.Modal(modalElement);
     const statusInicial = statusField.value;
-    let envioConfirmado = false;
-    let bloqueandoSubmit = false;
 
-    form.addEventListener('submit', function (event) {
-        if (bloqueandoSubmit) {
-            event.preventDefault();
-        }
-    });
-
-    btnSalvar.addEventListener('click', function (event) {
-        event.preventDefault();
-
+    saveButton.addEventListener('click', function (event) {
         const statusAtual = statusField.value;
 
         if (
             statusInicial !== 'desligado' &&
-            statusAtual === 'desligado' &&
-            !envioConfirmado
+            statusAtual === 'desligado'
         ) {
-            bloqueandoSubmit = true;
-            if (acaoField) acaoField.value = '';
+            event.preventDefault();
             modal.show();
-            return;
-        }
-
-        bloqueandoSubmit = false;
-        form.submit();
-    });
-
-    btnConfirmar.addEventListener('click', function () {
-        const motivo = motivoField ? motivoField.value.trim() : '';
-        const senha = senhaField ? senhaField.value.trim() : '';
-
-        if (!motivo) {
-            alert('Informe o motivo do desligamento.');
-            motivoField.focus();
-            return;
-        }
-
-        if (!senha) {
-            alert('Informe sua senha.');
-            senhaField.focus();
-            return;
-        }
-
-        envioConfirmado = true;
-        bloqueandoSubmit = false;
-
-        if (acaoField) {
-            acaoField.value = 'confirmar_desligamento';
-        }
-
-        modal.hide();
-        form.submit();
-    });
-
-    modalElement.addEventListener('hidden.bs.modal', function () {
-        if (!envioConfirmado) {
-            bloqueandoSubmit = true;
-            if (acaoField) acaoField.value = '';
         }
     });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sisc = document.getElementById('id_possui_sisc');
+    const justGroup = document.getElementById('justificativa-sisc-group');
+    const justField = document.getElementById('id_justificativa_sisc');
+    const outrosGroup = document.getElementById('justificativa-sisc-outros-group');
+    const outrosField = document.getElementById('id_justificativa_sisc_outros');
+
+    function aplicar() {
+        const semSisc = sisc && sisc.value === 'nao';
+        justGroup.style.display = semSisc ? '' : 'none';
+        if (!semSisc && justField) justField.value = '';
+
+        const ehOutros = semSisc && justField && justField.value === 'outros';
+        outrosGroup.style.display = ehOutros ? '' : 'none';
+        if (!ehOutros && outrosField) outrosField.value = '';
+    }
+
+    sisc.addEventListener('change', aplicar);
+    justField.addEventListener('change', aplicar);
+    aplicar();
 });
 </script>
 {% endblock %}

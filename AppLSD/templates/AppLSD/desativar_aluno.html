@@ -1,24 +1,56 @@
-<form method="post">
-    {% csrf_token %}
+{% extends 'AppLSD/base.html' %}
 
-    <div class="alert alert-warning">
-        Esta ação irá desligar o aluno do Lar, remover o vínculo com a turma e retirar o aluno das atividades.
+{% block title %}
+  Desligar assistido - {{ aluno.name }}
+{% endblock %}
+
+{% block content %}
+  <div class="container mt-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+
+        <div class="card">
+          <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+              Desligar assistido
+            </h5>
+          </div>
+
+          <div class="card-body">
+            <p>
+              Confirma o desligamento de
+              <strong>{{ aluno.name }}</strong>?
+            </p>
+
+            <form
+              method="post"
+              action="{% url 'desativar_aluno' aluno.id %}"
+            >
+              {% csrf_token %}
+
+              {% include 'AppLSD/includes/campos_desligamento_aluno.html' %}
+
+              <div class="d-flex gap-2 mt-3">
+                <button
+                  type="submit"
+                  class="btn btn-danger"
+                >
+                  Confirmar desligamento
+                </button>
+
+                <a
+                  href="{% url 'aluno_detail' aluno.id %}"
+                  class="btn btn-secondary"
+                >
+                  Cancelar
+                </a>
+              </div>
+            </form>
+
+          </div>
+        </div>
+
+      </div>
     </div>
-
-    <p>
-        Confirma o desligamento do aluno <strong>{{ aluno.name }}</strong>?
-    </p>
-
-    <div class="mb-3">
-        <label for="motivo" class="form-label">Motivo do desligamento</label>
-        <textarea name="motivo" id="motivo" class="form-control" rows="4" required></textarea>
-    </div>
-
-    <div class="mb-3">
-        <label for="senha" class="form-label">Sua senha</label>
-        <input type="password" name="senha" id="senha" class="form-control" required>
-    </div>
-
-    <button type="submit" class="btn btn-danger">Confirmar desligamento</button>
-    <a href="{% url 'aluno_detail' aluno.id %}" class="btn btn-secondary">Cancelar</a>
-</form>
+  </div>
+{% endblock %}

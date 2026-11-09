@@ -1,0 +1,292 @@
+{% extends 'AppLSD/base.html' %}
+
+{% block title %}Presença Diária por Grupo e Turno{% endblock %}
+
+{% block content %}
+<style>
+  .presenca-relatorio {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .presenca-relatorio .quantidade {
+    width: 130px;
+    text-align: center;
+  }
+
+  .presenca-relatorio .subtotal {
+    background: #eef2f6;
+    font-weight: 700;
+  }
+
+  .resumo-presenca {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .resumo-presenca .resumo-item {
+    flex: 1;
+    min-width: 180px;
+    padding: 18px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .resumo-presenca .numero {
+    display: block;
+    font-size: 30px;
+    font-weight: 700;
+  }
+
+  .nota-relatorio {
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+
+    nav,
+    aside,
+    footer,
+    .sidebar,
+    .navbar,
+    .no-print {
+      display: none !important;
+    }
+
+    body {
+      background: white !important;
+      color: black !important;
+      font-size: 10pt;
+    }
+
+    .presenca-relatorio {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+    }
+
+    .presenca-relatorio .card {
+      border: 0;
+      box-shadow: none;
+    }
+
+    .presenca-relatorio .card-body {
+      padding: 0;
+    }
+
+    .presenca-relatorio .table-responsive {
+      overflow: visible;
+    }
+
+    .presenca-relatorio table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .presenca-relatorio th,
+    .presenca-relatorio td {
+      border: 1px solid #999 !important;
+      padding: 6px !important;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tr {
+      break-inside: avoid;
+    }
+
+    h4 {
+      break-after: avoid;
+    }
+  }
+</style>
+
+<div class="presenca-relatorio">
+  <div class="text-center mb-4">
+    <h2>Presença Diária por Grupo e Turno</h2>
+    <p class="mb-1">
+      Data: {{ data_referencia|date:"d/m/Y" }}
+    </p>
+    <p class="nota-relatorio">
+      Referência de público presente para planejamento das refeições.
+    </p>
+  </div>
+
+  <div class="card mb-4 no-print">
+    <div class="card-body">
+      <form method="get">
+        <div class="row align-items-end">
+          <div class="col-md-3 mb-3">
+            <label for="data" class="form-label">Data</label>
+            <input
+              type="date"
+              id="data"
+              name="data"
+              value="{{ data_iso }}"
+              class="form-control"
+              required
+            >
+          </div>
+
+          <div class="col-md-3 mb-3">
+            <label for="turno" class="form-label">Turno</label>
+            <select id="turno" name="turno" class="form-select">
+              <option value="">Todos</option>
+              <option value="Matutino"
+                {% if turno_selecionado == "Matutino" %}selected{% endif %}>
+                Manhã
+              </option>
+              <option value="Vespertino"
+                {% if turno_selecionado == "Vespertino" %}selected{% endif %}>
+                Tarde
+              </option>
+            </select>
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label for="turma_id" class="form-label">Grupo</label>
+            <select id="turma_id" name="turma_id" class="form-select">
+              <option value="">Todos os grupos</option>
+              {% for turma in turmas_filtro %}
+                <option value="{{ turma.pk }}"
+                  {% if turma_selecionada == turma.pk %}selected{% endif %}>
+                  {{ turma.grupo|default:"Grupo sem nome" }}
+                  — {{ turma.turno|default:"Sem turno" }}
+                  — {{ turma.ano_letivo }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-2 mb-3">
+            <button type="submit" class="btn btn-primary w-100">
+              Consultar
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        onclick="window.print()"
+      >
+        Imprimir / Salvar PDF
+      </button>
+    </div>
+  </div>
+
+  {% if grupos_pendentes %}
+    <div class="alert alert-warning">
+      {{ grupos_pendentes }} grupo(s) sem chamada, sem registros individuais
+      ou com chamadas conflitantes. Confira as situações abaixo antes
+      de considerar o resultado definitivo.
+    </div>
+  {% endif %}
+
+  {% if total_divergencias %}
+    <div class="alert alert-warning">
+      Foram encontrados {{ total_divergencias }} registro(s) com divergência
+      entre os campos de presença e status.
+      A contagem utiliza o campo “presente” e exclui o status “NHA”.
+      Revise esses registros antes de utilizar os totais.
+    </div>
+  {% endif %}
+
+  <div class="resumo-presenca">
+    {% for secao in secoes %}
+      <div class="resumo-item">
+        <span class="numero">{{ secao.total }}</span>
+        <span>{{ secao.titulo }}</span>
+      </div>
+    {% endfor %}
+
+    <div class="resumo-item">
+      <span class="numero">{{ total_participacoes }}</span>
+      <span>Total de participações por turno</span>
+    </div>
+
+    <div class="resumo-item">
+      <span class="numero">{{ total_assistidos_unicos }}</span>
+      <span>Assistidos diferentes no dia</span>
+    </div>
+  </div>
+
+  {% for secao in secoes %}
+    <h4 class="mt-4 mb-3">{{ secao.titulo }}</h4>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Grupo</th>
+            <th>Educadora</th>
+            <th class="quantidade">Presentes</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for linha in secao.linhas %}
+            <tr>
+              <td>{{ linha.grupo }}</td>
+              <td>{{ linha.educadora }}</td>
+              <td class="quantidade">{{ linha.quantidade }}</td>
+              <td>
+                {{ linha.situacao }}
+                {% if linha.divergencias %}
+                  <br>
+                  <small>
+                    {{ linha.divergencias }} registro(s) divergente(s)
+                  </small>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+
+        <tfoot>
+          <tr class="subtotal">
+            <td colspan="2">
+              Assistidos distintos — {{ secao.titulo }}
+            </td>
+            <td class="quantidade">{{ secao.total }}</td>
+            <td>Sem repetição no turno</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  {% empty %}
+    <div class="alert alert-info">
+      Nenhum grupo encontrado para os filtros selecionados.
+    </div>
+  {% endfor %}
+
+  <div class="mt-4 nota-relatorio">
+    <p>
+      Os totais correspondem aos filtros selecionados.
+      Cada assistido é contado uma vez por grupo e uma vez no subtotal
+      de cada turno. Por isso, a soma das linhas pode superar o subtotal
+      quando houver participação em mais de um grupo no mesmo turno.
+    </p>
+    <p>
+      Um assistido presente de manhã e à tarde gera duas participações,
+      mas aparece apenas uma vez no total de assistidos diferentes no dia.
+    </p>
+    <p>
+      Quantitativo baseado nas presenças registradas.
+      Não representa confirmação de consumo nem quantidade de refeições servidas.
+    </p>
+  </div>
+</div>
+{% endblock %}

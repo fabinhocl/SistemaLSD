@@ -1,0 +1,132 @@
+{% extends 'AppLSD/base.html' %}
+{% load static %}
+
+{% block title %}GED - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-3">Gestão Eletrônica de Documentos</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Cards de estatsticas -->
+        <div class="col-sm-6 col-lg-3 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-muted text-uppercase mb-2">Total de Documentos</div>
+                            <div class="h2 mb-0">{{ total_documentos }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-muted text-uppercase mb-2">Setores</div>
+                            <div class="h2 mb-0">{{ setores.count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Documentos Recentes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Título</th>
+                                    <th>Setor</th>
+                                    <th>Status</th>
+                                    <th>Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documentos_recentes %}
+                                <tr>
+                                    <td>{{ doc.codigo_registro|default:"-" }}</td>
+                                    <td>
+                                        <a href="{% url 'ged:detalhe_documento' doc.pk %}">
+                                            {{ doc.titulo|truncatechars:50 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ doc.setor.nome }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ doc.status|default:'secondary' }}">
+                                            {{ doc.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ doc.criado_em|date:"d/m/Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        Nenhum documento cadastrado
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'ged:lista_documentos' %}" class="btn btn-primary">
+                        Ver todos os documentos
+                    </a>
+                    <a href="{% url 'ged:criar_documento' %}" class="btn btn-success">
+                        Novo Documento
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Setores</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for setor in setores %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ setor.nome }}
+                            <span class="badge bg-primary rounded-pill">
+                                {{ setor.documentos.count }}
+                            </span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted">
+                            Nenhum setor cadastrado
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if user.is_superuser or user.perfis.all %}
+                    <a href="{% url 'ged:configuracao_dashboard' %}"
+                    class="btn btn-outline-secondary">
+                        <i class="bi bi-gear-fill"></i>
+                        Configurar GED
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

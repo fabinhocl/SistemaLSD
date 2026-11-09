@@ -1,0 +1,94 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Configuração do GED{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'ged:dashboard' %}"
+               class="text-decoration-none">
+                <i class="bi bi-arrow-left"></i>
+                Voltar para Gestão Documental
+            </a>
+
+            <h1 class="h3 mt-3 mb-1">
+                Configuração do GED
+            </h1>
+
+            <p class="text-muted mb-0">
+                Configure a estrutura documental e os metadados do sistema.
+            </p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:configurar_setores' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-building"
+                   style="font-size:3em;"></i>
+
+                <div class="mt-2 fs-5">
+                    Setores
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Patrimônio, Financeiro, Secretaria e outros.
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:configurar_categorias' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-folder-fill"
+                   style="font-size:3em;"></i>
+
+                <div class="mt-2 fs-5">
+                    Categorias
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Organize a árvore documental por setor.
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:configurar_tipos_documento' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-file-earmark-text-fill"
+                   style="font-size:3em;"></i>
+
+                <div class="mt-2 fs-5">
+                    Tipos de documento
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Defina tipos específicos por categoria.
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:configurar_campos_metadado' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-list-check"
+                   style="font-size:3em;"></i>
+
+                <div class="mt-2 fs-5">
+                    Campos de metadado
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Campos dinâmicos por tipo de documento.
+                </p>
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

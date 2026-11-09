@@ -1,0 +1,72 @@
+{% if erros_desligamento %}
+  <div class="alert alert-danger" role="alert">
+    <ul class="mb-0">
+      {% for erro in erros_desligamento %}
+        <li>{{ erro }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="mb-3">
+  <label for="motivo_desligamento" class="form-label">
+    Motivo do desligamento
+  </label>
+
+  <select
+    name="motivo"
+    id="motivo_desligamento"
+    class="form-select"
+    required
+  >
+    <option value="">Selecione o motivo</option>
+
+    {% for valor, rotulo in motivos_desligamento %}
+      <option
+        value="{{ valor }}"
+        {% if motivo_selecionado == valor %}selected{% endif %}
+      >
+        {{ rotulo }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="mb-3">
+  <label for="observacao_desligamento" class="form-label">
+    Observação complementar
+  </label>
+
+  <textarea
+    name="observacao"
+    id="observacao_desligamento"
+    class="form-control"
+    rows="3"
+  >{{ observacao_desligamento|default_if_none:"" }}</textarea>
+
+  <div class="form-text">
+    Informe detalhes do desligamento.
+    Para motivos que exigem complemento, preencha a observação.
+  </div>
+</div>
+
+<div class="mb-3">
+  <label for="senha_desligamento" class="form-label">
+    Confirme sua senha
+  </label>
+
+  <input
+    type="password"
+    name="senha"
+    id="senha_desligamento"
+    class="form-control"
+    required
+    autocomplete="current-password"
+    placeholder="Digite sua senha"
+  >
+</div>
+
+<div class="alert alert-warning mb-0">
+  O assistido será desligado, removido da turma e de todas
+  as atividades. Esta operação não inativa a família.
+</div>

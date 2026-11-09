@@ -1,13 +1,16 @@
 from pyexpat.errors import messages
 from dal import autocomplete
-from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia    
-from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario, pode_editar_frequencia_turma # ✅ Importar as funções
+from AppLSD.atividade_services import adicionar_participacao_atividade, encerrar_participacao_atividade, consultar_atividades_em_desligamentos
+from AppLSD.models import Family, Aluno, Turma, Activity, FrequenciaTurma, FrequenciaAluno, FrequenciaAtividade, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia, MotivoDesligamentoChoices, MovimentacaoTurmaAluno, OcorrenciaAluno, Adult, AppLog, PerfilUsuario, DocumentoFamilia, MotivoDesligamento, ParticipacaoAtividade, FrequenciaAtividade
+from AppLSD.permissoes import require_any_perfil
+from AppLSD.services import inativar_familia, aluno_previsto_na_data, desligar_aluno_padronizado, inativar_familia_logic
+from AppLSD.utils import is_coordenacao, is_educadora, coordenacao_required, usuario_tem_perfil, get_tipo_perfil, registrar_log, TIPOS_PERFIL_VALIDOS, sincronizar_grupos_usuario, pode_editar_frequencia_turma, pode_inativar_familia, pode_desligar_assistido # ✅ Importar as funções
 from AppLSD.templatetags.perfil_tags import has_perfil
 from .forms import FamilyForm, AlunoForm, TurmaForm, ActivityForm, AddAlunosToTurmaForm, AlunoFiltroForm, AlunoInlineFormSet, MoverAlunoForm, OcorrenciaAlunoForm, AdultFormSet, AdultForm, UsuarioCadastroForm, UsuarioEdicaoForm, RemoverAlunoAtividadeForm, MeuPerfilForm
 from calendar import monthrange
 from collections import defaultdict, OrderedDict
 from django import forms
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.contrib import messages
@@ -19,15 +22,16 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.staticfiles import finders
+from django.db import transaction
+from django.db.models import Count, Q, F, Avg, Value, When, Sum, CharField, Exists, OuterRef, IntegerField, FloatField, Case, Min, Max
+from django.db.models.functions import Cast, Coalesce, Concat, Lower
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, Http404
-from django.db import transaction
-from django.db.models import Count, Q, F, Avg, Value, When, Sum, CharField, Exists, OuterRef, IntegerField, FloatField, Case
-from django.db.models.functions import Cast, Coalesce, Concat, Lower
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, Http404, HttpResponseBadRequest
 from django.forms.models import inlineformset_factory
 from django.template.loader import render_to_string
+from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 from django_xhtml2pdf.utils import generate_pdf
 from datetime import date, timedelta, datetime, time
@@ -284,30 +288,102 @@ def cadastrar_usuario(request):
 
 @login_required
 def home(request):
-    if usuario_tem_perfil(request.user, "facilitador"):
-        return redirect('home_facilitador')
-    elif usuario_tem_perfil(request.user, "educadora"):
-        return redirect('home_educadora')
-    elif usuario_tem_perfil(request.user, "coordenacao"):
-        return redirect('home_escola')
-    elif usuario_tem_perfil(request.user, "servicosocial"):
-        return redirect('home_assist')
-    elif usuario_tem_perfil(request.user, "diretoria"):
-        return redirect('home_diretoria')  # ou o nome correto do path para dashboard
-    return render(request, "AppLSD/home.html", {
-        "usuario_admin": usuario_tem_perfil(request.user, "admin"),
-        "usuario_coord": usuario_tem_perfil(request.user, "coordenacao"),
-        "usuario_supervisor": usuario_tem_perfil(request.user, "supervisor"),
-        "usuario_educadora": usuario_tem_perfil(request.user, "educadora"),
-        "usuario_servicosocial": usuario_tem_perfil(request.user, "servicosocial"),
-        "usuario_facilitador": usuario_tem_perfil(request.user, "facilitador"),
-        "usuario_dir": usuario_tem_perfil(request.user, "diretoria"),
-        "usuario_adm": usuario_tem_perfil(request.user, "administrativo"),
-        "usuario_colab": usuario_tem_perfil(request.user, "colaborador"),
-        "usuario_finan": usuario_tem_perfil(request.user, "financeiro"),
-        "usuario_nutri": usuario_tem_perfil(request.user, "nutricao"),
+    usuario_admin = (
+        request.user.is_superuser
+        or usuario_tem_perfil(request.user, 'admin')
+    )
 
-    })
+    usuario_adm = usuario_tem_perfil(
+        request.user,
+        'administrativo'
+    )
+
+    usuario_dir = usuario_tem_perfil(
+        request.user,
+        'diretoria'
+    )
+
+    pode_acessar_administracao = (
+        usuario_admin
+        or usuario_adm
+        or usuario_dir
+    )
+
+    # Superusuário vê a home principal.
+    if request.user.is_superuser:
+        return render(
+            request,
+            'AppLSD/home.html',
+            {
+                'usuario_admin': True,
+                'usuario_adm': usuario_adm,
+                'usuario_dir': usuario_dir,
+                'pode_acessar_administracao': True,
+            },
+        )
+
+    if usuario_tem_perfil(request.user, 'facilitador'):
+        return redirect('home_facilitador')
+
+    elif usuario_tem_perfil(request.user, 'educadora'):
+        return redirect('home_educadora')
+
+    elif usuario_tem_perfil(request.user, 'coordenacao'):
+        return redirect('home_escola')
+
+    elif usuario_tem_perfil(request.user, 'servicosocial'):
+        return redirect('home_assist')
+
+    elif usuario_dir:
+        return redirect('home_diretoria')
+
+    return render(
+        request,
+        'AppLSD/home.html',
+        {
+            'usuario_admin': usuario_admin,
+            'usuario_coord': usuario_tem_perfil(
+                request.user,
+                'coordenacao'
+            ),
+            'usuario_supervisor': usuario_tem_perfil(
+                request.user,
+                'supervisor'
+            ),
+            'usuario_educadora': usuario_tem_perfil(
+                request.user,
+                'educadora'
+            ),
+            'usuario_servicosocial': usuario_tem_perfil(
+                request.user,
+                'servicosocial'
+            ),
+            'usuario_facilitador': usuario_tem_perfil(
+                request.user,
+                'facilitador'
+            ),
+            'usuario_dir': usuario_dir,
+            'usuario_adm': usuario_adm,
+            'usuario_colab': usuario_tem_perfil(
+                request.user,
+                'colaborador'
+            ),
+            'usuario_finan': usuario_tem_perfil(
+                request.user,
+                'financeiro'
+            ),
+            'usuario_nutri': usuario_tem_perfil(
+                request.user,
+                'nutricao'
+            ),
+            'pode_acessar_administracao': (
+                usuario_admin
+                or usuario_adm
+                or usuario_dir
+            ),
+        },
+    )
+
    
 def remove_accents(text):
     return ''.join(
@@ -485,14 +561,26 @@ def home_diretoria(request):
     #hoje = timezone.now().date()
     return render(request, 'AppLSD/home_diretoria.html', contexto)
        
-@login_required
+@require_any_perfil('admin', 'administrativo', 'diretoria')
 def home_adm(request):
     return render(request, 'AppLSD/home_adm.html')
+
 
 #Mesclagem das views de dashboard de presença e relatórios
 @login_required
 def dashboard_completo(request):
-    today = timezone.now().date()
+    data_cards_texto = request.GET.get("data_cards", "").strip()
+
+    try:
+        data_cards = (
+            date.fromisoformat(data_cards_texto)
+            if data_cards_texto
+            else timezone.localdate()
+        )
+    except ValueError:
+        return HttpResponseBadRequest("Data dos cards inválida.")
+
+    today = timezone.localdate()
 
     turmas = Turma.objects.all()
     atividades = Activity.objects.all()
@@ -502,22 +590,58 @@ def dashboard_completo(request):
     
     alunos_busca = Aluno.objects.filter(status_lsd='Frequentando').order_by('name')
 
-    presentes_hoje_manha = FrequenciaAluno.objects.filter(
-        aluno__turma__turno='Matutino',
-        chamada__data=today,
-        presente=True
-    ).count()
+    # Base dos cards: chamada da data consultada em que houve aula.
+    frequencias_cards = (
+        FrequenciaAluno.objects
+        .filter(
+            chamada__data=data_cards,
+            chamada__status_aula="NORMAL",
+            chamada__turma_id__isnull=False,
+        )
+        .exclude(status="NHA")
+    )
 
-    presentes_hoje_tarde = FrequenciaAluno.objects.filter(
-        aluno__turma__turno='Vespertino',
-        chamada__data=today,
-        presente=True
-    ).count()
+    # Mantém o booleano "presente" como referência,
+    # seguindo a regra adotada no relatório diário.
+    presentes_cards = frequencias_cards.filter(presente=True)
 
-    faltas_hoje = FrequenciaAluno.objects.filter(
-        chamada__data=today,
-        presente=False
-    ).count()
+    presentes_hoje_manha = (
+        presentes_cards
+        .filter(chamada__turma__turno="Matutino")
+        .order_by()
+        .values("aluno_id")
+        .distinct()
+        .count()
+    )
+
+    presentes_hoje_tarde = (
+        presentes_cards
+        .filter(chamada__turma__turno="Vespertino")
+        .order_by()
+        .values("aluno_id")
+        .distinct()
+        .count()
+    )
+
+    # Se houver registros contraditórios no mesmo grupo,
+    # um registro de presença evita contar o aluno também como falta.
+    pares_presentes = set(
+        presentes_cards.values_list(
+            "chamada__turma_id",
+            "aluno_id",
+        )
+    )
+
+    pares_faltantes = set(
+        frequencias_cards
+        .filter(presente=False)
+        .values_list(
+            "chamada__turma_id",
+            "aluno_id",
+        )
+    )
+
+    faltas_hoje = len(pares_faltantes - pares_presentes)
 
     turmas_ativas = Turma.objects.count()
     atividades_ativas = Activity.objects.count()
@@ -566,6 +690,9 @@ def dashboard_completo(request):
         "atividades": atividades,
         "alunos": alunos,
         "alunos_busca": alunos_busca,
+        "data_cards": data_cards,
+        "data_cards_iso": data_cards.isoformat(),
+        "hoje_iso": today.isoformat(),
     }
     return render(request, "AppLSD/home_relatorios.html", context)
 
@@ -787,44 +914,193 @@ def family_list(request):
 @login_required
 def family_edit(request, pk):
     family = get_object_or_404(Family, pk=pk)
+    status_anterior = family.status
 
     if request.method == 'POST':
-        form = FamilyForm(request.POST, request.FILES, instance=family)
+        form = FamilyForm(
+            request.POST,
+            request.FILES,
+            instance=family,
+        )
 
         if form.is_valid():
-            family = form.save(commit=False)
-            family.editado_por = request.user
-            family.save()
+            familia_editada = form.save(commit=False)
+            novo_status = familia_editada.status
 
-            registrar_log(
-                request.user,
-                family,
-                'familia_editada',
-                f'Família {family.responsible_name} atualizada.'
-            )
-
-            # Campo de arquivo único (file_info) OU múltiplos (documentos)
-            # 1) Se você mantiver um único input:
-            arquivo_atual = request.FILES.get('file_info')
-            if arquivo_atual:
-                DocumentoFamilia.objects.create(
-                    family=family,
-                    ano=timezone.now().year,
-                    tipo='geral',
-                    arquivo=arquivo_atual,
+            if (
+                novo_status == 'inativo'
+                and status_anterior != 'inativo'
+                and not pode_inativar_familia(request.user)
+            ):
+                form.add_error(
+                    None,
+                    'A inativação de famílias é permitida '
+                    'somente ao Serviço Social.',
                 )
 
-            # 2) Se usar <input type="file" name="documentos" multiple>:
-           
+                return render(
+                    request,
+                    'AppLSD/family_form.html',
+                    {
+                        'form': form,
+                        'family': family,
+                    },
+                    status=403,
+                )
 
-            return redirect('family_detail', pk=family.pk)
+            motivo = familia_editada.motivo_inativacao
+            observacao = (
+                familia_editada.observacao_inativacao or ''
+            ).strip()
+
+            mensagem_sucesso = ''
+
+            try:
+                with transaction.atomic():
+                    familia_banco = (
+                        Family.objects
+                        .select_for_update()
+                        .get(pk=pk)
+                    )
+
+                    if familia_banco.status != status_anterior:
+                        raise ValidationError(
+                            'A situação da família foi alterada '
+                            'por outra operação. Atualize a página '
+                            'antes de tentar novamente.'
+                        )
+
+                    familia_editada.editado_por = request.user
+
+                    if (
+                        novo_status == 'inativo'
+                        and status_anterior != 'inativo'
+                    ):
+                        # Persiste as demais alterações sem antecipar
+                        # a transição que será realizada pelo serviço.
+                        familia_editada.status = status_anterior
+                        familia_editada.save()
+                        form.save_m2m()
+
+                        resultado = inativar_familia_logic(
+                            request_user=request.user,
+                            familia_id=familia_editada.pk,
+                            motivo_codigo=motivo,
+                            observacao=observacao,
+                            origem='edicao',
+                        )
+
+                        familia_editada.refresh_from_db()
+
+                        mensagem_sucesso = (
+                            f'Família de '
+                            f'{familia_editada.responsible_name} '
+                            f'inativada. '
+                            f'{resultado["total_desligados"]} '
+                            f'assistido(s) desligado(s).'
+                        )
+
+                    elif (
+                        novo_status == 'ativo'
+                        and status_anterior == 'inativo'
+                    ):
+                        familia_editada.data_inativacao = None
+                        familia_editada.inativado_por = None
+                        familia_editada.motivo_inativacao = ''
+                        familia_editada.observacao_inativacao = ''
+                        familia_editada.save()
+                        form.save_m2m()
+
+                        registrar_log(
+                            request.user,
+                            familia_editada,
+                            'familia_reativada',
+                            (
+                                f'Família de '
+                                f'{familia_editada.responsible_name} '
+                                f'reativada por '
+                                f'{request.user.get_full_name() or request.user.username}.'
+                            ),
+                        )
+
+                        mensagem_sucesso = (
+                            'Família reativada. Os assistidos '
+                            'não foram reativados nem vinculados '
+                            'automaticamente a turmas ou atividades.'
+                        )
+
+                    else:
+                        familia_editada.save()
+                        form.save_m2m()
+
+                        registrar_log(
+                            request.user,
+                            familia_editada,
+                            'familia_editada',
+                            (
+                                f'Família de '
+                                f'{familia_editada.responsible_name} '
+                                f'atualizada.'
+                            ),
+                        )
+
+                        mensagem_sucesso = (
+                            'Família atualizada com sucesso.'
+                        )
+
+                    arquivo_atual = request.FILES.get('file_info')
+
+                    if arquivo_atual:
+                        DocumentoFamilia.objects.create(
+                            family=familia_editada,
+                            ano=timezone.now().year,
+                            tipo='geral',
+                            arquivo=arquivo_atual,
+                        )
+
+            except ValidationError as exc:
+                form.add_error(
+                    None,
+                    ' '.join(exc.messages),
+                )
+            
+            except PermissionDenied as exc:
+                form.add_error(
+                    None,
+                    str(exc),
+                )
+
+                return render(
+                    request,
+                    'AppLSD/family_form.html',
+                    {
+                        'form': form,
+                        'family': family,
+                    },
+                    status=403,
+                )
+
+            else:
+                messages.success(
+                    request,
+                    mensagem_sucesso,
+                )
+
+                return redirect(
+                    'family_detail',
+                    pk=familia_editada.pk,
+                )
+
     else:
         form = FamilyForm(instance=family)
 
     return render(
         request,
         'AppLSD/family_form.html',
-        {'form': form, 'family': family},
+        {
+            'form': form,
+            'family': family,
+        },
     )
 
 @login_required
@@ -1199,9 +1475,9 @@ def aluno_detail(request, pk):
     ).order_by('-data')
 
     pode_desligar_aluno = (
-        not educadora_status and aluno.status_lsd != 'desligado'
+        aluno.status_lsd != 'desligado'
+        and pode_desligar_assistido(request.user)
     )
-
     is_educadora_da_turma = (
         educadora_status
         and aluno.turma is not None
@@ -1214,9 +1490,12 @@ def aluno_detail(request, pk):
     )
 
     pode_adicionar_atividade = (
-        request.user.is_superuser
-        or is_coordenacao(request.user)
-        or educadora_status
+        aluno.status_lsd == 'Frequentando'
+        and (
+            request.user.is_superuser
+            or is_coordenacao(request.user)
+            or educadora_status
+        )
     )
 
     pode_remover_atividade = (
@@ -1227,6 +1506,56 @@ def aluno_detail(request, pk):
 
     atividades_disponiveis = get_atividades_disponiveis_para_aluno(aluno)
 
+    participacoes_atividades = (
+        ParticipacaoAtividade.objects
+        .filter(aluno=aluno)
+        .select_related(
+            'entrada_registrada_por',
+            'saida_registrada_por',
+        )
+        .order_by('-registrado_em', '-pk')
+    )
+
+    evidencias_frequencia_atividades = (
+        FrequenciaAtividade.objects
+        .filter(
+            aluno=aluno,
+            atividade__isnull=False,
+            data__isnull=False,
+        )
+        .values(
+            'atividade_id',
+            'atividade__atividade',
+        )
+        .annotate(
+            primeira_chamada=Min('data'),
+            ultima_chamada=Max('data'),
+            total_chamadas=Count('pk'),
+        )
+        .order_by('atividade__atividade', 'atividade_id')
+    )
+
+    logs_atividades = (
+        logs
+        .filter(
+            acao__in=[
+                'atividade_adicionada_aluno',
+                'aluno_adicionado_atividade',
+                'aluno_removido_atividade',
+                'aluno_removido_atividades',
+                'aluno_removido_da_atividade',
+                'aluno_removido_desligamento',
+            ],
+        )
+        .select_related('criado_por')
+        .order_by('-criado_em', '-pk')
+    )
+
+    atividades_em_desligamentos = (
+        consultar_atividades_em_desligamentos(
+            aluno_id=aluno.pk,
+        )
+    )
     context = {
         'aluno': aluno,
         'logs': logs,
@@ -1238,6 +1567,11 @@ def aluno_detail(request, pk):
         'pode_adicionar_atividade': pode_adicionar_atividade,
         'pode_remover_atividade': pode_remover_atividade,
         'atividades_disponiveis': atividades_disponiveis,
+        'participacoes_atividades': participacoes_atividades,
+        'evidencias_frequencia_atividades': evidencias_frequencia_atividades,
+        'logs_atividades': logs_atividades,
+        'motivos_desligamento': _motivos_desligamento_da_familia(),
+        'atividades_em_desligamentos': atividades_em_desligamentos,
     }
     return render(request, 'AppLSD/aluno_detail.html', context)
 
@@ -1250,58 +1584,50 @@ def aluno_edit(request, pk):
     turma_original = aluno.turma
     status_anterior = aluno.status_lsd
 
+    contexto_base = {
+        'form': None,
+        'aluno': aluno,
+        'motivos_desligamento': MotivoDesligamento.choices,
+    }
+
     if request.method == 'POST':
         acao = request.POST.get('acao')
 
         logger.debug(
             "POST aluno_edit: pk=%s, acao=%s, status_lsd=%s",
-            pk,
-            acao,
-            request.POST.get('status_lsd'),
+            pk, acao, request.POST.get('status_lsd'),
         )
 
         # Confirmação do desligamento pelo modal
         if acao == 'confirmar_desligamento':
-            senha = request.POST.get('senha', '').strip()
-            motivo = request.POST.get('motivo', '').strip()
+            senha = request.POST.get('senha', '')
+            codigo = request.POST.get('motivo', '').strip()
+            observacao = request.POST.get('observacao', '').strip()
 
             form = AlunoForm(request.POST, instance=aluno)
+            contexto = {**contexto_base, 'form': form, 'abrir_modal_desligamento': True}
 
             if not senha:
                 messages.error(request, 'Senha obrigatória!')
-
-                return render(request, 'AppLSD/aluno_form.html', {
-                    'form': form,
-                    'aluno': aluno,
-                    'abrir_modal_desligamento': True,
-                })
+                return render(request, 'AppLSD/aluno_form.html', contexto)
 
             if not check_password(senha, request.user.password):
                 messages.error(request, 'Senha incorreta!')
+                return render(request, 'AppLSD/aluno_form.html', contexto)
 
-                return render(request, 'AppLSD/aluno_form.html', {
-                    'form': form,
-                    'aluno': aluno,
-                    'abrir_modal_desligamento': True,
-                })
-
-            if not motivo:
+            if codigo not in MotivoDesligamento.values:
                 messages.error(
                     request,
-                    'O motivo do desligamento é obrigatório.'
+                    'Selecione o motivo do desligamento.'
                 )
-
-                return render(request, 'AppLSD/aluno_form.html', {
-                    'form': form,
-                    'aluno': aluno,
-                    'abrir_modal_desligamento': True,
-                })
+                return render(request, 'AppLSD/aluno_form.html', contexto)
 
             with transaction.atomic():
                 desligar_aluno_logic(
                     request_user=request.user,
                     aluno=aluno,
-                    motivo=motivo,
+                    motivo=observacao or dict(MotivoDesligamento.choices)[codigo],
+                    codigo_motivo=codigo,
                     origem='edicao',
                 )
 
@@ -1309,11 +1635,11 @@ def aluno_edit(request, pk):
                 request,
                 f'Aluno {aluno.name} desligado com sucesso.'
             )
-
             return redirect('aluno_detail', pk=aluno.pk)
 
         # Edição normal do aluno
         form = AlunoForm(request.POST, instance=aluno)
+        contexto = {**contexto_base, 'form': form}
 
         if form.is_valid():
             aluno_editado = form.save(commit=False)
@@ -1322,34 +1648,22 @@ def aluno_edit(request, pk):
             logger.debug(
                 "Formulário válido ao editar aluno %s: status_anterior=%s, "
                 "novo_status=%s",
-                aluno.pk,
-                status_anterior,
-                novo_status,
+                aluno.pk, status_anterior, novo_status,
             )
 
-            # Se mudou de ativo/frequentando para desligado,
-            # interrompe o salvamento normal e abre o modal.
-            if (
-                status_anterior != 'desligado'
-                and novo_status == 'desligado'
-            ):
+            # Mudou de ativo para desligado: interrompe e abre o modal
+            if status_anterior != 'desligado' and novo_status == 'desligado':
                 return render(request, 'AppLSD/aluno_form.html', {
-                    'form': form,
-                    'aluno': aluno,
-                    'abrir_modal_desligamento': True,
+                    **contexto, 'abrir_modal_desligamento': True,
                 })
 
             with transaction.atomic():
-                if novo_status == 'frequentando' and not turma_original:
+                if novo_status == 'Frequentando' and not turma_original:
                     form.add_error(
                         'status_lsd',
                         'Aluno com status Frequentando deve estar vinculado a uma turma.'
                     )
-
-                    return render(request, 'AppLSD/aluno_form.html', {
-                        'form': form,
-                        'aluno': aluno,
-                    })
+                    return render(request, 'AppLSD/aluno_form.html', contexto)
 
                 # A edição comum preserva a turma já existente.
                 aluno_editado.turma = turma_original
@@ -1364,39 +1678,23 @@ def aluno_edit(request, pk):
                     f'Aluno {aluno_editado.name} editado com sucesso.'
                 )
 
-            messages.success(
-                request,
-                'Aluno atualizado com sucesso.'
-            )
-
+            messages.success(request, 'Aluno atualizado com sucesso.')
             return redirect('aluno_detail', pk=aluno.pk)
 
         else:
-            # Formulário inválido: permanece na tela e mostra os erros.
             logger.warning(
                 "Formulário inválido ao editar aluno %s: %s",
-                aluno.pk,
-                form.errors.as_json(),
+                aluno.pk, form.errors.as_json(),
             )
-
-            return render(request, 'AppLSD/aluno_form.html', {
-                'form': form,
-                'aluno': aluno,
-            })
+            return render(request, 'AppLSD/aluno_form.html', contexto)
 
     else:
         form = AlunoForm(instance=aluno)
+        contexto = {**contexto_base, 'form': form}
 
-    logger.debug(
-        "Ensino: %s, Série: %s",
-        aluno.ensino,
-        aluno.serie,
-    )
+    logger.debug("Ensino: %s, Série: %s", aluno.ensino, aluno.serie)
 
-    return render(request, 'AppLSD/aluno_form.html', {
-        'form': form,
-        'aluno': aluno,
-    })
+    return render(request, 'AppLSD/aluno_form.html', contexto)
 
 @login_required
 def aluno_delete_confirm(request, pk):
@@ -1424,11 +1722,14 @@ def aluno_delete_confirm(request, pk):
         'error': error,
     })
 
-def desligar_aluno_logic(*, request_user, aluno, motivo, origem='manual', familia=None):
+def desligar_aluno_logic(*, request_user, aluno, motivo, codigo_motivo='',
+                         origem='manual', familia=None):
     motivo = (motivo or '').strip() or 'Não informado'
 
     with transaction.atomic():
-        atividades = Activity.objects.filter(alunos=aluno)
+        # Materializa antes das remoções, senão .exists() reconsulta
+        # o banco já atualizado e sempre retorna False
+        atividades = list(Activity.objects.filter(alunos=aluno))
 
         for atividade in atividades:
             atividade.alunos.remove(aluno)
@@ -1437,15 +1738,17 @@ def desligar_aluno_logic(*, request_user, aluno, motivo, origem='manual', famili
                 request_user,
                 atividade,
                 'aluno_removido_desligamento',
-                f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" por desligamento. Motivo: {motivo}.'
+                f'Aluno {aluno.name} removido da atividade "{atividade.atividade}" '
+                f'por desligamento. Motivo: {motivo}.'
             )
 
-        if atividades.exists():
+        if atividades:
             registrar_log(
                 request_user,
                 aluno,
                 'aluno_removido_atividades',
-                f'Aluno removido de todas as atividades por desligamento. Motivo: {motivo}.'
+                f'Aluno removido de {len(atividades)} atividade(s) por desligamento. '
+                f'Motivo: {motivo}. Origem: {origem}.'
             )
 
         if aluno.turma:
@@ -1466,171 +1769,316 @@ def desligar_aluno_logic(*, request_user, aluno, motivo, origem='manual', famili
                 request_user,
                 turma_atual,
                 'aluno_removido_turma',
-                f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
-            )
-
-            registrar_log(
-                request_user,
-                aluno,
-                'aluno_removido_turma',
-                f'Aluno removido da turma "{turma_atual.grupo}" por desligamento. Motivo: {motivo}.'
+                f'Aluno {aluno.name} removido da turma "{turma_atual.grupo}" '
+                f'por desligamento. Motivo: {motivo}. Origem: {origem}.'
             )
 
         aluno.status_lsd = 'desligado'
         aluno.editado_por = request_user
-
-        if hasattr(aluno, 'motivo_desligamento'):
-            aluno.motivo_desligamento = motivo
-
-        if hasattr(aluno, 'data_desligamento'):
-            aluno.data_desligamento = timezone.now()
-
-        if hasattr(aluno, 'desligado_por'):
-            aluno.desligado_por = request_user
-
+        aluno.motivo_desligamento_codigo = codigo_motivo or ''
+        aluno.motivo_desligamento = motivo
+        aluno.data_desligamento = timezone.now()
+        aluno.desligado_por = request_user
         aluno.save()
 
         registrar_log(
             request_user,
             aluno,
             'aluno_desligado',
-            f'Aluno {aluno.name} desligado com sucesso. Motivo: {motivo}.'
+            f'Aluno {aluno.name} desligado. Motivo: {motivo}. '
+            f'Código: {codigo_motivo or "não informado"}. Origem: {origem}.'
         )
 
 @login_required
+@require_http_methods(['GET', 'POST'])
 def desativar_aluno(request, aluno_id):
     aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    if not (request.user.is_superuser or is_coordenacao(request.user)):
-        return HttpResponseForbidden('Sem permissão')
+    if not pode_desligar_assistido(request.user):
+        messages.error(
+            request,
+            'O desligamento individual de assistidos é permitido '
+            'somente à Coordenação.',
+        )
+
+        return redirect(
+            'aluno_detail',
+            pk=aluno.pk,
+        )
 
     if aluno.status_lsd == 'desligado':
-        messages.warning(request, 'Este aluno já está desligado.')
-        return redirect('aluno_detail', pk=aluno.id)
+        messages.warning(
+            request,
+            'Este assistido já está desligado.',
+        )
+
+        return redirect(
+            'aluno_detail',
+            pk=aluno.pk,
+        )
+
+    motivos_desligamento = _motivos_desligamento_da_familia()
+
+    codigos_validos = {
+        codigo
+        for codigo, _ in motivos_desligamento
+    }
+    
+    codigo = ''
+    observacao = ''
+    erros = []
+    status_resposta = 200
 
     if request.method == 'POST':
-        senha = request.POST.get('senha', '').strip()
-        motivo = request.POST.get('motivo', '').strip()
+        senha = request.POST.get('senha', '')
+        codigo = request.POST.get('motivo', '').strip()
+        observacao = request.POST.get(
+            'observacao',
+            '',
+        ).strip()
 
         if not senha:
-            messages.error(request, 'Senha obrigatória!')
-            return redirect('desativar_aluno', aluno_id=aluno.id)
+            erros.append('Informe sua senha.')
 
-        if not check_password(senha, request.user.password):
-            messages.error(request, 'Senha incorreta!')
-            return redirect('desativar_aluno', aluno_id=aluno.id)
+        elif not check_password(
+            senha,
+            request.user.password,
+        ):
+            erros.append('Senha incorreta.')
 
-        if not motivo:
-            messages.error(request, 'O motivo do desligamento é obrigatório.')
-            return redirect('desativar_aluno', aluno_id=aluno.id)
-
-        with transaction.atomic():
-            desligar_aluno_logic(
-                request_user=request.user,
-                aluno=aluno,
-                motivo=motivo,
-                origem='manual'
+        if codigo not in codigos_validos:
+            erros.append(
+                'Selecione um motivo válido para o desligamento.'
             )
 
-        messages.success(
-            request,
-            f'Aluno {aluno.name} desligado com sucesso, removido da turma e das atividades.'
-        )
-        return redirect('aluno_detail', pk=aluno.id)
+        if not erros:
+            try:
+                with transaction.atomic():
+                    evento = desligar_aluno_padronizado(
+                        request_user=request.user,
+                        aluno_id=aluno.pk,
+                        motivo_codigo=codigo,
+                        observacao=observacao,
+                        origem='manual',
+                    )
 
-    return render(request, 'AppLSD/desativar_aluno.html', {'aluno': aluno})
+            except ValidationError as exc:
+                erros.extend(exc.messages)
+
+            except PermissionDenied as exc:
+                erros.append(str(exc))
+                status_resposta = 403
+
+            else:
+                if evento is None:
+                    messages.warning(
+                        request,
+                        'Nenhum novo desligamento foi registrado. '
+                        'Confira a situação atual do assistido.',
+                    )
+
+                else:
+                    messages.success(
+                        request,
+                        f'Assistido {aluno.name} desligado com sucesso, '
+                        f'removido da turma e das atividades.',
+                    )
+
+                return redirect(
+                    'aluno_detail',
+                    pk=aluno.pk,
+                )
+
+    return render(
+        request,
+        'AppLSD/desativar_aluno.html',
+        {
+            'aluno': aluno,
+            'motivos_desligamento': motivos_desligamento,
+            'motivo_selecionado': codigo,
+            'observacao_desligamento': observacao,
+            'erros_desligamento': erros,
+        },
+        status=status_resposta,
+    )
 
 @login_required
 def desativar_familia(request, familia_id):
-    """
-    Desativa uma família e todos os seus assistidos.
-    Remove alunos de turmas e atividades, registrando no histórico.
-    """
+    if not pode_inativar_familia(request.user):
+        messages.error(
+            request,
+            'A inativação de famílias é permitida somente ao Serviço Social.',
+        )
+
+        return redirect(
+            'family_detail',
+            pk=familia_id,
+        )
+
     familia = get_object_or_404(Family, id=familia_id)
 
-    if request.method == 'POST':
-        with transaction.atomic():
-            alunos = Aluno.objects.filter(family=familia)
+    codigo = ''
+    observacao = ''
 
-            for aluno in alunos:
-                desligar_aluno_logic(
+    if request.method == 'POST':
+        codigo = request.POST.get('motivo', '').strip()
+        observacao = request.POST.get('observacao', '').strip()
+
+        # Não remover espaços da senha.
+        senha = request.POST.get('senha', '')
+
+        erros = []
+
+        if codigo not in MotivoDesligamentoChoices.values:
+            erros.append('Selecione um motivo válido para a inativação.')
+
+        if not senha:
+            erros.append('Informe sua senha para confirmar a operação.')
+        elif not check_password(senha, request.user.password):
+            erros.append('Senha incorreta.')
+
+        if erros:
+            for erro in erros:
+                messages.error(request, erro)
+
+        else:
+            try:
+                resultado = inativar_familia_logic(
                     request_user=request.user,
-                    aluno=aluno,
-                    motivo=f'Desativação da família {familia.name}',
-                    origem='familia_desativada',
-                    familia=familia
+                    familia_id=familia.pk,
+                    motivo_codigo=codigo,
+                    observacao=observacao,
+                    origem='manual',
                 )
 
-            familia.ativo = False
-            familia.save()
+            except ValidationError as exc:
+                for erro in exc.messages:
+                    messages.error(request, erro)
 
-            messages.success(
-                request,
-                f'Família {familia.name} desativada. '
-                f'{alunos.count()} aluno(s) removido(s) de turmas e atividades.'
-            )
+                # Recarrega a situação persistida após a falha.
+                familia.refresh_from_db()
 
-            return redirect('familia_list')
+            else:
+                if resultado['alterado']:
+                    messages.success(
+                        request,
+                        (
+                            f'Família de {familia.responsible_name} '
+                            f'inativada. '
+                            f'{resultado["total_desligados"]} '
+                            f'assistido(s) desligado(s).'
+                        ),
+                    )
+                else:
+                    messages.info(
+                        request,
+                        (
+                            'Esta família já estava inativa. '
+                            'Nenhuma nova inativação foi registrada.'
+                        ),
+                    )
 
-    return render(request, 'desativar_familia.html', {'familia': familia})
+                return redirect('familia_list')
 
+    return render(
+        request,
+        'desativar_familia.html',
+        {
+            'familia': familia,
+            'motivos': MotivoDesligamentoChoices.choices,
+            'motivo_selecionado': codigo,
+            'observacao': observacao,
+        },
+    )
 
-def _remover_aluno_da_atividade_logic(request, aluno, atividade):
-    """
-    Lógica comum para remover aluno de atividade com validação de senha.
-    Retorna True em caso de sucesso e False em caso de falha.
-    """
+def _motivos_desligamento_da_familia():
+    campo = Family._meta.get_field('motivo_inativacao')
+
+    return [
+        (codigo, rotulo)
+        for codigo, rotulo in campo.flatchoices
+        if codigo not in ('', None)
+    ]
+
+def _remover_aluno_da_atividade_logic(
+    request,
+    aluno,
+    atividade,
+):
+    if request.method != 'POST':
+        messages.error(
+            request,
+            'Método inválido para remoção.',
+        )
+        return False
 
     pode_remover = (
         request.user.is_superuser
         or is_coordenacao(request.user)
         or atividade.facilitador == request.user
-        or (aluno.turma and aluno.turma.educadora == request.user)
+        or (
+            aluno.turma is not None
+            and aluno.turma.educadora == request.user
+        )
     )
 
     if not pode_remover:
-        messages.error(request, 'Sem permissão para remover este aluno da atividade.')
+        messages.error(
+            request,
+            'Sem permissão para remover este aluno da atividade.',
+        )
         return False
 
-    if request.method != 'POST':
-        messages.error(request, 'Método inválido para remoção.')
-        return False
+    senha = request.POST.get('senha', '')
 
-    senha = request.POST.get('senha', '').strip()
     if not senha:
         messages.error(request, 'Senha obrigatória!')
         return False
 
-    if not check_password(senha, request.user.password):
+    if not check_password(
+        senha,
+        request.user.password,
+    ):
         messages.error(request, 'Senha incorreta!')
         return False
 
     motivo = request.POST.get('motivo', '').strip()
+
     if not motivo:
-        messages.error(request, 'O motivo da remoção é obrigatório.')
+        messages.error(
+            request,
+            'O motivo da remoção é obrigatório.',
+        )
         return False
 
-    if not aluno.atividades.filter(id=atividade.id).exists():
-        messages.warning(request, 'O aluno já não está vinculado a esta atividade.')
+    try:
+        removeu = encerrar_participacao_atividade(
+            usuario=request.user,
+            aluno_id=aluno.pk,
+            atividade=atividade,
+            motivo=motivo,
+            origem='remocao_individual',
+        )
+
+    except ValidationError as exc:
+        messages.error(
+            request,
+            ' '.join(exc.messages),
+        )
         return False
 
-    aluno.atividades.remove(atividade)
+    if not removeu:
+        messages.warning(
+            request,
+            'O aluno já não está vinculado a esta atividade.',
+        )
+        return False
 
-    registrar_log(
-        request.user,
-        atividade,
-        'aluno_removido_da_atividade',
-        f'Aluno {aluno.name} removido da atividade "{atividade.atividade}". Motivo: {motivo}.'
+    messages.success(
+        request,
+        'Aluno removido da atividade.',
     )
 
-    registrar_log(
-        request.user,
-        aluno,
-        'aluno_removido_atividade',
-        f'Aluno removido da atividade "{atividade.atividade}". Motivo: {motivo}.'
-    )
-
-    messages.success(request, 'Aluno removido da atividade.')
     return True
 
 @login_required
@@ -1645,17 +2093,20 @@ def remover_aluno_da_atividade(request, activity_id, aluno_id):
     return redirect('activity_detail', activity_id=atividade.id)
 
 @login_required
-def remover_aluno_da_atividade_por_aluno(request, aluno_id, activity_id):
-    """
-    Remove aluno da atividade - chamada da tela de DETALHES DO ALUNO
-    URL: /alunos/<aluno_id>/remover-da-atividade/<activity_id>/
-    """
+def remover_aluno_da_atividade_por_aluno(
+    request,
+    aluno_id,
+    activity_id,
+):
     aluno = get_object_or_404(Aluno, id=aluno_id)
     atividade = get_object_or_404(Activity, id=activity_id)
 
-    if _remover_aluno_da_atividade_logic(request, aluno, atividade):
-        return redirect('aluno_detail', pk=aluno.id)
-    
+    _remover_aluno_da_atividade_logic(
+        request,
+        aluno,
+        atividade,
+    )
+
     return redirect('aluno_detail', pk=aluno.id)
 
 
@@ -1843,12 +2294,6 @@ def turma_delete(request, pk):
 
 @login_required
 def iniciar_frequencia_turma(request, turma_id):
-    """
-    Inicia uma nova frequência para a turma.
-    Só cria/salva frequência no POST.
-    Permite iniciar frequência em uma data informada.
-    Também permite registrar quando não houve aula.
-    """
     turma = get_object_or_404(Turma, id=turma_id)
 
     if not (is_coordenacao(request.user) or (is_educadora(request.user) and turma.educadora == request.user)):
@@ -1866,24 +2311,38 @@ def iniciar_frequencia_turma(request, turma_id):
 
     alunos = Aluno.objects.filter(turma=turma).select_related('family').order_by('name')
 
-    status_aula = request.POST.get(
-        'status_aula',
-        FrequenciaTurma.StatusAula.NORMAL
-    ) if request.method == 'POST' else FrequenciaTurma.StatusAula.NORMAL
+    # Separa previstos e não previstos para a data
+    alunos_previstos = []
+    alunos_nao_previstos = []
+    for aluno in alunos:
+        if aluno_previsto_na_data(aluno, data_referencia):
+            alunos_previstos.append(aluno)
+        else:
+            alunos_nao_previstos.append(aluno)
 
+    status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL) \
+        if request.method == 'POST' else FrequenciaTurma.StatusAula.NORMAL
     motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip() if request.method == 'POST' else ''
     observacao_nao_aula = request.POST.get('observacao_nao_aula', '').strip() if request.method == 'POST' else ''
 
     presencas_form = {
         aluno.id: {'presente': True, 'motivo_falta': ''}
-        for aluno in alunos
+        for aluno in alunos_previstos
     }
     erros_motivo = {}
+
+    contexto_base = {
+        'turma': turma,
+        'alunos': alunos_previstos,
+        'alunos_nao_previstos': alunos_nao_previstos,
+        'data_hoje': data_referencia,
+        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+    }
 
     if request.method == "POST":
         erros = []
 
-        for aluno in alunos:
+        for aluno in alunos_previstos:
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
 
@@ -1895,24 +2354,14 @@ def iniciar_frequencia_turma(request, turma_id):
         if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
             if not motivo_nao_aula:
                 messages.error(request, 'Selecione o motivo de não haver aula.')
-
-                return render(
-                    request,
-                    'AppLSD/frequencia_turma_iniciar.html',
-                    {
-                        'turma': turma,
-                        'alunos': alunos,
-                        'data_hoje': data_referencia,
-                        'status_aula': status_aula,
-                        'motivo_nao_aula': motivo_nao_aula,
-                        'observacao_nao_aula': observacao_nao_aula,
-                        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
-                        'presencas_form': presencas_form,
-                        'erros_motivo': erros_motivo,
-                    }
-                )
+                return render(request, 'AppLSD/frequencia_turma_iniciar.html', {
+                    **contexto_base, 'status_aula': status_aula,
+                    'motivo_nao_aula': motivo_nao_aula,
+                    'observacao_nao_aula': observacao_nao_aula,
+                    'presencas_form': presencas_form, 'erros_motivo': erros_motivo,
+                })
         else:
-            for aluno in alunos:
+            for aluno in alunos_previstos:
                 presente = presencas_form[aluno.id]['presente']
                 motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
@@ -1922,31 +2371,18 @@ def iniciar_frequencia_turma(request, turma_id):
 
             if erros:
                 messages.error(request, 'Existem alunos com falta sem motivo selecionado.')
-
-                return render(
-                    request,
-                    'AppLSD/frequencia_turma_iniciar.html',
-                    {
-                        'turma': turma,
-                        'alunos': alunos,
-                        'data_hoje': data_referencia,
-                        'status_aula': status_aula,
-                        'motivo_nao_aula': motivo_nao_aula,
-                        'observacao_nao_aula': observacao_nao_aula,
-                        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
-                        'presencas_form': presencas_form,
-                        'erros_motivo': erros_motivo,
-                    }
-                )
+                return render(request, 'AppLSD/frequencia_turma_iniciar.html', {
+                    **contexto_base, 'status_aula': status_aula,
+                    'motivo_nao_aula': motivo_nao_aula,
+                    'observacao_nao_aula': observacao_nao_aula,
+                    'presencas_form': presencas_form, 'erros_motivo': erros_motivo,
+                })
 
         with transaction.atomic():
             chamada, created = FrequenciaTurma.objects.get_or_create(
                 turma=turma,
                 data=data_referencia,
-                defaults={
-                    'presente': True,
-                    'criado_por': request.user,
-                }
+                defaults={'presente': True, 'criado_por': request.user}
             )
 
             chamada.status_aula = status_aula
@@ -1962,63 +2398,69 @@ def iniciar_frequencia_turma(request, turma_id):
                 chamada.presente = False
                 chamada.save()
 
-                FrequenciaAluno.objects.filter(chamada=chamada).delete()
+                # Registra "Não previsto" em vez de apagar os registros
+                for aluno in alunos:
+                    FrequenciaAluno.objects.update_or_create(
+                        chamada=chamada, aluno=aluno,
+                        defaults={
+                            'presente': False,
+                            'status': FrequenciaAluno.StatusPresenca.NAO_PREVISTO,
+                            'motivo_falta': '',
+                        }
+                    )
 
                 messages.success(request, 'Registro salvo: não houve aula nesta data.')
-
                 registrar_log(
-                    request.user,
-                    turma,
-                    'frequencia_nao_houve_aula',
-                    f'Na turma {turma.grupo}, foi registrado que não houve aula em {data_referencia.strftime("%d/%m/%Y")} '
-                    f'por motivo de {chamada.get_motivo_nao_aula_display()}.',
+                    request.user, turma, 'frequencia_nao_houve_aula',
+                    f'Na turma {turma.grupo}, foi registrado que não houve aula em '
+                    f'{data_referencia.strftime("%d/%m/%Y")} por motivo de '
+                    f'{chamada.get_motivo_nao_aula_display()}.'
                 )
-
                 return redirect('frequencia_visualizar', frequencia_id=chamada.id)
 
             chamada.presente = True
             chamada.save()
 
-            for aluno in alunos:
+            # Alunos previstos: presença ou falta
+            for aluno in alunos_previstos:
                 presente = presencas_form[aluno.id]['presente']
                 motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
                 FrequenciaAluno.objects.update_or_create(
-                    chamada=chamada,
-                    aluno=aluno,
+                    chamada=chamada, aluno=aluno,
                     defaults={
                         'presente': presente,
-                        'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
+                        'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente
+                                  else FrequenciaAluno.StatusPresenca.FALTA,
                         'motivo_falta': motivo_falta if not presente else '',
                     }
                 )
 
-        messages.success(request, 'Frequência registrada com sucesso!')
+            # Alunos não previstos: marca sem gerar falta
+            for aluno in alunos_nao_previstos:
+                FrequenciaAluno.objects.update_or_create(
+                    chamada=chamada, aluno=aluno,
+                    defaults={
+                        'presente': False,
+                        'status': FrequenciaAluno.StatusPresenca.NAO_PREVISTO,
+                        'motivo_falta': '',
+                    }
+                )
 
+        messages.success(request, 'Frequência registrada com sucesso!')
         registrar_log(
-            request.user,
-            turma,
-            'frequencia_criada',
-            f'Frequência do dia {data_referencia.strftime("%d/%m/%Y")} registrada pela educadora '
-            f'{request.user.get_full_name() or request.user.username}.',
+            request.user, turma, 'frequencia_criada',
+            f'Frequência do dia {data_referencia.strftime("%d/%m/%Y")} registrada pela '
+            f'educadora {request.user.get_full_name() or request.user.username}.'
         )
         return redirect('frequencia_visualizar', frequencia_id=chamada.id)
 
-    return render(
-        request,
-        'AppLSD/frequencia_turma_iniciar.html',
-        {
-            'turma': turma,
-            'alunos': alunos,
-            'data_hoje': data_referencia,
-            'status_aula': FrequenciaTurma.StatusAula.NORMAL,
-            'motivo_nao_aula': '',
-            'observacao_nao_aula': '',
-            'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
-            'presencas_form': presencas_form,
-            'erros_motivo': erros_motivo,
-        }
-    )
+    return render(request, 'AppLSD/frequencia_turma_iniciar.html', {
+        **contexto_base,
+        'status_aula': FrequenciaTurma.StatusAula.NORMAL,
+        'motivo_nao_aula': '', 'observacao_nao_aula': '',
+        'presencas_form': presencas_form, 'erros_motivo': erros_motivo,
+    })
 
 
 @login_required
@@ -2115,7 +2557,6 @@ def visualizar_frequencia_turma(request, frequencia_id):
     return render(request, 'AppLSD/frequencia_turma_visualizar.html', context)
 
 #@user_passes_test(is_coordenacao)  # ✅ Apenas coordenação pode acessar
-@login_required
 def editar_frequencia_turma(request, frequencia_id):
     chamada = get_object_or_404(FrequenciaTurma, id=frequencia_id)
 
@@ -2126,14 +2567,19 @@ def editar_frequencia_turma(request, frequencia_id):
         turma=chamada.turma
     ).select_related('family').order_by('name')
 
-    presencas = FrequenciaAluno.objects.filter(
-        chamada=chamada
-    ).select_related('aluno').order_by('aluno__name')
+    alunos_previstos = []
+    alunos_nao_previstos = []
+    for aluno in alunos_turma:
+        if aluno_previsto_na_data(aluno, chamada.data):
+            alunos_previstos.append(aluno)
+        else:
+            alunos_nao_previstos.append(aluno)
 
+    presencas = FrequenciaAluno.objects.filter(chamada=chamada).select_related('aluno')
     presencas_map = {p.aluno_id: p for p in presencas}
 
     presencas_form = {}
-    for aluno in alunos_turma:
+    for aluno in alunos_previstos:
         presenca = presencas_map.get(aluno.id)
         presencas_form[aluno.id] = {
             'presente': presenca.presente if presenca else True,
@@ -2142,6 +2588,14 @@ def editar_frequencia_turma(request, frequencia_id):
 
     erros_motivo = {}
 
+    contexto_base = {
+        'chamada': chamada,
+        'alunos': alunos_previstos,
+        'alunos_nao_previstos': alunos_nao_previstos,
+        'modo_edicao': True,
+        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
+    }
+
     if request.method == 'POST':
         status_aula = request.POST.get('status_aula', FrequenciaTurma.StatusAula.NORMAL)
         motivo_nao_aula = request.POST.get('motivo_nao_aula', '').strip()
@@ -2149,13 +2603,11 @@ def editar_frequencia_turma(request, frequencia_id):
 
         erros = {}
 
-        for aluno in alunos_turma:
+        for aluno in alunos_previstos:
             presente = f'presente_{aluno.id}' in request.POST
             motivo_falta = request.POST.get(f'motivo_{aluno.id}', '').strip()
-
             presencas_form[aluno.id] = {
-                'presente': presente,
-                'motivo_falta': motivo_falta,
+                'presente': presente, 'motivo_falta': motivo_falta,
             }
 
         if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE:
@@ -2170,20 +2622,27 @@ def editar_frequencia_turma(request, frequencia_id):
                     chamada.presente = False
                     chamada.save()
 
-                    FrequenciaAluno.objects.filter(chamada=chamada).delete()
+                    # Preserva registros com status "Não previsto"
+                    for aluno in alunos_turma:
+                        FrequenciaAluno.objects.update_or_create(
+                            chamada=chamada, aluno=aluno,
+                            defaults={
+                                'presente': False,
+                                'status': FrequenciaAluno.StatusPresenca.NAO_PREVISTO,
+                                'motivo_falta': '',
+                            }
+                        )
 
                 messages.success(request, 'Registro atualizado: não houve aula nesta data.')
-
                 registrar_log(
-                    request.user,
-                    chamada.turma,
-                    'frequencia_editada_nao_houve_aula',
-                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} alterada para "não houve aula" '
-                    f'pela coordenadora ({request.user.get_full_name() or request.user.username}).',
+                    request.user, chamada.turma, 'frequencia_editada_nao_houve_aula',
+                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} alterada para '
+                    f'"não houve aula" pela coordenadora '
+                    f'({request.user.get_full_name() or request.user.username}).'
                 )
                 return redirect('turma_detail', turma_id=chamada.turma.id)
         else:
-            for aluno in alunos_turma:
+            for aluno in alunos_previstos:
                 presente = presencas_form[aluno.id]['presente']
                 motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
@@ -2201,27 +2660,35 @@ def editar_frequencia_turma(request, frequencia_id):
                     chamada.presente = True
                     chamada.save()
 
-                    for aluno in alunos_turma:
+                    for aluno in alunos_previstos:
                         presente = presencas_form[aluno.id]['presente']
                         motivo_falta = presencas_form[aluno.id]['motivo_falta']
 
                         FrequenciaAluno.objects.update_or_create(
-                            chamada=chamada,
-                            aluno=aluno,
+                            chamada=chamada, aluno=aluno,
                             defaults={
                                 'presente': presente,
-                                'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente else FrequenciaAluno.StatusPresenca.FALTA,
-                                'motivo_falta': motivo_falta if not presente else ''
+                                'status': FrequenciaAluno.StatusPresenca.PRESENTE if presente
+                                          else FrequenciaAluno.StatusPresenca.FALTA,
+                                'motivo_falta': motivo_falta if not presente else '',
+                            }
+                        )
+
+                    for aluno in alunos_nao_previstos:
+                        FrequenciaAluno.objects.update_or_create(
+                            chamada=chamada, aluno=aluno,
+                            defaults={
+                                'presente': False,
+                                'status': FrequenciaAluno.StatusPresenca.NAO_PREVISTO,
+                                'motivo_falta': '',
                             }
                         )
 
                 messages.success(request, 'Frequência atualizada com sucesso!')
-
                 registrar_log(
-                    request.user,
-                    chamada.turma,
-                    'frequencia_editada',
-                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela coordenadora ({request.user.get_full_name() or request.user.username}).',
+                    request.user, chamada.turma, 'frequencia_editada',
+                    f'Frequência de {chamada.data.strftime("%d/%m/%Y")} editada pela '
+                    f'coordenadora ({request.user.get_full_name() or request.user.username}).'
                 )
                 return redirect('turma_detail', turma_id=chamada.turma.id)
 
@@ -2230,17 +2697,15 @@ def editar_frequencia_turma(request, frequencia_id):
         chamada.observacao_nao_aula = observacao_nao_aula if status_aula == FrequenciaTurma.StatusAula.NAO_HOUVE else ''
 
     alunos_com_presenca = []
-    for aluno in alunos_turma:
+    for aluno in alunos_previstos:
         alunos_com_presenca.append({
             'aluno': aluno,
             'presenca': presencas_form.get(aluno.id),
         })
 
     context = {
-        'chamada': chamada,
+        **contexto_base,
         'alunos_com_presenca': alunos_com_presenca,
-        'modo_edicao': True,
-        'motivos_nao_aula': FrequenciaTurma.MotivoNaoAula.choices,
         'erros_motivo': erros_motivo,
     }
 
@@ -2846,49 +3311,70 @@ def get_atividades_disponiveis_para_aluno(aluno):
 def aluno_add_atividade(request, aluno_id):
     aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    if request.method != "POST":
-        return redirect("aluno_detail", pk=aluno.id)
+    if request.method != 'POST':
+        return redirect('aluno_detail', pk=aluno.pk)
 
-    if not (request.user.is_superuser or is_coordenacao(request.user) or is_educadora(request.user)):
-        messages.error(request, "Sem permissão para adicionar atividade ao aluno.")
-        return redirect("aluno_detail", pk=aluno.id)
-
-    atividade_id = request.POST.get("atividade_id")
-    if not atividade_id:
-        messages.error(request, "Selecione uma atividade.")
-        return redirect("aluno_detail", pk=aluno.id)
-
-    atividade = get_object_or_404(Activity, id=atividade_id)
-
-    atividades_disponiveis_ids = list(
-        get_atividades_disponiveis_para_aluno(aluno).values_list("id", flat=True)
-    )
-
-    if atividade.id not in atividades_disponiveis_ids:
+    if not (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+        or is_educadora(request.user)
+    ):
         messages.error(
             request,
-            "Esta atividade não é permitida para o turno do aluno ou já está vinculada."
+            'Sem permissão para adicionar atividade ao aluno.',
         )
-        return redirect("aluno_detail", pk=aluno.id)
+        return redirect('aluno_detail', pk=aluno.pk)
 
-    aluno.atividades.add(atividade)
+    atividade_id = request.POST.get('atividade_id')
 
-    registrar_log(
-        request.user,
-        atividade,
-        "aluno_adicionado_atividade",
-        f'Aluno {aluno.name} adicionado à atividade "{atividade.atividade}".'
+    if not atividade_id:
+        messages.error(request, 'Selecione uma atividade.')
+        return redirect('aluno_detail', pk=aluno.pk)
+
+    atividade = get_object_or_404(
+        Activity,
+        id=atividade_id,
     )
 
-    registrar_log(
-        request.user,
-        aluno,
-        "atividade_adicionada_aluno",
-        f'Aluno inserido na atividade "{atividade.atividade}".'
+    atividades_disponiveis_ids = list(
+        get_atividades_disponiveis_para_aluno(aluno)
+        .values_list('id', flat=True)
     )
 
-    messages.success(request, "Atividade adicionada ao aluno com sucesso.")
-    return redirect("aluno_detail", pk=aluno.id)
+    if atividade.pk not in atividades_disponiveis_ids:
+        messages.error(
+            request,
+            'Esta atividade não é permitida para o turno '
+            'do aluno ou já está vinculada.',
+        )
+        return redirect('aluno_detail', pk=aluno.pk)
+
+    try:
+        adicionou = adicionar_participacao_atividade(
+            usuario=request.user,
+            aluno_id=aluno.pk,
+            atividade=atividade,
+        )
+
+    except ValidationError as exc:
+        messages.error(
+            request,
+            ' '.join(exc.messages),
+        )
+
+    else:
+        if adicionou:
+            messages.success(
+                request,
+                'Atividade adicionada ao assistido com sucesso.',
+            )
+        else:
+            messages.warning(
+                request,
+                'O assistido já está vinculado a esta atividade.',
+            )
+
+    return redirect('aluno_detail', pk=aluno.pk)
 
 
 
@@ -2896,6 +3382,21 @@ def aluno_add_atividade(request, aluno_id):
 @login_required
 def activity_add_alunos(request, activity_id):
     atividade = get_object_or_404(Activity, id=activity_id)
+
+    if not (
+        request.user.is_superuser
+        or is_coordenacao(request.user)
+        or is_educadora(request.user)
+    ):
+        messages.error(
+            request,
+            'Sem permissão para adicionar assistidos à atividade.',
+        )
+
+        return redirect(
+            'activity_detail',
+            activity_id=atividade.pk,
+        )
 
     alunos_queryset = (
         Aluno.objects
@@ -2956,8 +3457,41 @@ def activity_add_alunos(request, activity_id):
             alunos_queryset=alunos_queryset,
         )
         if form.is_valid():
-            atividade.alunos.add(*form.cleaned_data["alunos"])
-            return redirect("activity_detail", activity_id=atividade.id)
+            try:
+                with transaction.atomic():
+                    total_adicionados = 0
+
+                    alunos_selecionados = (
+                        form.cleaned_data['alunos']
+                        .order_by('family_id', 'pk')
+                    )
+
+                    for aluno_selecionado in alunos_selecionados:
+                        adicionou = adicionar_participacao_atividade(
+                            usuario=request.user,
+                            aluno_id=aluno_selecionado.pk,
+                            atividade=atividade,
+                        )
+
+                        if adicionou:
+                            total_adicionados += 1
+
+            except ValidationError as exc:
+                form.add_error(
+                    None,
+                    ' '.join(exc.messages),
+                )
+
+            else:
+                messages.success(
+                    request,
+                    f'{total_adicionados} assistido(s) adicionado(s).',
+                )
+
+                return redirect(
+                    'activity_detail',
+                    activity_id=atividade.pk,
+                )
     else:
         form = DinamicoAddAlunosToAtividadeForm(
             alunos_queryset=alunos_queryset,
@@ -3113,9 +3647,11 @@ def get_contexto_relatorio_turma_mensal(request, turma_id):
                 status = 'NH'
             else:
                 f = freq_dict.get((aluno.id, dia))
-
+                
                 if f is None:
                     status = ''
+                elif f.status == FrequenciaAluno.StatusPresenca.NAO_PREVISTO:
+                    status = 'NP'
                 else:
                     if f.presente:
                         status = 'P'
@@ -3470,19 +4006,41 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
 
     dias_mes = [d for d in todos_dias if d.weekday() < 5]
 
-    turma_aluno = getattr(aluno, 'turma', None)
-
-    freq_qs = (
+    freq_qs = list(
         FrequenciaAluno.objects
         .filter(
             aluno=aluno,
             chamada__data__range=(primeiro_dia, ultimo_dia),
         )
-        .select_related('chamada')
-        .order_by('chamada__data')
+        .select_related(
+            'chamada',
+            'chamada__turma',
+            'chamada__turma__educadora',
+        )
+        .order_by('chamada__data', 'pk')
     )
 
-    freq_dict = {f.chamada.data: f for f in freq_qs}
+    turmas_por_id = {}
+
+    for registro in freq_qs:
+        turma = registro.chamada.turma
+
+        if turma is not None:
+            turmas_por_id[turma.pk] = turma
+
+    turmas_relatorio = list(turmas_por_id.values())
+
+    # Mantém compatibilidade com outros usos existentes do contexto.
+    turma_aluno = (
+        turmas_relatorio[0]
+        if len(turmas_relatorio) == 1
+        else None
+    )
+
+    freq_dict = {
+        registro.chamada.data: registro
+        for registro in freq_qs
+    }
 
     status_por_dia = []
     faltas = 0
@@ -3522,10 +4080,17 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
 
     atividades_grade = []
 
+    ids_atividades_com_frequencia = {
+        registro.atividade_id
+        for registro in atividades_freq_qs
+        if registro.atividade_id is not None
+    }
+
     atividades_vinculadas = (
-        aluno.atividades.all()
+        Activity.objects
+        .filter(pk__in=ids_atividades_com_frequencia)
         .select_related('facilitador')
-        .order_by('atividade')
+        .order_by('atividade', 'pk')
     )
 
     for atividade in atividades_vinculadas:
@@ -3556,18 +4121,17 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
                         incluir_dia = True
                         break
 
-            if incluir_dia:
-                reg = freq_atividade_dict.get((atividade.id, dia))
-                if reg:
-                    if reg.presente:
-                        status = 'P'
-                    else:
-                        status = 'F'
-                        faltas_atividade += 1
+            reg = freq_atividade_dict.get((atividade.id, dia))
+
+            # O registro histórico tem prioridade sobre a programação atual.
+            if reg is not None:
+                if reg.presente:
+                    status = 'P'
                 else:
-                    status = ''
+                    status = 'F'
+                    faltas_atividade += 1
             else:
-                status = None
+                status = '' if incluir_dia else None
 
             dias_atividade.append({
                 'dia': dia,
@@ -3615,7 +4179,8 @@ def get_contexto_relatorio_aluno_mensal(request, aluno_id=None):
         'movimentacoes': movs,
         'ocorrencias': ocorrencias,
         'turma_relatorio': turma_aluno,
-        'aluno_sem_turma': turma_aluno is None,
+        'turmas_relatorio': turmas_relatorio,
+        'aluno_sem_turma': not turmas_relatorio,
     }
     return context
 
@@ -3772,6 +4337,219 @@ def frequencia_manual_atividade(request, activity_id):
     }
     return render(request, 'AppLSD/frequencia_manual_atividade.html', context)
 
+
+@login_required
+def relatorio_presenca_diaria_grupos(request):
+    data_texto = request.GET.get("data", "").strip()
+    turno = request.GET.get("turno", "").strip()
+    turma_texto = request.GET.get("turma_id", "").strip()
+
+    try:
+        data_referencia = (
+            date.fromisoformat(data_texto)
+            if data_texto
+            else timezone.localdate()
+        )
+    except ValueError:
+        return HttpResponseBadRequest("Data inválida.")
+
+    turnos_validos = {"Matutino", "Vespertino"}
+
+    if turno and turno not in turnos_validos:
+        return HttpResponseBadRequest("Turno inválido.")
+
+    turma_id = None
+
+    if turma_texto:
+        try:
+            turma_id = int(turma_texto)
+        except ValueError:
+            return HttpResponseBadRequest("Grupo inválido.")
+
+        if not Turma.objects.filter(pk=turma_id).exists():
+            return HttpResponseBadRequest("Grupo não encontrado.")
+
+    # Inclui grupos do ano consultado e grupos com chamada nessa data.
+    # Não usa o __str__ de Turma, pois educadora pode ser nula.
+    ids_com_chamada = (
+        FrequenciaTurma.objects
+        .filter(data=data_referencia, turma_id__isnull=False)
+        .order_by()
+        .values_list("turma_id", flat=True)
+    )
+
+    turmas_disponiveis = (
+        Turma.objects
+        .filter(
+            Q(ano_letivo=data_referencia.year)
+            | Q(pk__in=ids_com_chamada)
+        )
+        .select_related("educadora")
+        .order_by("turno", "grupo", "pk")
+    )
+
+    turmas_consulta = turmas_disponiveis
+
+    if turno:
+        turmas_consulta = turmas_consulta.filter(turno=turno)
+
+    if turma_id:
+        turmas_consulta = turmas_consulta.filter(pk=turma_id)
+
+    turmas_lista = list(turmas_consulta)
+    ids_turmas = [turma.pk for turma in turmas_lista]
+
+    chamadas = (
+        FrequenciaTurma.objects
+        .filter(
+            data=data_referencia,
+            turma_id__in=ids_turmas,
+        )
+        .values("id", "turma_id", "status_aula")
+    )
+
+    controle = {
+        turma.pk: {
+            "normal": False,
+            "nao_houve": False,
+            "registros": 0,
+            "presentes": set(),
+            "divergencias": 0,
+        }
+        for turma in turmas_lista
+    }
+
+    for chamada in chamadas:
+        item = controle[chamada["turma_id"]]
+
+        if chamada["status_aula"] == "NORMAL":
+            item["normal"] = True
+        elif chamada["status_aula"] == "NAO_HOUVE":
+            item["nao_houve"] = True
+
+    registros = (
+        FrequenciaAluno.objects
+        .filter(
+            chamada__data=data_referencia,
+            chamada__turma_id__in=ids_turmas,
+            chamada__status_aula="NORMAL",
+        )
+        .values(
+            "chamada__turma_id",
+            "aluno_id",
+            "presente",
+            "status",
+        )
+        .iterator()
+    )
+
+    for registro in registros:
+        item = controle[registro["chamada__turma_id"]]
+        item["registros"] += 1
+
+        status = registro["status"]
+        presente = registro["presente"]
+
+        divergente = (
+            (status == "P" and not presente)
+            or (status == "F" and presente)
+            or (status == "NHA" and presente)
+        )
+
+        if divergente:
+            item["divergencias"] += 1
+
+        if presente and status != "NHA":
+            item["presentes"].add(registro["aluno_id"])
+
+    secoes = {
+        "Matutino": {
+            "titulo": "Manhã",
+            "linhas": [],
+            "ids_presentes": set(),
+        },
+        "Vespertino": {
+            "titulo": "Tarde",
+            "linhas": [],
+            "ids_presentes": set(),
+        },
+        "Outros": {
+            "titulo": "Sem turno definido",
+            "linhas": [],
+            "ids_presentes": set(),
+        },
+    }
+
+    total_divergencias = 0
+    grupos_pendentes = 0
+
+    for turma in turmas_lista:
+        item = controle[turma.pk]
+
+        if item["normal"] and item["nao_houve"]:
+            situacao = "Chamadas conflitantes: houve e não houve aula"
+            grupos_pendentes += 1
+        elif item["normal"] and item["registros"]:
+            situacao = "Com registros de frequência"
+        elif item["normal"]:
+            situacao = "Chamada sem registros individuais"
+            grupos_pendentes += 1
+        elif item["nao_houve"]:
+            situacao = "Não houve aula"
+        else:
+            situacao = "Sem chamada"
+            grupos_pendentes += 1
+
+        chave = turma.turno if turma.turno in turnos_validos else "Outros"
+        secao = secoes[chave]
+
+        secao["ids_presentes"].update(item["presentes"])
+        secao["linhas"].append({
+            "grupo": turma.grupo or "Grupo sem nome",
+            "educadora": (
+                turma.educadora.get_full_name()
+                or turma.educadora.get_username()
+            ) if turma.educadora else "Não informada",
+            "quantidade": len(item["presentes"]),
+            "situacao": situacao,
+            "divergencias": item["divergencias"],
+        })
+
+        total_divergencias += item["divergencias"]
+
+    secoes_saida = []
+    ids_unicos_dia = set()
+    total_participacoes = 0
+
+    for secao in secoes.values():
+        ids_presentes = secao.pop("ids_presentes")
+        secao["total"] = len(ids_presentes)
+
+        ids_unicos_dia.update(ids_presentes)
+        total_participacoes += secao["total"]
+
+        if secao["linhas"]:
+            secoes_saida.append(secao)
+
+    context = {
+        "data_referencia": data_referencia,
+        "data_iso": data_referencia.isoformat(),
+        "turno_selecionado": turno,
+        "turma_selecionada": turma_id,
+        "turmas_filtro": turmas_disponiveis,
+        "secoes": secoes_saida,
+        "total_participacoes": total_participacoes,
+        "total_assistidos_unicos": len(ids_unicos_dia),
+        "total_divergencias": total_divergencias,
+        "grupos_pendentes": grupos_pendentes,
+    }
+
+    return render(
+        request,
+        "AppLSD/relatorio_presenca_diaria_grupos.html",
+        context,
+    )
+
 """ 
 @login_required
 def home_relatorios(request):
@@ -3882,6 +4660,9 @@ def export_family_excel(request):
         'race': {'label': 'Raça', 'field': 'race'},
         'occupation': {'label': 'Ocupação', 'field': 'occupation'},
         'salary_range': {'label': 'Faixa Salarial', 'field': 'salary_range'},
+        'has_proven_income': {'label': 'Possui Renda Comprovado', 'field': 'has_proven_income'},
+        'income_types': {'label': 'Tipos de Renda', 'field': 'income_types'},
+        'social_benefits': {'label': 'Benefícios Sociais', 'field': 'social_benefits'},
         'num_residents': {'label': 'Nº de Moradores', 'field': 'num_residents'},
         'status': {'label': 'Status', 'field': 'status'},
     }
@@ -4225,7 +5006,8 @@ def relatorio_busca_ativa(request):
                 Sum(
                     Case(
                         When(
-                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
+                            Q(frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia))
+                            & ~Q(frequenciaaluno__status=FrequenciaAluno.StatusPresenca.NAO_PREVISTO),
                             then=1
                         ),
                         default=0,
@@ -4238,8 +5020,9 @@ def relatorio_busca_ativa(request):
                 Sum(
                     Case(
                         When(
-                            frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia),
-                            frequenciaaluno__presente=True,
+                            Q(frequenciaaluno__chamada__data__range=(primeiro_dia, ultimo_dia))
+                            & ~Q(frequenciaaluno__status=FrequenciaAluno.StatusPresenca.NAO_PREVISTO)
+                            & Q(frequenciaaluno__presente=True),
                             then=1
                         ),
                         default=0,
@@ -4255,7 +5038,7 @@ def relatorio_busca_ativa(request):
                     total_chamadas__gt=0,
                     then=(F("total_presencas") * 100.0 / F("total_chamadas"))
                 ),
-                default=Value(0.0),
+                default=Value(None),
                 output_field=FloatField()
             )
         )
@@ -4512,6 +5295,8 @@ def relatorio_sisc(request):
             f = freq_dict.get((aluno.id, dia))
             if f is None:
                 status = ""
+            elif f.status == FrequenciaAluno.StatusPresenca.NAO_PREVISTO:
+                status = "NP"
             elif f.presente:
                 status = "P"
                 total_presencas += 1
@@ -4617,12 +5402,14 @@ def relatorio_sisc_html(request):
             f = freq_dict.get((aluno.id, dia))
             if f is None:
                 status = ""
+            elif f.status == FrequenciaAluno.StatusPresenca.NAO_PREVISTO:
+                status = "NP"
             elif f.presente:
                 status = "P"
-                presencas += 1
+                total_presencas += 1
             else:
                 status = "F"
-                faltas += 1
+                total_faltas += 1
                 motivo = getattr(f, "motivo_falta", "") or getattr(f, "justificativa", "") or ""
                 if motivo:
                     justificativas.append(f"{dia.strftime('%d/%m')}: {motivo}")

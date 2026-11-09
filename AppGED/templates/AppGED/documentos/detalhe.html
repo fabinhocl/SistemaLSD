@@ -1,0 +1,182 @@
+{% extends 'AppLSD/base.html' %}
+{% load static %}
+
+{% block title %}{{ documento.titulo }} - GED{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'ged:dashboard' %}">GED</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ged:lista_documentos' %}">Documentos</a></li>
+                    <li class="breadcrumb-item active">{{ documento.titulo|truncatechars:30 }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ documento.titulo }}</h5>
+                    <div>
+                        <span class="badge bg-{{ documento.status }}">{{ documento.get_status_display }}</span>
+                        <span class="badge bg-{{ documento.nivel_sigilo }}">{{ documento.get_nivel_sigilo_display }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Código de Registro:</strong>
+                            <p>{{ documento.codigo_registro|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tipo de Documento:</strong>
+                            <p>{{ documento.tipo_documento }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Setor:</strong>
+                            <p>{{ documento.setor.nome }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Categoria:</strong>
+                            <p>{{ documento.categoria }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Data do Documento:</strong>
+                            <p>{{ documento.data_documento|default:"-"|date:"d/m/Y" }}</p>
+                        </div>
+                        {% if documento.data_validade %}
+                        <div class="col-md-6">
+                            <strong>Vencimento:</strong>
+                            <p class="{{ documento.tem_vencimento_proximo|yesno:'text-danger,' }}">
+                                {{ documento.data_validade|date:"d/m/Y" }}
+                                {% if documento.tem_vencimento_proximo %}
+                                <span class="badge bg-warning">Vence em breve</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if documento.descricao %}
+                    <div class="mb-3">
+                        <strong>Descrição:</strong>
+                        <p>{{ documento.descricao }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if documento.localizacao_fisica %}
+                    <div class="mb-3">
+                        <strong>Localização Física:</strong>
+                        <p>{{ documento.localizacao_fisica }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if documento.tags.all %}
+                    <div class="mb-3">
+                        <strong>Tags:</strong>
+                        <div class="mt-2">
+                            {% for tag in documento.tags.all %}
+                            <span class="badge" style="background-color: {{ tag.cor }};">
+                                {{ tag.nome }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <strong>Metadados:</strong>
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Campo</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for metadado in metadados %}
+                                    <tr>
+                                        <td>{{ metadado.campo.nome }}</td>
+                                        <td>{{ metadado.get_valor|default:"-" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="2" class="text-muted">Nenhum metadado preenchido</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'ged:editar_documento' documento.pk %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{% url 'ged:upload_versao' documento.pk %}" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Nova Versão
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Versões</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for versao in versoes %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Versão {{ versao.numero_versao }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    {{ versao.criado_em|date:"d/m/Y H:i" }}
+                                </small>
+                            </div>
+                            <a href="{% url 'ged:baixar_documento' versao.pk %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-muted">
+                            Nenhuma versão anexada
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Auditoria</h5>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        Criado por {{ documento.criado_por.username }} em
+                        {{ documento.criado_em|date:"d/m/Y H:i" }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                        Última atualização em {{ documento.atualizado_em|date:"d/m/Y H:i" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

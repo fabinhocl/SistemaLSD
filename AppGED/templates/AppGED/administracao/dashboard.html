@@ -1,0 +1,63 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}Administração GED{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-2">Administração GED</h1>
+            <p class="text-muted">
+                Configure a estrutura documental e as permissões de acesso.
+            </p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:lista_setores' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-diagram-3-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Setores</div>
+                <p class="text-muted small">
+                    {{ total_setores }} cadastrados
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:lista_categorias_admin' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-folder-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Categorias</div>
+                <p class="text-muted small">
+                    {{ total_categorias }} cadastradas
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:lista_tipos_documento' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-file-earmark-text-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Tipos de documento</div>
+                <p class="text-muted small">
+                    {{ total_tipos }} cadastrados
+                </p>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:lista_campos_metadado' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-list-columns-reverse" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Campos de metadado</div>
+                <p class="text-muted small">
+                    {{ total_campos }} cadastrados
+                </p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

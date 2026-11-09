@@ -207,7 +207,7 @@
             <ul class="nav nav-pills">
                 <li>
                     <a class="nav-link" href="{% url 'home_educadora' %}">
-                        Minhas Turmas
+                        Meus grupos
                     </a>
                 </li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'aluno_list' %}">Assistidos</a></li>
@@ -273,7 +273,20 @@
                     {% endfor %}
                 </div>
                 {% endif %}
-            {% block content %}{% endblock %}
+            {% block content %}
+                {% if messages %}
+                    <div class="container mt-3">
+                        {% for message in messages %}
+                            <div
+                                class="alert {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}alert-danger{% elif message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}alert-warning{% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}alert-success{% else %}alert-info{% endif %}"
+                                role="alert"
+                            >
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endblock %}
         </main>
     
 

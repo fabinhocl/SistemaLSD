@@ -1,0 +1,98 @@
+{% extends "AppLSD/base.html" %}
+
+{% block title %}Campos de metadado{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="mb-4">
+        <a href="{% url 'ged:configuracao_dashboard' %}"
+        class="btn btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i>
+            Voltar para configuração do GED
+        </a>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">Campos de metadado</h1>
+                <p class="text-muted mb-0">
+                        Configure os campos específicos de cada tipo de documento.
+                </p>
+            </div>
+
+            <a href="{% url 'ged:criar_campo_metadado' %}"
+                class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Novo campo
+            </a>
+        </div>
+    </div>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Setor</th>
+                        <th>Categoria</th>
+                        <th>Tipo de documento</th>
+                        <th>Campo</th>
+                        <th>Tipo</th>
+                        <th>Obrigatório</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for campo in campos %}
+                    <tr>
+                        <td>
+                            {{ campo.tipo_documento.categoria.setor.nome }}
+                        </td>
+                        <td>
+                            {{ campo.tipo_documento.categoria.nome }}
+                        </td>
+                        <td>
+                            {{ campo.tipo_documento.nome }}
+                        </td>
+                        <td>{{ campo.nome }}</td>
+                        <td>{{ campo.get_tipo_display }}</td>
+                        <td>
+                            {% if campo.obrigatorio %}
+                                Sim
+                            {% else %}
+                                Não
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if campo.ativo %}
+                                <span class="badge text-bg-success">
+                                    Ativo
+                                </span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">
+                                    Inativo
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'ged:editar_campo_metadado' campo.pk %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil-square"></i>
+                                Editar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8"
+                            class="text-center text-muted py-4">
+                            Nenhum campo cadastrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "AppLSD/base.html" %}
+
+{% block title %}{{ titulo_pagina }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="mb-4">
+                    <a href="{% url 'ged:configurar_campos_metadado' %}"
+                    class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i>
+                        Voltar para campos de metadado
+                    </a>
+                </div>
+                <div class="card-header">
+                    <h1 class="h4 mb-0">{{ titulo_pagina }}</h1>
+                </div>
+
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Tipo de documento *
+                            </label>
+                            {{ form.tipo_documento }}
+                            {{ form.tipo_documento.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Nome do campo *
+                            </label>
+                            {{ form.nome }}
+                            {{ form.nome.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Tipo do campo *
+                            </label>
+                            {{ form.tipo }}
+                            {{ form.tipo.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Opções da lista
+                            </label>
+                            {{ form.opcoes_lista }}
+                            <div class="form-text">
+                                Preencha apenas para o tipo Lista,
+                                separando opções por vírgula.
+                            </div>
+                            {{ form.opcoes_lista.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Ordem
+                            </label>
+                            {{ form.ordem }}
+                            {{ form.ordem.errors }}
+                        </div>
+
+                        <div class="form-check mb-2">
+                            {{ form.obrigatorio }}
+                            <label class="form-check-label">
+                                Campo obrigatório
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            {{ form.ativo }}
+                            <label class="form-check-label">
+                                Campo ativo
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'ged:configurar_campos_metadado' %}"
+                               class="btn btn-secondary">
+                                Cancelar
+                            </a>
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+                                {{ texto_botao }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -14,32 +14,35 @@
         </a>
     </div>
 
-<div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'home_escola' %}" class="text-decoration-none">
-            <i class="bi bi-mortarboard-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Serviço de Convivência</div>
-        </a>
-    </div>
+    <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'home_escola' %}" class="text-decoration-none">
+                <i class="bi bi-mortarboard-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Serviço de Convivência</div>
+            </a>
+        </div>
 
-<div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'home_diretoria' %}" class="text-decoration-none">
-            <i class="bi bi-bar-chart-line-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Diretoria</div>
-        </a>
-    </div>
+    <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'home_diretoria' %}" class="text-decoration-none">
+                <i class="bi bi-bar-chart-line-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Diretoria</div>
+            </a>
+        </div>
 
-<div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'events:event_list' %}" class="text-decoration-none">
-            <i class="bi bi-calendar-event-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Eventos</div>
-        </a>
-    </div>
+    <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'events:event_list' %}" class="text-decoration-none">
+                <i class="bi bi-calendar-event-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Eventos</div>
+            </a>
+        </div>
 
-<div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'home_adm' %}" class="text-decoration-none">
-            <i class="bi bi-gear-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Administração</div>
-        </a>
-    </div>
+    {% if pode_acessar_administracao %}
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'home_adm' %}"
+            class="text-decoration-none text-primary">
+                <i class="bi bi-gear-fill" style="font-size:3em;"></i>
+                <div class="mt-2 fs-5">Administração</div>
+            </a>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -1,49 +1,46 @@
 {% extends "AppLSD/base.html" %}
 {% load static %}
 
-{% block title %}Painel Lar São Domingos{% endblock %}
+{% block title %}Administração{% endblock %}
 
 {% block content %}
+<div class="container-fluid">
+    <h1 class="mb-5 text-center">Administração</h1>
 
+    <div class="row justify-content-center">
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'ged:dashboard' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-folder2-open"
+                   style="font-size:3em;"></i>
 
-<h1 class="mb-5 text-center">Painel da Escola</h1>
-<div class="row justify-content-center">
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'family_list' %}" class="text-decoration-none">
-            <i class="bi bi-people-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Famílias</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'aluno_list' %}" class="text-decoration-none">
-            <i class="bi bi-person-badge-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Assistidos</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'turma_list' %}" class="text-decoration-none">
-            <i class="bi bi-easel2-fill" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Turmas</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'activity_list' %}" class="text-decoration-none">
-            <i class="bi bi-calendar-week" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Atividades</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'home_relatorios' %}" class="text-decoration-none text-primary">
-            <i class="bi bi-bar-chart-line" style="font-size:3em;"></i>
-            <div class="mt-2 fs-5">Relatórios de Frequência</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3 mb-4 text-center">
-        <a href="{% url 'dashboard' %}" class="text-decoration-none text-primary">
-            <i class="bi bi-bar-chart-line" style="font-size:3em;"></i>
-        <div class="mt-2 fs-5">Dashboard Integra+Lar</div>
-</a>
+                <div class="mt-2 fs-5">
+                    Gestão Documental
+                </div>
 
+                <p class="text-muted small mb-0">
+                    Documentos administrativos
+                </p>
+            </a>
+        </div>
+
+        {% if user.is_superuser %}
+        <div class="col-6 col-md-3 mb-4 text-center">
+            <a href="{% url 'admin:index' %}"
+               class="text-decoration-none text-primary">
+                <i class="bi bi-sliders"
+                   style="font-size:3em;"></i>
+
+                <div class="mt-2 fs-5">
+                    Administração Django
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Configuração técnica do sistema
+                </p>
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

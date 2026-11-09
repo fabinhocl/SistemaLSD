@@ -1,0 +1,98 @@
+Não tente implementar todas as telas de uma vez. Faça nesta ordem:
+
+Criar a página Administração.
+
+Criar o painel Administração GED.
+
+Criar cadastro de Setor.
+
+Criar cadastro de Categoria.
+
+Criar cadastro de TipoDocumento.
+
+Criar cadastro de CampoMetadado.
+
+Criar cadastro de PermissaoSetor.
+
+Aplicar as permissões na lista e no detalhe de documentos.
+
+Só depois criar o formulário dinâmico de metadados.
+
+
+Setor
+    └── Categoria
+            └── Tipo de documento
+                    └── Campo de metadado
+
+Patrimônio
+└── Registro de Aforamento de Terrenos
+    └── Registro de aforamento
+        ├── Número de matrícula
+        ├── Cartório
+        ├── Valor do aforamento
+        └── Data do registro
+LAR SÃO DOMINGOS >  PATRIMÔNIO > REGISTRO DE AFORAMENTO DE TERRENOS
+LAR SÃO DOMINGOS > PATRIMÔNIO > REGISTROS DE IMOVEIS
+LAR SÃO DOMINGOS > PATRIMÔNIO > RESGATES DE AFORAMENTOS
+
+
+
+Financeiro
+└── Documentos Contábeis
+    └── Nota fiscal
+        ├── Número da nota
+        ├── Fornecedor
+        ├── CNPJ do fornecedor
+        └── Valor total
+
+LAR SÃO DOMINGOS > FINANCEIRO > DOCUMENTOS CONTÁBEIS > EXTRATOS
+LAR SÃO DOMINGOS > FINANCEIRO > DOCUMENTOS CONTÁBEIS > NOTAS/BOLETOS
+LAR SÃO DOMINGOS > FINANCEIRO > DOCUMENTOS CONTÁBEIS > PAGAMENTOS
+LAR SÃO DOMINGOS > FINANCEIRO > FGTS
+LAR SÃO DOMINGOS > FINANCEIRO > FOLHA DE PAGAMENTO
+LAR SÃO DOMINGOS > FINANCEIRO > INSS
+LAR SÃO DOMINGOS > FINANCEIRO > IRRF
+LAR SÃO DOMINGOS > FINANCEIRO > PIS
+
+
+ÁGUA E ESGOTO
+ALIMENTAÇÃO
+BENS DE PEQUENO VALOR
+COMBUSTÍVEL
+ENERGIA ELÉTRICA
+EXAMES E CONSULTAS
+FARDAMENTOS
+FÉRIAS
+FGTS/MULTA
+FOLHA DE PAGAM (SAL/13°)
+GÁS
+IMPOSTOS E TAXAS
+INDENIZAÇÕES
+INSS
+INSS PRESTADORES
+IRRF
+MANUTENÇÃO DE VEÍCULOS
+MANUTENÇÃO MÁQ E EQUIP.
+MATERIAIS DE MANUTENÇÃO
+MATERIAL CONSUMO
+MATERIAL DE ESCRITÓRIO
+MATERIAL DE INFORMÁTICA
+MATERIAL HIGIENE E LIMPEZA
+PIS
+SEGUROS
+SERVIÇOS GRÁFICOS
+SERVIÇOS PRESTADOS
+TARIFAS BANCÁRIAS
+TELEFONE / INTERNET
+VALE TRANSPORTE
+VIGILÂNCIA
+
+Secretaria
+└── Assembleias
+    └── Ata de assembleia
+        ├── Número da ata
+        ├── Tipo de assembleia
+        ├── Data da assembleia
+        └── Participantes
+
+LAR SÃO DOMINGOS > SECRETARIA > ASSEMBLEIA ORDINARIA E EXTRAORDINARIA

@@ -57,17 +57,28 @@
     <div class="container mt-2">
       <div class="row justify-content-center">
         <div class="col-lg-8 mx-auto">
+          <!-- Linha 1: dados pessoais -->
           <div class="row mb-3">
-            <div class="col-md-3"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
-            <div class="col-md-7"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
+            <div class="col-md-2"><strong>Inscrição:</strong> <div>{{ aluno.family.registration_number }}</div></div>
+            <div class="col-md-5"><strong>Nome:</strong> <div>{{ aluno.name }}</div></div>
             <div class="col-md-2"><strong>Sexo:</strong> <div>{{ aluno.sex }}</div></div>
+            <div class="col-md-2"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
           </div>
+
+          <!-- Linha 2: documentos + SISC -->
           <div class="row mb-3">
+            <div class="col-md-1"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
             <div class="col-md-3"><strong>CPF:</strong> <div>{{ aluno.cpf }}</div></div>
             <div class="col-md-3"><strong>NIS:</strong> <div>{{ aluno.nis }}</div></div>
-            <div class="col-md-3"><strong>Data de Nasc.:</strong> <div>{{ aluno.birth_date|date:"d/m/Y" }}</div></div>
-            <div class="col-md-3"><strong>Idade:</strong> <div>{{ aluno.idade }}</div></div>
+            <div class="col-md-2"><strong>Possui SISC?</strong><br>{{ aluno.get_possui_sisc_display|default:"Não informado" }}</div>
+            <div class="col-md-3">
+                {% if aluno.possui_sisc == 'nao' %}
+                    <strong>Justificativa:</strong> {{ aluno.get_justificativa_sisc_display }}
+                    {% if aluno.justificativa_sisc == 'outros' %} - {{ aluno.justificativa_sisc_outros }}{% endif %}
+                {% endif %}
+            </div>
           </div>
+          <!-- Linha 3: responsável -->
           <div class="row mb-3">
             <div class="col-md-4"><strong>Responsável:</strong>
                <div>{{ aluno.family.responsible_name }}</div>
@@ -80,15 +91,18 @@
             <div class="col-md-4"><strong>Telefone responsável:</strong> <div>{{ aluno.family.telephone }}</div></div>
             <div class="col-md-4"><strong>Parentesco:</strong> <div>{{ aluno.parentesco }}</div></div>
           </div>
+          <!-- Linha 4: escola -->
           <div class="row mb-3">
             <div class="col-md-4"><strong>Rede de Ensino:</strong> <div>{{ aluno.get_rede_ensino_display }}</div></div>
             <div class="col-md-8"><strong>Escola:</strong> <div>{{ aluno.school }}</div></div>
           </div>
+          <!-- Linha 5: dados escolares -->
           <div class="row mb-3">
             <div class="col-md-4"><strong>Ensino:</strong> <div>{{ aluno.get_ensino_display_custom }}</div></div>
             <div class="col-md-4"><strong>Série:</strong> <div>{{ aluno.get_serie_display_custom }}</div></div>
             <div class="col-md-4"><strong>Turno:</strong> <div>{{ aluno.turno }}</div></div>
           </div>
+          <!-- Linha 6: saúde, sempre alinhada -->
           <div class="row mb-3">
             <div class="col-md-6"><strong>Problema de Saúde:</strong> <div>{{ aluno.get_health_problem_display }}</div></div>
             <div class="col-md-6"><strong>Qual Problema de Saúde:</strong> <div>{{ aluno.special_need }}</div></div>
@@ -322,7 +336,7 @@
         <div class="col-lg-12 mx-auto">
           <div class="card">
             <div class="card-header bg-warning text-dark">
-              <h5 class="mb-0 text-center">Histórico de Turmas</h5>
+              <h5 class="mb-0 text-center">Histórico de Grupos</h5>
             </div>
             <div class="card-body">
               {% if historico_turmas %}
@@ -365,42 +379,301 @@
       <div class="row justify-content-center">
         <div class="col-lg-12 mx-auto">
           <div class="card">
+
             <div class="card-header bg-info text-white">
-              <h5 class="mb-0 text-center">Histórico de Atividades</h5>
+              <h5 class="mb-0 text-center">
+                Histórico das Atividades
+              </h5>
             </div>
+
             <div class="card-body">
-              {% if logs %}
-                <table class="table table-striped table-bordered">
+
+              <h6>Períodos de participação registrados</h6>
+
+              <div class="table-responsive">
+                <table class="table table-striped table-bordered align-middle">
                   <thead>
                     <tr>
-                      <th>Data / Hora</th>
-                      <th>Ação</th>
-                      <th>Descrição</th>
+                      <th>Atividade</th>
+                      <th>Turno na ocasião</th>
+                      <th>Entrada</th>
+                      <th>Saída</th>
+                      <th>Situação</th>
+                      <th>Motivo / origem da saída</th>
                       <th>Registrado por</th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {% for log in logs %}
-                    <tr>
-                      <td>{{ log.criado_em|date:"d/m/Y H:i" }}</td>
-                      <td>
-                        {% if 'removido' in log.acao %}
-                          <span class="badge bg-danger">Removido</span>
-                        {% elif 'adicionado' in log.acao %}
-                          <span class="badge bg-success">Adicionado</span>
-                        {% else %}
-                          <span class="badge bg-secondary">{{ log.acao }}</span>
-                        {% endif %}
-                      </td>
-                      <td>{{ log.descricao }}</td>
-                      <td>{{ log.criado_por.username|default:"Sistema" }}</td>
-                    </tr>
+                    {% for item in participacoes_atividades %}
+                      <tr>
+                        <td>{{ item.nome_atividade }}</td>
+
+                        <td>
+                          {{ item.turno_atividade|default:"Não informado" }}
+                        </td>
+
+                        <td>
+                          {% if item.entrada_em %}
+                            {{ item.entrada_em|date:"d/m/Y H:i" }}
+                          {% else %}
+                            <span class="text-muted">
+                              Entrada não registrada
+                            </span>
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          {% if item.saida_em %}
+                            {{ item.saida_em|date:"d/m/Y H:i" }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          {% if item.saida_em %}
+                            <span class="badge bg-secondary">
+                              Encerrada
+                            </span>
+                          {% else %}
+                            <span class="badge bg-success">
+                              Em participação
+                            </span>
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          {% if item.saida_em %}
+                            {{ item.motivo_saida|linebreaksbr }}
+
+                            {% if item.origem_saida %}
+                              <div class="small text-muted mt-1">
+                                Origem: {{ item.origem_saida }}
+                              </div>
+                            {% endif %}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          <div>
+                            Entrada:
+                            {% if item.entrada_registrada_por %}
+                              {{ item.entrada_registrada_por.get_full_name|default:item.entrada_registrada_por.username }}
+                            {% else %}
+                              Não registrada
+                            {% endif %}
+                          </div>
+
+                          {% if item.saida_em %}
+                            <div class="mt-1">
+                              Saída:
+                              {% if item.saida_registrada_por %}
+                                {{ item.saida_registrada_por.get_full_name|default:item.saida_registrada_por.username }}
+                              {% else %}
+                                Não registrado
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        </td>
+                      </tr>
+
+                    {% empty %}
+                      <tr>
+                        <td colspan="7" class="text-center text-muted">
+                          Nenhum período cadastrado no novo histórico.
+                          Consulte abaixo as evidências e os logs disponíveis.
+                        </td>
+                      </tr>
                     {% endfor %}
                   </tbody>
                 </table>
-              {% else %}
-                <p class="text-center text-muted">Nenhuma movimentação registrada.</p>
-              {% endif %}
+              </div>
+
+              <hr>
+
+              <h6>Atividades com registros de frequência</h6>
+
+              <p class="small text-muted">
+                As datas abaixo são a primeira e a última chamada
+                encontradas. Não representam necessariamente
+                a entrada ou a saída da atividade.
+              </p>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                  <thead>
+                    <tr>
+                      <th>Atividade</th>
+                      <th>Primeira chamada</th>
+                      <th>Última chamada</th>
+                      <th>Chamadas registradas</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {% for item in evidencias_frequencia_atividades %}
+                      <tr>
+                        <td>{{ item.atividade__atividade }}</td>
+                        <td>
+                          {{ item.primeira_chamada|date:"d/m/Y" }}
+                        </td>
+                        <td>
+                          {{ item.ultima_chamada|date:"d/m/Y" }}
+                        </td>
+                        <td>{{ item.total_chamadas }}</td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="4" class="text-center text-muted">
+                          Nenhuma frequência de atividade encontrada.
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <hr>
+              <hr>
+
+              <h6>Atividades preservadas nos registros de desligamento</h6>
+
+              <p class="small text-muted">
+                Esta relação mostra as atividades que constavam no cadastro
+                imediatamente antes de cada desligamento, conforme os dados
+                preservados naquela operação.
+
+                Não informa a data de entrada. Uma atividade pode aparecer
+                também nas tabelas de participação e frequência.
+              </p>
+
+              <div class="table-responsive">
+                <table class="table table-striped table-bordered align-middle">
+                  <thead>
+                    <tr>
+                      <th>Registro do desligamento</th>
+                      <th>Atividade na ocasião</th>
+                      <th>Motivo</th>
+                      <th>Origem</th>
+                      <th>Registrado por</th>
+                      <th>Referência</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {% for item in atividades_em_desligamentos %}
+                      <tr>
+                        <td>
+                          {{ item.registrado_em|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                          {{ item.nome_atividade }}
+
+                          {% if item.atividade_id %}
+                            <div class="small text-muted">
+                              ID da atividade: {{ item.atividade_id }}
+                            </div>
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          {{ item.motivo|default:"Não informado" }}
+
+                          {% if item.observacao %}
+                            <div class="small mt-1">
+                              {{ item.observacao|linebreaksbr }}
+                            </div>
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          {{ item.origem }}
+                        </td>
+
+                        <td>
+                          {% if item.registrado_por %}
+                            {{ item.registrado_por.get_full_name|default:item.registrado_por.username }}
+                          {% else %}
+                            Não informado
+                          {% endif %}
+                        </td>
+
+                        <td>
+                          Histórico #{{ item.evento_id }}
+                        </td>
+                      </tr>
+
+                    {% empty %}
+                      <tr>
+                        <td colspan="6" class="text-center text-muted">
+                          Nenhuma atividade encontrada nos dados preservados
+                          dos desligamentos deste assistido.
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <details>
+                <summary class="mb-3">
+                  Consultar logs de movimentações de atividades
+                </summary>
+
+                <div class="table-responsive">
+                  <table class="table table-striped table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Data / Hora</th>
+                        <th>Ação</th>
+                        <th>Descrição</th>
+                        <th>Registrado por</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {% for log in logs_atividades %}
+                        <tr>
+                          <td>
+                            {{ log.criado_em|date:"d/m/Y H:i" }}
+                          </td>
+
+                          <td>
+                            {% if 'removid' in log.acao %}
+                              <span class="badge bg-danger">
+                                Removido
+                              </span>
+                            {% elif 'adicionad' in log.acao %}
+                              <span class="badge bg-success">
+                                Adicionado
+                              </span>
+                            {% else %}
+                              {{ log.acao }}
+                            {% endif %}
+                          </td>
+
+                          <td>{{ log.descricao }}</td>
+
+                          <td>
+                            {{ log.criado_por.username|default:"Sistema" }}
+                          </td>
+                        </tr>
+                      {% empty %}
+                        <tr>
+                          <td colspan="4" class="text-center text-muted">
+                            Nenhum log de atividade encontrado.
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+
             </div>
           </div>
         </div>
@@ -476,7 +749,7 @@
                   class="btn btn-danger"
                   data-bs-toggle="modal"
                   data-bs-target="#modalDesligarAluno">
-            Desligar aluno
+            Desligar Assistido
           </button>
         {% endif %}
 
@@ -551,70 +824,69 @@
 </div>
 
 {% if pode_desligar_aluno %}
-<div class="modal fade" id="modalDesligarAluno" tabindex="-1"
-     aria-labelledby="modalDesligarAlunoLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" action="{% url 'desativar_aluno' aluno.id %}">
-        {% csrf_token %}
+  <div
+    class="modal fade"
+    id="modalDesligarAluno"
+    tabindex="-1"
+    aria-labelledby="modalDesligarAlunoLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content">
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalDesligarAlunoLabel">
-            Desligar aluno
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"
-                  aria-label="Fechar"></button>
-        </div>
+        <form
+          method="post"
+          action="{% url 'desativar_aluno' aluno.id %}"
+        >
+          {% csrf_token %}
 
-        <div class="modal-body">
-          <p>
-            Confirma o desligamento do aluno <strong>{{ aluno.name }}</strong>?
-          </p>
+          <div class="modal-header">
+            <h5
+              class="modal-title"
+              id="modalDesligarAlunoLabel"
+            >
+              Desligar assistido
+            </h5>
 
-          <div class="mb-3">
-            <label for="motivo_desligamento" class="form-label">
-              Motivo do desligamento
-            </label>
-            <select name="motivo" id="motivo_desligamento" class="form-select" required>
-              <option value="">Selecione</option>
-              <option value="Faltas recorrentes">Faltas recorrentes</option>
-              <option value="Solicitação da família">Solicitação da família</option>
-              <option value="Mudança de endereço">Mudança de endereço</option>
-              <option value="Incompatibilidade de horário">Incompatibilidade de horário</option>
-              <option value="Questões disciplinares">Questões disciplinares</option>
-              <option value="Outros">Outros</option>
-            </select>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
           </div>
 
-          <div class="mb-3">
-            <label for="senha_desligamento" class="form-label">
-              Confirme sua senha
-            </label>
-            <input type="password"
-                   name="senha"
-                   id="senha_desligamento"
-                   class="form-control"
-                   required
-                   placeholder="Digite sua senha">
+          <div class="modal-body">
+            <p>
+              Confirma o desligamento de
+              <strong>{{ aluno.name }}</strong>?
+            </p>
+
+            {% include 'AppLSD/includes/campos_desligamento_aluno.html' %}
           </div>
 
-          <div class="alert alert-warning mb-0">
-            O aluno será removido da turma e de todas as atividades, mas a família continuará ativa.
-          </div>
-        </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-danger">
-            Confirmar desligamento
-          </button>
-        </div>
-      </form>
+            <button
+              type="submit"
+              class="btn btn-danger"
+            >
+              Confirmar desligamento
+            </button>
+          </div>
+
+        </form>
+
+      </div>
     </div>
   </div>
-</div>
 {% endif %}
 
 {% endblock %}

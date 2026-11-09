@@ -135,6 +135,83 @@ class Person(models.Model):
             return 'Adulto'
         return 'Idoso'
 
+class MotivoDesligamento(models.TextChoices):
+    SEM_CESTAS = 'sem_cestas', 'A não oferta de cestas básicas'
+    COMPORTAMENTO = 'comportamento', 'Comportamento indisciplinar'
+    REGRAS_LSD = 'regras_lsd', 'Descumprimento das regras do LSD'
+    MUDANCA_ENDERECO = 'mudanca_endereco', 'Mudança de Endereço'
+    DIFICULDADE_LEVAR = 'dificuldade_levar', 'Dificuldades para levar/buscar'
+    FALTA_ASSIDUIDADE = 'falta_assiduidade', 'Falta de assiduidade'
+    FALTA_INTERESSE = 'falta_interesse', 'Falta de interesse'
+    MUDANCA_GRUPO = 'mudanca_grupo', 'Mudança de grupo'
+    TERCEIROS_SABADOS = 'terceiros_sabados', 'Obrigatoriedade dos Terceiros Sábados'
+    ATIV_EXTERNAS = 'ativ_externas', 'Participação em atividades externas'
+    JOVEM_APRENDIZ = 'jovem_aprendiz', 'Programa Jovem Aprendiz'
+    OUTRO_RESPONSAVEL = 'outro_responsavel', 'Reside com outro responsável'
+    TEA_SEM_ACOMP = 'tea_sem_acomp', 'TEA, TDH e TOD sem acompanhamento médico'
+    TRABALHO_INFANTIL = 'trabalho_infantil', 'Trabalho Infantil'
+    OUTROS = 'outros', 'Outros'
+
+class MotivoDesligamentoChoices(models.TextChoices):
+    MUDANCA_ENDERECO = (
+        'mudanca_endereco',
+        'Mudança de Endereço',
+    )
+    FALTA_INTERESSE = (
+        'falta_interesse',
+        'Falta de interesse',
+    )
+    DIFICULDADE_TRANSPORTE = (
+        'dificuldade_transporte',
+        'Dificuldades para levar/buscar',
+    )
+    FALTA_ASSIDUIDADE = (
+        'falta_assiduidade',
+        'Falta de assiduidade',
+    )
+    COMPORTAMENTO = (
+        'comportamento',
+        'Comportamento indisciplinar',
+    )
+    JOVEM_APRENDIZ = (
+        'jovem_aprendiz',
+        'Programa Jovem Aprendiz',
+    )
+    SEM_ACOMPANHAMENTO = (
+        'sem_acompanhamento',
+        'TEA, TDH e TOD sem acompanhamento médico',
+    )
+    ATIVIDADES_EXTERNAS = (
+        'atividades_externas',
+        'Participação em atividades externas',
+    )
+    TRABALHO_INFANTIL = (
+        'trabalho_infantil',
+        'Trabalho Infantil',
+    )
+    OUTRO_RESPONSAVEL = (
+        'outro_responsavel',
+        'Reside com outro responsável',
+    )
+    SEM_CESTA_BASICA = (
+        'sem_cesta_basica',
+        'A não oferta de cestas básicas',
+    )
+    TERCEIROS_SABADOS = (
+        'terceiros_sabados',
+        'Obrigatoriedade dos Terceiros Sábados',
+    )
+    MUDANCA_GRUPO = (
+        'mudanca_grupo',
+        'Mudança de grupo',
+    )
+    DESCUMPRIMENTO_REGRAS = (
+        'descumprimento_regras',
+        'Descumprimento das regras do LSD.',
+    )
+    
+      
+    
 
 class Family(AuditModel):
     """
@@ -265,10 +342,12 @@ class Family(AuditModel):
         ('', '---------'),  # Django usa por padrão esse rótulo se vazio
         ('1_sm', '1 Salário Mínimo'),
         ('2_sm', '2 Salários Mínimos'),
+        ('outro', 'Outro'),
     ]
-    salary_range = models.CharField(max_length=30, choices=SALARIO_CHOICES, blank=True, null=True)
-    #min_salary_1 = models.BooleanField(default=False)
-    #min_salary_2 = models.BooleanField(default=False)
+    salary_range = models.CharField(max_length=30, choices=SALARIO_CHOICES, blank=True, null=True,
+                                    verbose_name='Faixa salarial do responsável')
+    salary_other_value = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
+                                             verbose_name='Valor da renda do responsável')
 
     # Outras pessoas contribuem
     others_contribute = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, default='Não')
@@ -327,6 +406,36 @@ class Family(AuditModel):
         blank=True,
         null=True,
     )"""
+
+    motivo_inativacao = models.CharField(
+    max_length=40,
+    choices=MotivoDesligamentoChoices.choices,
+    blank=True,
+    default='',
+    verbose_name='Motivo da inativação',
+    )
+
+    observacao_inativacao = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Observação da inativação',
+    )
+
+    data_inativacao = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Data da inativação',
+    )
+
+    inativado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='familias_inativadas',
+        verbose_name='Inativado por',
+    )
+
     
     #aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE, related_name='families')
     @property
@@ -508,7 +617,42 @@ class Aluno(AuditModel):
         blank=True,
         verbose_name='Dias da semana'
     )
-    
+
+    SISC_CHOICES = [
+        ('', 'Não informado'),
+        ('sim', 'Sim'),
+        ('nao', 'Não'),
+    ]
+    possui_sisc = models.CharField(
+        max_length=3,
+        choices=SISC_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Possui SISC?',
+    )
+    JUSTIFICATIVA_SISC_CHOICES = [
+        ('cadastro_desatualizado', 'Cadastro desatualizado no Cadúnico'),
+        ('dados_divergentes', 'Dados divergentes'),
+        ('responsavel_divergente', 'Responsável diferente do CadÚnico'),
+        ('sem_nis', 'Não tem NIS'),
+        ('fora_estado', 'Não reside no estado'),
+        ('outros', 'Outros'),
+    ]
+    justificativa_sisc = models.CharField(
+        max_length=50,
+        choices=JUSTIFICATIVA_SISC_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Justificativa (sem SISC)',
+    )
+
+    justificativa_sisc_outros = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='Detalhe a justificativa',
+    )
+
     STATUS_CHOICES = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('Frequentando', 'Frequentando'),
@@ -522,7 +666,7 @@ class Aluno(AuditModel):
     motivo_desligamento = models.TextField(
         blank=True,
         null=True,
-        verbose_name='Motivo do desligamento'
+        verbose_name='Observação do desligamento'
     )
     data_desligamento = models.DateTimeField(
         blank=True,
@@ -538,6 +682,20 @@ class Aluno(AuditModel):
         verbose_name='Desligado por'
     )
 
+    motivo_desligamento_codigo = models.CharField(
+    max_length=40,
+    choices=MotivoDesligamentoChoices.choices,
+    blank=True,
+    default='',
+    verbose_name='Motivo padronizado do desligamento',
+    )
+
+    observacao_desligamento = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Observação do desligamento',
+    )
+
     def __str__(self):
             return self.name
 
@@ -551,7 +709,8 @@ class Aluno(AuditModel):
             return ""
         today = date.today()
         return today.year - self.birth_date.year - (
-            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+            (today.month, today.day)
+            < (self.birth_date.month, self.birth_date.day)
         )
 
     def get_serie_display_custom(self):
@@ -618,14 +777,158 @@ class Aluno(AuditModel):
     def clean(self):
         super().clean()
 
+        # Mantém a regra existente:
+        # assistido já cadastrado e frequentando precisa de turma.
         if (
             self.pk
-            and self.status_lsd == 'frequentando'
+            and self.status_lsd == 'Frequentando'
             and self.turma_id is None
         ):
             raise ValidationError(
-                'Aluno com status Frequentando deve estar vinculado a uma turma.'
+                'Aluno com status Frequentando deve estar '
+                'vinculado a uma turma.'
             )
+
+        # Nova regra:
+        # família inativa não pode ter assistido frequentando.
+        if (
+            self.status_lsd == 'Frequentando'
+            and self.family_id
+        ):
+            familia_inativa = (
+                Family.objects
+                .filter(
+                    pk=self.family_id,
+                    status='inativo',
+                )
+                .exists()
+            )
+
+            if familia_inativa:
+                raise ValidationError({
+                    'status_lsd': (
+                        'O assistido não pode ficar como Frequentando '
+                        'enquanto sua família estiver inativa. '
+                        'Solicite ao Serviço Social a conferência '
+                        'da situação familiar.'
+                    ),
+                })
+
+        # Mantém a exigência de motivo para desligamento.
+        if (
+            self.status_lsd == 'desligado'
+            and not self.motivo_desligamento_codigo
+        ):
+            raise ValidationError({
+                'motivo_desligamento_codigo': (
+                    'Selecione o motivo do desligamento.'
+                ),
+            })
+
+        if self.possui_sisc == 'nao':
+            if not self.justificativa_sisc:
+                raise ValidationError(
+                    {'justificativa_sisc': 'Selecione a justificativa.'}
+                )
+            if self.justificativa_sisc == 'outros' and not (self.justificativa_sisc_outros or '').strip():
+                raise ValidationError(
+                    {'justificativa_sisc_outros': 'Detalhe a justificativa quando selecionar "Outros".'}
+                )
+        else:
+            self.justificativa_sisc = ''
+            self.justificativa_sisc_outros = ''
+
+
+class HistoricoDesligamento(AuditModel):
+    class TipoEvento(models.TextChoices):
+        FAMILIA_INATIVADA = (
+            'familia_inativada',
+            'Família inativada',
+        )
+        ALUNO_DESLIGADO = (
+            'aluno_desligado',
+            'Assistido desligado',
+        )
+
+    class Origem(models.TextChoices):
+        MANUAL = 'manual', 'Operação manual'
+        EDICAO = 'edicao', 'Edição do cadastro'
+        FAMILIA = 'familia_desativada', 'Inativação da família'
+
+    tipo_evento = models.CharField(
+        max_length=30,
+        choices=TipoEvento.choices,
+        verbose_name='Tipo de evento',
+    )
+
+    origem = models.CharField(
+        max_length=30,
+        choices=Origem.choices,
+        verbose_name='Origem',
+    )
+
+    familia = models.ForeignKey(
+        'Family',
+        on_delete=models.PROTECT,
+        related_name='historicos_desligamento',
+        verbose_name='Família',
+    )
+
+    aluno = models.ForeignKey(
+        'Aluno',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='historicos_desligamento',
+        verbose_name='Assistido',
+    )
+
+    evento_familia = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='desligamentos_decorrentes',
+        verbose_name='Evento de inativação da família',
+    )
+
+    motivo_codigo = models.CharField(
+        max_length=40,
+        choices=MotivoDesligamentoChoices.choices,
+        verbose_name='Código do motivo',
+    )
+
+    motivo_descricao = models.CharField(
+        max_length=255,
+        verbose_name='Descrição do motivo na ocasião',
+    )
+
+    observacao = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Observação',
+    )
+
+    dados_anteriores = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Dados anteriores à operação',
+    )
+
+    class Meta:
+        verbose_name = 'Histórico de desligamento/inativação'
+        verbose_name_plural = 'Históricos de desligamento/inativação'
+        ordering = ['-criado_em', '-pk']
+        indexes = [
+            models.Index(fields=['familia', 'criado_em']),
+            models.Index(fields=['aluno', 'criado_em']),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.get_tipo_evento_display()} — '
+            f'{self.motivo_descricao}'
+        )
 
 """
     Representa uma turma de assistidos.
@@ -814,8 +1117,17 @@ class FrequenciaTurma(AuditModel):
         blank=True
     )
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['turma', 'data'],
+                name='uniq_chamada_turma_data'
+            )
+        ]
+
     def __str__(self):
         return f"{self.turma} - {self.data} - {self.get_status_aula_display()}"
+
 
 
 class MotivoFaltaChoices(models.TextChoices):
@@ -845,13 +1157,12 @@ class FrequenciaAtividade(AuditModel):
         return f"{self.aluno} - {self.atividade} - {self.data} - {'Presente' if self.presente else 'Falta'}"
     
 
-class FrequenciaAluno(models.Model):
+class FrequenciaAluno(AuditModel):
     class StatusPresenca(models.TextChoices):
         PRESENTE = 'P', 'Presente'
         FALTA = 'F', 'Falta'
-        NAO_HOUVE_AULA = 'NHA', 'Não houve aula'
+        NAO_PREVISTO = 'NP', 'Não previsto neste dia'
 
-    
     chamada = models.ForeignKey(FrequenciaTurma, on_delete=models.CASCADE, related_name='presencas')
     aluno = models.ForeignKey('Aluno', on_delete=models.CASCADE)
 
@@ -867,6 +1178,14 @@ class FrequenciaAluno(models.Model):
         choices=MotivoFaltaChoices.choices,
         blank=True
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['chamada', 'aluno'],
+                name='uniq_frequencia_chamada_aluno'
+            )
+        ]
 
     def __str__(self):
         return f"{self.aluno.name} ({self.get_status_display()})"
@@ -887,6 +1206,85 @@ class MovimentacaoTurmaAluno(models.Model):
 
     def __str__(self):
         return f'{self.aluno} - {self.data:%d/%m/%Y}'
+
+
+class ParticipacaoAtividade(models.Model):
+    aluno = models.ForeignKey(
+        'Aluno',
+        on_delete=models.PROTECT,
+        related_name='participacoes_atividades',
+    )
+
+    atividade = models.ForeignKey(
+        'Activity',
+        on_delete=models.PROTECT,
+        related_name='participacoes_alunos',
+    )
+
+    nome_atividade = models.CharField(max_length=200)
+    turno_atividade = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+    )
+
+    entrada_em = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    saida_em = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    entrada_registrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entradas_atividades_registradas',
+    )
+
+    saida_registrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='saidas_atividades_registradas',
+    )
+
+    motivo_saida = models.TextField(
+        blank=True,
+        default='',
+    )
+
+    origem_saida = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+    )
+
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-registrado_em', '-pk']
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['aluno', 'atividade'],
+                condition=models.Q(saida_em__isnull=True),
+                name='uniq_part_atividade_aberta',
+            ),
+        ]
+
+        indexes = [
+            models.Index(fields=['aluno', 'registrado_em']),
+        ]
+
+    def __str__(self):
+        return f'{self.aluno} — {self.nome_atividade}'
+
 
 
 class OcorrenciaAluno(models.Model):

@@ -124,9 +124,24 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+                   <div class="col-md-4">
                         <strong>Faixa Salarial:</strong>
-                        <div>{{ family.get_salary_range_display }}</div>
+
+                        <p class="mb-1">
+                            {{ family.get_salary_range_display|default:"Não informado" }}
+                        </p>
+
+                        {% if family.salary_range == 'outro' %}
+                            <strong>Valor da renda do responsável:</strong>
+
+                            <p class="mb-0">
+                                {% if family.salary_other_value != None %}
+                                    R$ {{ family.salary_other_value|floatformat:"2g" }}
+                                {% else %}
+                                    Não informado
+                                {% endif %}
+                            </p>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -154,6 +169,65 @@
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>Situação no Lar:</strong> <div>{{ family.get_status_display }}</div></div>
+                    {% if family.status == 'inativo' %}
+                        <div class="alert alert-warning mt-3">
+
+                            <h6 class="mb-3">Informações da inativação</h6>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <strong>Motivo:</strong>
+
+                                    <div>
+                                        {% if family.motivo_inativacao %}
+                                            {{ family.get_motivo_inativacao_display }}
+                                        {% else %}
+                                            Não informado no cadastro.
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-2">
+                                    <strong>Data da inativação:</strong>
+
+                                    <div>
+                                        {% if family.data_inativacao %}
+                                            {{ family.data_inativacao|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            Não informada.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <strong>Registrado por:</strong>
+
+                                    <div>
+                                        {% if family.inativado_por %}
+                                            {{ family.inativado_por.get_full_name|default:family.inativado_por.username }}
+                                        {% else %}
+                                            Não informado.
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-2">
+                                    <strong>Observação:</strong>
+
+                                    <div>
+                                        {% if family.observacao_inativacao %}
+                                            {{ family.observacao_inativacao|linebreaksbr }}
+                                        {% else %}
+                                            Sem observação complementar.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    {% endif %}
                     
                 </div>
             </div>

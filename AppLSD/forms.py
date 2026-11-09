@@ -1,5 +1,5 @@
 from django import forms
-from .models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult, DocumentoFamilia
+from AppLSD.models import Family, Aluno, Turma, Activity, User, OcorrenciaAluno, Adult, DocumentoFamilia, MotivoDesligamentoChoices
 from dal import autocomplete
 from django.db.models.functions import Lower
 from django.core.validators import RegexValidator
@@ -141,6 +141,7 @@ class FamilyForm(forms.ModelForm):
             'has_proven_income',
             'income_types',
             'salary_range',
+            'salary_other_value', 
             'others_contribute',
             'who_contributes',
             'domicile_type',
@@ -153,6 +154,8 @@ class FamilyForm(forms.ModelForm):
             'has_child',
             'has_pregnant',
             'status',
+            'motivo_inativacao', 
+            'observacao_inativacao',
             #'motivo_desligamento',
         ]
         labels = {
@@ -188,6 +191,7 @@ class FamilyForm(forms.ModelForm):
             'has_proven_income': 'Possui Renda Comprovada',
             'income_types': 'Tipo de Renda Comprovada',
             'salary_range': 'Faixa Salarial',
+            'salary_other_value': 'Valor da renda do responsável',
             'others_contribute': 'Outras Pessoas Contribuem com a Renda da Família',
             'who_contributes': 'Quem Contribui',
             'domicile_type': 'Informações sobre o Domicílio',
@@ -199,6 +203,8 @@ class FamilyForm(forms.ModelForm):
             'has_child': 'Criança',
             'has_pregnant': 'Gestante',
             'status': 'Situação',
+            'motivo_inativacao': 'Motivo da Inativação',
+            'observacao_inativacao': 'Observação da Inativação',
             #'motivo_desligamento': 'Motivo do Desligamento (se aplicável)',
         }
         widgets = {
@@ -210,6 +216,10 @@ class FamilyForm(forms.ModelForm):
             'aluguel_value': forms.NumberInput(attrs={'class': 'form-control',
                 'step': '0.01',
                 'min': '0',}),
+            'salary_other_value': forms.NumberInput(attrs={'class': 'form-control', 
+                'step': '0.01', 
+                'min': '0',
+                'placeholder': '0,00'}),
             #'marital_status': forms.RadioSelect,
             #'education': forms.RadioSelect,
             #'race': forms.RadioSelect,
@@ -246,12 +256,48 @@ class FamilyForm(forms.ModelForm):
         return tel
 
     def clean(self):
-        cleaned_data = super().clean()
-        # Aqui pode validar relações entre campos se necessário
-        return cleaned_data
+               cleaned_data = super().clean()
+   
+               # Validação existente: soma dos moradores
+               total = cleaned_data.get('num_residents')
+               soma = (
+                   cleaned_data.get('has_adult', 0) +
+                   cleaned_data.get('has_elderly', 0) +
+                   cleaned_data.get('has_pcd', 0) +
+                   cleaned_data.get('has_adolescent', 0) +
+                   cleaned_data.get('has_child', 0) +
+                   cleaned_data.get('has_pregnant', 0)
+               )
+               if total is not None and soma != total:
+                   raise forms.ValidationError(
+                       'A soma dos tipos deve ser igual ao total de pessoas no domicílio.'
+                   )
+   
+               # Faixa salarial "Outro"
+               faixa = cleaned_data.get('salary_range')
+               if faixa == 'outro':
+                   if not cleaned_data.get('salary_other_value'):
+                       self.add_error(
+                           'salary_other_value',
+                           'Informe o valor da renda do responsável.'
+                       )
+               else:
+                   cleaned_data['salary_other_value'] = None
+   
+               # Inativação exige motivo
+               if cleaned_data.get('status') == 'inativo' and not cleaned_data.get('motivo_inativacao'):
+                   self.add_error(
+                       'motivo_inativacao',
+                       'Selecione o motivo da inativação.'
+                   )
+   
+               # Quando reativar, limpar os campos de inativação
+               if cleaned_data.get('status') == 'ativo':
+                   cleaned_data['motivo_inativacao'] = ''
+                   cleaned_data['observacao_inativacao'] = ''
+   
+               return cleaned_data 
 
-
-    
 
     def calcular_idade(birth_date):
         from datetime import date
@@ -259,20 +305,7 @@ class FamilyForm(forms.ModelForm):
         idade = hoje.year - birth_date.year - ((hoje.month, hoje.day) < (birth_date.month, birth_date.day))
         return idade
 
-    def clean(self):
-        cleaned_data = super().clean()
-        total = cleaned_data.get('num_residents')
-        soma = (
-            cleaned_data.get('has_adult', 0) +
-            cleaned_data.get('has_elderly', 0) +
-            cleaned_data.get('has_pcd', 0) +
-            cleaned_data.get('has_adolescent', 0) +
-            cleaned_data.get('has_child', 0) +
-            cleaned_data.get('has_pregnant', 0)
-        )
-        if total is not None and soma != total:
-            raise forms.ValidationError('A soma dos tipos deve ser igual ao total de pessoas no domicílio.')
-        return cleaned_data
+    
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -440,6 +473,9 @@ class AlunoForm(forms.ModelForm):
             'qual_medicacao',
             'frequencia_tipo',
             'dias_semana',
+            'possui_sisc',
+            'justificativa_sisc',
+            'justificativa_sisc_outros',
             'status_lsd',
         ]
         labels = {
@@ -462,6 +498,8 @@ class AlunoForm(forms.ModelForm):
             'qual_medicacao': 'Qual Medicação?',
             'frequencia_tipo': 'Tipo de Frequência',
             'dias_semana': 'Dias da Semana',
+            'possui_sisc': 'Possui SISC?',
+            'justificativa_sisc': 'Justificativa (obrigatória quando não possui)',
             'status_lsd': 'Situação Atual no Lar',
         }
         widgets = {
@@ -471,6 +509,7 @@ class AlunoForm(forms.ModelForm):
             'serie': forms.Select(attrs={'class': 'form-select', 'id': 'serie'}),
             'health_problem': forms.RadioSelect(),
             'uso_medicacao': forms.RadioSelect(),
+            #'justificativa_sisc': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -584,6 +623,33 @@ AdultFormSet = inlineformset_factory(
     extra=0, can_delete=True
 )
 
+class MotivoDesligamentoForm(forms.Form):
+    motivo_codigo = forms.ChoiceField(
+        label='Motivo',
+        choices=[
+            ('', 'Selecione o motivo'),
+            *MotivoDesligamentoChoices.choices,
+        ],
+        required=True,
+        widget=forms.Select(
+            attrs={'class': 'form-select'}
+        ),
+    )
+
+    observacao = forms.CharField(
+        label='Observação',
+        required=False,
+        strip=True,
+        widget=forms.Textarea(
+            attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': (
+                    'Informe detalhes complementares, se necessário.'
+                ),
+            }
+        ),
+    )
 
    
 class EducadoraChoiceField(forms.ModelChoiceField):

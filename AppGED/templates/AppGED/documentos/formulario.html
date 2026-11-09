@@ -1,0 +1,303 @@
+{% extends "AppLSD/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar documento{% else %}Novo documento{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'ged:lista_documentos' %}">
+                GED
+            </a>
+            <span class="mx-1">/</span>
+            <a href="{% url 'ged:lista_documentos' %}">
+                Documentos
+            </a>
+            <span class="mx-1">/</span>
+            <span>
+                {% if form.instance.pk %}Editar{% else %}Novo documento{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h1 class="h4 mb-0">
+                        {% if form.instance.pk %}
+                            Editar documento
+                        {% else %}
+                            Novo documento
+                        {% endif %}
+                    </h1>
+                </div>
+
+                <div class="card-body">
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.setor.id_for_label }}" class="form-label">
+                                    Setor *
+                                </label>
+                                {{ form.setor }}
+                                {% for error in form.setor.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.categoria.id_for_label }}" class="form-label">
+                                    Categoria *
+                                </label>
+                                {{ form.categoria }}
+                                {% for error in form.categoria.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.tipo_documento.id_for_label }}" class="form-label">
+                                    Tipo de documento *
+                                </label>
+                                {{ form.tipo_documento }}
+                                {% for error in form.tipo_documento.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12 col-md-8">
+                                <label for="{{ form.titulo.id_for_label }}" class="form-label">
+                                    Título *
+                                </label>
+                                {{ form.titulo }}
+                                {% for error in form.titulo.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.codigo_registro.id_for_label }}" class="form-label">
+                                    Código de registro
+                                </label>
+                                {{ form.codigo_registro }}
+                                {% for error in form.codigo_registro.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12">
+                                <label for="{{ form.descricao.id_for_label }}" class="form-label">
+                                    Descrição
+                                </label>
+                                {{ form.descricao }}
+                                {% for error in form.descricao.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">
+                                    Status
+                                </label>
+                                {{ form.status }}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.nivel_sigilo.id_for_label }}" class="form-label">
+                                    Nível de sigilo
+                                </label>
+                                {{ form.nivel_sigilo }}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.tags.id_for_label }}" class="form-label">
+                                    Tags
+                                </label>
+                                {{ form.tags }}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.data_documento.id_for_label }}" class="form-label">
+                                    Data do documento
+                                </label>
+                                {{ form.data_documento }}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.data_validade.id_for_label }}" class="form-label">
+                                    Data de validade
+                                </label>
+                                {{ form.data_validade }}
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label for="{{ form.localizacao_fisica.id_for_label }}" class="form-label">
+                                    Localização física
+                                </label>
+                                {{ form.localizacao_fisica }}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <a href="{% url 'ged:lista_documentos' %}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %}
+                                    Salvar alterações
+                                {% else %}
+                                    Criar documento
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const setorSelect = document.getElementById('id_setor');
+    const categoriaSelect = document.getElementById('id_categoria');
+    const tipoSelect = document.getElementById('id_tipo_documento');
+
+    const categoriasUrl = "{% url 'ged:categorias_por_setor' %}";
+    const tiposUrl = "{% url 'ged:tipos_por_categoria' %}";
+
+    function limparSelect(select, texto) {
+        select.innerHTML = '';
+
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = texto;
+        select.appendChild(option);
+    }
+
+    function adicionarOpcoes(select, itens) {
+        itens.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.nome;
+            select.appendChild(option);
+        });
+    }
+
+    setorSelect.addEventListener('change', function () {
+        const setorId = this.value;
+
+        limparSelect(
+            categoriaSelect,
+            '---------'
+        );
+
+        limparSelect(
+            tipoSelect,
+            '---------'
+        );
+
+        if (!setorId) {
+            return;
+        }
+
+        const url = (
+            categoriasUrl
+            + '?setor_id='
+            + encodeURIComponent(setorId)
+        );
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar categorias.');
+            }
+
+            return response.json();
+        })
+        .then(function (data) {
+            adicionarOpcoes(
+                categoriaSelect,
+                data.categorias
+            );
+        })
+        .catch(function (error) {
+            console.error(error);
+        });
+    });
+
+    categoriaSelect.addEventListener('change', function () {
+        const categoriaId = this.value;
+
+        limparSelect(
+            tipoSelect,
+            '---------'
+        );
+
+        if (!categoriaId) {
+            return;
+        }
+
+        const url = (
+            tiposUrl
+            + '?categoria_id='
+            + encodeURIComponent(categoriaId)
+        );
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar tipos.');
+            }
+
+            return response.json();
+        })
+        .then(function (data) {
+            adicionarOpcoes(
+                tipoSelect,
+                data.tipos
+            );
+        })
+        .catch(function (error) {
+            console.error(error);
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const setorSelect = document.getElementById('id_setor');
+    const categoriaSelect = document.getElementById('id_categoria');
+    const tipoSelect = document.getElementById('id_tipo_documento');
+
+    const categoriaAtual = categoriaSelect.value;
+    const tipoAtual = tipoSelect.value;
+
+    if (setorSelect.value && categoriaSelect.options.length <= 1) {
+        setorSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>

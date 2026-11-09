@@ -7,6 +7,50 @@
 
 <h2 class="text-center mb-4">Relatórios de Frequência</h2>
 
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" action="">
+      <div class="row align-items-end">
+        <div class="col-md-4 mb-2">
+          <label for="data_cards" class="form-label">
+            Data para consultar as presenças
+          </label>
+
+          <input
+            type="date"
+            id="data_cards"
+            name="data_cards"
+            value="{{ data_cards_iso }}"
+            class="form-control"
+            required
+          >
+        </div>
+
+        <div class="col-md-auto mb-2">
+          <button type="submit" class="btn btn-primary">
+            Atualizar cards
+          </button>
+        </div>
+
+        <div class="col-md-auto mb-2">
+          <a
+            href="?data_cards={{ hoje_iso }}"
+            class="btn btn-outline-secondary"
+          >
+            Hoje
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <div class="text-muted small mt-2">
+      Presenças e faltas referentes a
+      {{ data_cards|date:"d/m/Y" }}.
+      O total de assistidos corresponde ao cadastro atual.
+    </div>
+  </div>
+</div>
+
 <div class="row mb-4">
   <div class="col-md-3 mb-3">
     <div class="card text-center h-100">
@@ -20,7 +64,8 @@
     <div class="card text-center h-100">
       <div class="card-body">
         <h3 class="text-success">{{ presentes_hoje_manha }}</h3>
-        <p class="mb-0">Presentes Hoje (Manhã)</p>
+        <p class="mb-0">Presentes — Manhã</p>
+        <small class="text-muted">{{ data_cards|date:"d/m/Y" }}</small>
       </div>
     </div>
   </div>
@@ -28,7 +73,8 @@
     <div class="card text-center h-100">
       <div class="card-body">
         <h3 class="text-success">{{ presentes_hoje_tarde }}</h3>
-        <p class="mb-0">Presentes Hoje (Tarde)</p>
+        <p class="mb-0">Presentes — Tarde</p>
+        <small class="text-muted">{{ data_cards|date:"d/m/Y" }}</small>
       </div>
     </div>
   </div>
@@ -37,6 +83,7 @@
       <div class="card-body">
         <h3 class="text-danger">{{ faltas_hoje }}</h3>
         <p class="mb-0">Faltas Hoje</p>
+        <small class="text-muted">{{ data_cards|date:"d/m/Y" }}</small>
       </div>
     </div>
   </div>
@@ -62,9 +109,24 @@
             <option value="desligados"> Relatório Desligados</option>
             <option value="sem_atividades"> Relatório Alunos Sem Atividades</option>
             <option value="auditoria"> Auditoria</option>
+            <option value="presenca_diaria_grupos"> Presença Diária por Grupo e Turno</option>
 
           </select>
         </div>
+
+        <div class="col-md-3 mb-3 d-none" id="campo_turno_presenca">
+          <label for="turno_presenca" class="form-label">Turno</label>
+
+          <select
+            id="turno_presenca"
+            name="turno_presenca"
+            class="form-select"
+          >
+            <option value="">Todos os turnos</option>
+            <option value="Matutino">Manhã</option>
+            <option value="Vespertino">Tarde</option>
+          </select>
+        </div>  
 
         <div class="col-md-3 mb-3 d-none" id="campo_subtipo_semds">
           <label for="subtipo_semds" class="form-label">Relatório SEMDS</label>
@@ -78,7 +140,7 @@
         <div class="col-md-3 mb-3" id="campo_turma">
           <label for="turma_id" class="form-label">Grupo</label>
           <select name="turma_id" id="turma_id" class="form-select">
-              <option value="">Todas os grupos</option>
+              <option value="">Todos os grupos</option>
               {% for turma in turmas %}
                   <option value="{{ turma.id }}">
                       {{ turma }}
@@ -110,15 +172,16 @@
             {% endfor %}
           </select>
         </div>
+        <div class="col-md-3 mb-3 d-none" id="campo_turno_presenca">
+          <label for="turno_presenca" class="form-label">Turno</label>
+          <select id="turno_presenca" name="turno_presenca" class="form-select">
+            <option value="">Todos</option>
+            <option value="Matutino">Manhã</option>
+            <option value="Vespertino">Tarde</option>
+          </select>
+        </div>
       </div>
 
-      <div class="col-md-3 mb-3 d-none" id="campo_subtipo_semds">
-          <label for="subtipo_semds" class="form-label">Relatório AUDITORIA</label>
-          <select id="subtipo_semds" name="subtipo_semds" class="form-select">
-            <option value="">Selecione...</option>
-            <option value="busca_ativa">Relatório Alunos Sem Turma</option>
-          </select>
-      </div>
 
       <div class="row mb-3">
         <div class="col-md-3 mb-3" id="campo_tipo_periodo">
@@ -138,6 +201,15 @@
           <label for="mes" class="form-label">Mês</label>
           <input type="month" id="mes" name="mes" class="form-control">
         </div>
+      </div>
+
+      <div class="col-md-3 mb-3 d-none" id="campo_turno_presenca">
+        <label for="turno_presenca" class="form-label">Turno</label>
+        <select id="turno_presenca" name="turno_presenca" class="form-select">
+          <option value="">Todos</option>
+          <option value="Matutino">Manhã</option>
+          <option value="Vespertino">Tarde</option>
+        </select>
       </div>
 
       <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
@@ -170,284 +242,312 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const tipoRelatorio = document.getElementById('tipo_relatorio');
-  const subtipoSemds = document.getElementById('subtipo_semds');
-  const tipoPeriodo = document.getElementById('tipo_periodo');
+  const el = (id) => document.getElementById(id);
 
-  const turmaSelect = document.getElementById('turma_id');
-  const alunoSelect = document.getElementById('aluno_id');
-  const atividadeSelect = document.getElementById('atividade_id');
-  const dataInput = document.getElementById('data');
-  const mesInput = document.getElementById('mes');
-  const dataInicialInput = document.getElementById('data_inicial');
-  const dataFinalInput = document.getElementById('data_final');
+  const tipoRelatorio = el('tipo_relatorio');
+  const subtipoSemds = el('subtipo_semds');
+  const tipoPeriodo = el('tipo_periodo');
+  const botaoGerar = el('btn-gerar-relatorio');
 
-  const campoTurma = document.getElementById('campo_turma');
-  const campoAluno = document.getElementById('campo_aluno');
-  const campoAtividade = document.getElementById('campo_atividade');
-  const campoSubtipo = document.getElementById('campo_subtipo_semds');
-  const campoTipoPeriodo = document.getElementById('campo_tipo_periodo');
-  const campoData = document.getElementById('campo_data');
-  const campoMes = document.getElementById('campo_mes');
-  const campoDataInicial = document.getElementById('campo_data_inicial');
-  const campoDataFinal = document.getElementById('campo_data_final');
+  if (!tipoRelatorio || !tipoPeriodo || !botaoGerar) {
+    console.error('Elementos principais do formulário não encontrados.');
+    return;
+  }
+
+  const valor = (id) => {
+    const elemento = el(id);
+    return elemento ? elemento.value.trim() : '';
+  };
+
+  const campos = [
+    'campo_turma',
+    'campo_aluno',
+    'campo_atividade',
+    'campo_subtipo_semds',
+    'campo_tipo_periodo',
+    'campo_data',
+    'campo_mes',
+    'campo_data_inicial',
+    'campo_data_final',
+    'campo_turno_presenca'
+  ];
+
+  function mostrar(id) {
+    const elemento = el(id);
+    if (elemento) {
+      elemento.classList.remove('d-none');
+    }
+  }
 
   function esconderTudo() {
-    campoTurma.classList.add('d-none');
-    campoAluno.classList.add('d-none');
-    campoAtividade.classList.add('d-none');
-    campoSubtipo.classList.add('d-none');
-    campoData.classList.add('d-none');
-    campoMes.classList.add('d-none');
-    campoTipoPeriodo.classList.add('d-none');
-    campoDataInicial.classList.add('d-none');
-    campoDataFinal.classList.add('d-none');
+    campos.forEach(function (id) {
+      const elemento = el(id);
+      if (elemento) {
+        elemento.classList.add('d-none');
+      }
+    });
   }
 
-  function toggleEntidade() {
-    const tipo = tipoRelatorio.value;
+  function atualizarFiltros() {
+    const tipo = valor('tipo_relatorio');
     esconderTudo();
 
-    if (tipo === 'turma') {
-      campoTurma.classList.remove('d-none');
-      campoTipoPeriodo.classList.remove('d-none');
-      togglePeriodo();
+    if (tipo === 'presenca_diaria_grupos') {
+      mostrar('campo_turma');
+      mostrar('campo_turno_presenca');
+      mostrar('campo_data');
+      return;
+    }
 
-    } else if (tipo === 'aluno') {
-      campoAluno.classList.remove('d-none');
-      campoTipoPeriodo.classList.remove('d-none');
-      campoMes.classList.remove('d-none');
+    if (tipo === 'turma' || tipo === 'atividade') {
+      mostrar(tipo === 'turma' ? 'campo_turma' : 'campo_atividade');
+      mostrar('campo_tipo_periodo');
+
+      mostrar(
+        valor('tipo_periodo') === 'mensal'
+          ? 'campo_mes'
+          : 'campo_data'
+      );
+      return;
+    }
+
+    if (tipo === 'aluno') {
       tipoPeriodo.value = 'mensal';
+      mostrar('campo_aluno');
+      mostrar('campo_mes');
+      return;
+    }
 
-    } else if (tipo === 'atividade') {
-      campoAtividade.classList.remove('d-none');
-      campoTipoPeriodo.classList.remove('d-none');
-      togglePeriodo();
+    if (tipo === 'semds') {
+      mostrar('campo_subtipo_semds');
 
-    } else if (tipo === 'semds') {
-      campoSubtipo.classList.remove('d-none');
-      if (subtipoSemds.value) {
-        campoMes.classList.remove('d-none');
+      if (valor('subtipo_semds')) {
+        mostrar('campo_mes');
       }
+      return;
+    }
 
-    } else if (tipo === 'desligados') {
-      campoDataInicial.classList.remove('d-none');
-      campoDataFinal.classList.remove('d-none');
-    
-    } else if (tipo === 'auditoria') {
-      campoDataInicial.classList.remove('d-none');
-      campoDataFinal.classList.remove('d-none');
+    if (tipo === 'desligados' || tipo === 'auditoria') {
+      mostrar('campo_data_inicial');
+      mostrar('campo_data_final');
+      return;
+    }
 
-    } else if (tipo === 'sem_atividades') {
-      campoTurma.classList.remove('d-none');
+    if (tipo === 'sem_atividades') {
+      mostrar('campo_turma');
     }
   }
 
-  function togglePeriodo() {
-    const tipo = tipoPeriodo.value;
+  // Usa a data consultada nos cards como sugestão inicial.
+  const dataInput = el('data');
 
-    if (tipoRelatorio.value === 'semds') {
-      campoData.classList.add('d-none');
-      if (subtipoSemds.value) {
-        campoMes.classList.remove('d-none');
-      } else {
-        campoMes.classList.add('d-none');
-      }
-      return;
-    }
-
-    if (tipoRelatorio.value === 'aluno') {
-      campoData.classList.add('d-none');
-      campoMes.classList.remove('d-none');
-      return;
-    }
-
-    if (tipoRelatorio.value === 'desligados') {
-      campoData.classList.add('d-none');
-      campoMes.classList.add('d-none');
-      return;
-    }
-
-    if (tipoRelatorio.value === 'auditoria') {
-      campoData.classList.add('d-none');
-      campoMes.classList.add('d-none');
-      return;
-    }
-
-    if (tipoRelatorio.value === 'sem_atividades') {
-      campoData.classList.add('d-none');
-      campoMes.classList.add('d-none');
-      campoTipoPeriodo.classList.add('d-none');
-      return;
-    }
-
-    if (tipo === 'diario') {
-      campoData.classList.remove('d-none');
-      campoMes.classList.add('d-none');
-    } else {
-      campoData.classList.add('d-none');
-      campoMes.classList.remove('d-none');
-    }
+  if (dataInput && !dataInput.value) {
+    dataInput.value = "{{ data_cards_iso|escapejs }}";
   }
 
-  function toggleSubtipoSemds() {
-    if (tipoRelatorio.value === 'semds' && subtipoSemds.value) {
-      campoMes.classList.remove('d-none');
-    } else if (tipoRelatorio.value === 'semds') {
-      campoMes.classList.add('d-none');
+  function exigir(conteudo, mensagem) {
+    if (!conteudo) {
+      throw new Error(mensagem);
     }
+    return conteudo;
   }
 
-  document.getElementById('btn-gerar-relatorio').addEventListener('click', function () {
-    const tipo = tipoRelatorio.value;
-    const periodo = tipoPeriodo.value;
-    let url = null;
-    let params = [];
+  function urlComId(modelo, id) {
+    return modelo.replace('/0/', '/' + encodeURIComponent(id) + '/');
+  }
 
-    if (tipo === 'turma') {
-      const turmaId = turmaSelect.value;
-      if (!turmaId) {
-        alert('Selecione uma turma.');
-        return;
-      }
-
-      if (periodo === 'mensal') {
-        url = "{% url 'relatorio_turma_mensal_html' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (mesInput.value) params.push('mes=' + encodeURIComponent(mesInput.value));
-      } else {
-        url = "{% url 'relatorio_presenca_turma_pdf' 0 %}".replace('/0/', '/' + turmaId + '/');
-        if (dataInput.value) params.push('data=' + encodeURIComponent(dataInput.value));
-      }
+  function gerarRelatorio(event) {
+    if (event) {
+      event.preventDefault();
     }
 
-    else if (tipo === 'sem_atividades') {
-      url = "{% url 'relatorio_alunos_sem_atividades_html' %}";
+    try {
+      const tipo = valor('tipo_relatorio');
+      const periodo = valor('tipo_periodo');
+      const turmaId = valor('turma_id');
+      const alunoId = valor('aluno_id');
+      const atividadeId = valor('atividade_id');
+      const data = valor('data');
+      const mes = valor('mes');
 
-      const turmaId = turmaSelect.value;
-      if (turmaId) {
-        params.push('turma_id=' + encodeURIComponent(turmaId));
-      }
-    }
+      const params = new URLSearchParams();
+      let url = '';
 
-    else if (tipo === 'aluno') {
-      const alunoId = alunoSelect.value;
-      if (!alunoId) {
-        alert('Selecione um aluno.');
-        return;
-      }
+      if (tipo === 'presenca_diaria_grupos') {
+        url = "{% url 'relatorio_presenca_diaria_grupos' %}";
 
-      if (!mesInput.value) {
-        alert('Selecione o mês do relatório.');
-        return;
-      }
+        params.set(
+          'data',
+          exigir(data, 'Selecione a data do relatório.')
+        );
 
-      url = "{% url 'relatorio_mensal_aluno' 0 %}".replace('/0/', '/' + alunoId + '/');
-      params.push('mes=' + encodeURIComponent(mesInput.value));
-    }
-
-    else if (tipo === 'atividade') {
-      const atividadeId = atividadeSelect.value;
-      if (!atividadeId) {
-        alert('Selecione uma atividade.');
-        return;
-      }
-
-      const periodoNormalizado = (periodo || '').trim().toLowerCase();
-
-      if (periodoNormalizado === 'mensal') {
-        url = "{% url 'relatorio_atividade_mensal_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
-        if (mesInput.value) {
-          params.push('mes=' + encodeURIComponent(mesInput.value));
+        if (turmaId) {
+          params.set('turma_id', turmaId);
         }
-      } else {
-        url = "{% url 'relatorio_presenca_activity_pdf' 0 %}".replace('/0/', '/' + atividadeId + '/');
-        if (dataInput.value) {
-          params.push('data=' + encodeURIComponent(dataInput.value));
+
+        if (valor('turno_presenca')) {
+          params.set('turno', valor('turno_presenca'));
         }
+
+      } else if (tipo === 'turma') {
+        exigir(turmaId, 'Selecione um grupo.');
+
+        if (periodo === 'mensal') {
+          url = urlComId(
+            "{% url 'relatorio_turma_mensal_html' 0 %}",
+            turmaId
+          );
+
+          params.set(
+            'mes',
+            exigir(mes, 'Selecione o mês do relatório.')
+          );
+        } else {
+          url = urlComId(
+            "{% url 'relatorio_presenca_turma_pdf' 0 %}",
+            turmaId
+          );
+
+          params.set(
+            'data',
+            exigir(data, 'Selecione a data do relatório.')
+          );
+        }
+
+      } else if (tipo === 'aluno') {
+        exigir(alunoId, 'Selecione um aluno.');
+
+        url = urlComId(
+          "{% url 'relatorio_mensal_aluno' 0 %}",
+          alunoId
+        );
+
+        params.set(
+          'mes',
+          exigir(mes, 'Selecione o mês do relatório.')
+        );
+
+      } else if (tipo === 'atividade') {
+        exigir(atividadeId, 'Selecione uma atividade.');
+
+        if (periodo === 'mensal') {
+          url = urlComId(
+            "{% url 'relatorio_atividade_mensal_pdf' 0 %}",
+            atividadeId
+          );
+
+          params.set(
+            'mes',
+            exigir(mes, 'Selecione o mês do relatório.')
+          );
+        } else {
+          url = urlComId(
+            "{% url 'relatorio_presenca_activity_pdf' 0 %}",
+            atividadeId
+          );
+
+          params.set(
+            'data',
+            exigir(data, 'Selecione a data do relatório.')
+          );
+        }
+
+      } else if (tipo === 'semds') {
+        const subtipo = exigir(
+          valor('subtipo_semds'),
+          'Selecione uma opção do Relatório SEMDS.'
+        );
+
+        if (subtipo === 'busca_ativa') {
+          url = "{% url 'relatorio_busca_ativa_html' %}";
+        } else if (subtipo === 'sisc') {
+          url = "{% url 'relatorio_sisc_html' %}";
+        } else {
+          throw new Error('Opção SEMDS inválida.');
+        }
+
+        params.set(
+          'mes',
+          exigir(mes, 'Selecione o mês do relatório.')
+        );
+
+      } else if (tipo === 'sem_atividades') {
+        url = "{% url 'relatorio_alunos_sem_atividades_html' %}";
+
+        if (turmaId) {
+          params.set('turma_id', turmaId);
+        }
+
+      } else if (tipo === 'desligados' || tipo === 'auditoria') {
+        const inicio = exigir(
+          valor('data_inicial'),
+          'Selecione a data inicial.'
+        );
+
+        const fim = exigir(
+          valor('data_final'),
+          'Selecione a data final.'
+        );
+
+        if (inicio > fim) {
+          throw new Error(
+            'A data inicial não pode ser posterior à data final.'
+          );
+        }
+
+        url = tipo === 'desligados'
+          ? "{% url 'relatorio_desligados_html' %}"
+          : "{% url 'auditoria_alunos_sem_turma' %}";
+
+        params.set('data_inicial', inicio);
+        params.set('data_final', fim);
+
+      } else {
+        throw new Error('Selecione o tipo de relatório.');
       }
+
+      const consulta = params.toString();
+      const destino = url + (consulta ? '?' + consulta : '');
+
+      console.log('Abrindo relatório:', destino);
+      window.location.assign(destino);
+
+    } catch (erro) {
+      console.error('Erro ao gerar relatório:', erro);
+      alert(erro.message || 'Não foi possível gerar o relatório.');
     }
+  }
 
-    else if (tipo === 'semds') {
-      const subtipo = subtipoSemds.value;
+  botaoGerar.addEventListener('click', gerarRelatorio);
 
-      if (!subtipo) {
-        alert('Selecione uma opção do Relatório SEMDS.');
-        return;
-      }
+  const formulario = el('filtro-relatorios');
 
-      if (!mesInput.value) {
-        alert('Selecione o mês do relatório.');
-        return;
-      }
+  if (formulario) {
+    formulario.addEventListener('submit', gerarRelatorio);
+  }
 
-      if (subtipo === 'busca_ativa') {
-        url = "{% url 'relatorio_busca_ativa_html' %}";
-      } else if (subtipo === 'sisc') {
-        url = "{% url 'relatorio_sisc_html' %}";
-      }
+  tipoRelatorio.addEventListener('change', atualizarFiltros);
+  tipoPeriodo.addEventListener('change', atualizarFiltros);
 
-      params.push('mes=' + encodeURIComponent(mesInput.value));
-    }
+  if (subtipoSemds) {
+    subtipoSemds.addEventListener('change', atualizarFiltros);
+  }
 
-    else if (tipo === 'desligados') {
-      if (!dataInicialInput.value || !dataFinalInput.value) {
-        alert('Selecione a data inicial e a data final.');
-        return;
-      }
+  atualizarFiltros();
 
-      url = "{% url 'relatorio_desligados_html' %}";
-      params.push('data_inicial=' + encodeURIComponent(dataInicialInput.value));
-      params.push('data_final=' + encodeURIComponent(dataFinalInput.value));
-    }
-
-    else if (tipo === 'auditoria') {
-      if (!dataInicialInput.value || !dataFinalInput.value) {
-        alert('Selecione a data inicial e a data final.');
-        return;
-      }
-
-      url = "{% url 'auditoria_alunos_sem_turma' %}";
-      params.push('data_inicial=' + encodeURIComponent(dataInicialInput.value));
-      params.push('data_final=' + encodeURIComponent(dataFinalInput.value));
-    }
-
-            
-    else {
-      alert('Selecione o tipo de relatório.');
-      return;
-    }
-
-    if (params.length) {
-      url += '?' + params.join('&');
-    }
-
-    console.log('URL FINAL:', url);
-    window.open(url, '_blank');
-  });
-
-  tipoRelatorio.addEventListener('change', function () {
-    if (tipoRelatorio.value !== 'semds') {
-      subtipoSemds.value = '';
-    }
-    toggleEntidade();
-  });
-
-  subtipoSemds.addEventListener('change', function () {
-    toggleSubtipoSemds();
-    togglePeriodo();
-  });
-
-  tipoPeriodo.addEventListener('change', togglePeriodo);
-
-  toggleEntidade();
-  togglePeriodo();
-
-  $('#aluno_id').select2({
-    width: '100%',
-    placeholder: 'Busque pelo nome ou inscrição',
-    allowClear: true,
-    language: 'pt-BR'
-  });
+  // A ausência do Select2 não impede os relatórios de funcionar.
+  if (
+    window.jQuery &&
+    window.jQuery.fn &&
+    window.jQuery.fn.select2
+  ) {
+    window.jQuery('#aluno_id').select2({
+      width: '100%',
+      placeholder: 'Busque pelo nome ou inscrição',
+      allowClear: true,
+      language: 'pt-BR'
+    });
+  }
 });
 </script>
 {% endblock extra_js %}

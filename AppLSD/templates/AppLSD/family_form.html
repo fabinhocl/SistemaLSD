@@ -128,15 +128,46 @@
                         </div>
                     </div>    
                 </div>
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        {{ form.has_proven_income|as_crispy_field  }}
-                    </div>
-                    <div class="col-md-6" id="income-types-group">
-                        {{ form.income_types|as_crispy_field  }}
-                    </div>
-                    <div class="col-md-3">{{ form.salary_range|as_crispy_field }}</div>
+            <div class="row mb-3 align-items-start">
+                <div class="col-md-3">
+                    {{ form.has_proven_income|as_crispy_field }}
                 </div>
+
+                <div class="col-md-3" id="income-types-group">
+                    {{ form.income_types|as_crispy_field }}
+                </div>
+
+                <div class="col-md-3">
+                    {{ form.salary_range|as_crispy_field }}
+                </div>
+
+                <div class="col-md-3" id="salary-other-group" style="display: none;">
+                    <label
+                        for="{{ form.salary_other_value.id_for_label }}"
+                        class="form-label"
+                    >
+                        Valor da renda do responsável
+                    </label>
+
+                    <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        {{ form.salary_other_value }}
+                    </div>
+
+                    {% for error in form.salary_other_value.errors %}
+                        <div class="text-danger small mt-1">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+
+                    {% if form.salary_other_value.help_text %}
+                        <div class="form-text">
+                            {{ form.salary_other_value.help_text }}
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
                 <!-- Linha 9 -->
                 <div class="row mb-3">
                     <div class="col-md-6">              
@@ -179,6 +210,12 @@
                 <!-- Linha 15 -->
                 <div class="row mb-3">
                     <div class="col-md-3">{{ form.status|as_crispy_field }}</div>
+                    <div class="col-md-4" id="motivo-desligamento-group" style="display:none;">
+                        {{ form.motivo_inativacao|as_crispy_field }}
+                    </div>
+                    <div class="col-md-5" id="observacao-inativacao-group" style="display:none;">
+                        {{ form.observacao_inativacao|as_crispy_field }}
+                    </div>
                 </div>
                 <!-- Campos customizados com lógica JS -->
                
@@ -361,55 +398,97 @@ document.addEventListener('DOMContentLoaded', function() {
     if (workingRadios.length > 0) {
         workingRadios.forEach(r => {
             r.addEventListener('change', toggleLocationField);
-        });
+        }
+        
+        );
         toggleLocationField(); // Estado inicial
     }
 
+     // ============================================
+    // 2. CONTROLE: Possui renda comprovada? → Tipo de renda + Faixa Salarial + Valor (Outro)
     // ============================================
-    // 2. CONTROLE: Possui renda comprovada? → Tipo de renda + Faixa Salarial
-    // ============================================
-    const rendaRadios = document.querySelectorAll('input[name="has_proven_income"]');
-    const rendaTypesGroup = document.getElementById('income-types-group');
-    const faixaSalarialField = document.querySelector('select[name="faixa_salarial"]');
+    
+    const rendaRadios = document.querySelectorAll(
+        'input[name="has_proven_income"]'
+    );
+
+    const rendaTypesGroup = document.getElementById(
+        'income-types-group'
+    );
+
+    const faixaSalarialField = document.querySelector(
+        'select[name="salary_range"]'
+    );
+
+    const salaryOtherGroup = document.getElementById(
+        'salary-other-group'
+    );
+
+    const salaryOtherInput = document.querySelector(
+        'input[name="salary_other_value"]'
+    );
+
+    function toggleSalaryOther() {
+        if (!salaryOtherGroup || !faixaSalarialField) return;
+
+        const mostrar = faixaSalarialField.value === 'outro';
+
+        salaryOtherGroup.hidden = !mostrar;
+        salaryOtherGroup.style.display = mostrar ? '' : 'none';
+
+        if (salaryOtherInput) {
+            salaryOtherInput.disabled = !mostrar;
+            salaryOtherInput.required = mostrar;
+        }
+    }
 
     function toggleIncomeFields() {
-        let hasProvenIncomeYes = false;
-        rendaRadios.forEach(r => {
-            if (r.checked && (r.value === 'Sim' || r.value === 'sim')) {
-                hasProvenIncomeYes = true;
-            }
-        });
+        const selecionado = Array.from(rendaRadios).find(
+            radio => radio.checked
+        );
 
-        // Tipos de renda
+        const temComprovacao = (
+            selecionado
+            && selecionado.value.toLowerCase() === 'sim'
+        );
+
         if (rendaTypesGroup) {
-            rendaTypesGroup.style.display = hasProvenIncomeYes ? 'block' : 'none';
-            
-            const checkboxes = rendaTypesGroup.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(cb => {
-                cb.disabled = !hasProvenIncomeYes;
-                if (!hasProvenIncomeYes) {
-                    cb.checked = false;
+            rendaTypesGroup.style.display = (
+                temComprovacao ? '' : 'none'
+            );
+
+            rendaTypesGroup.querySelectorAll(
+                'input[type="checkbox"]'
+            ).forEach(checkbox => {
+                checkbox.disabled = !temComprovacao;
+
+                if (!temComprovacao) {
+                    checkbox.checked = false;
                 }
             });
         }
 
-        // Faixa Salarial
+        // A faixa salarial permanece disponível com ou sem comprovação.
         if (faixaSalarialField) {
-            faixaSalarialField.disabled = !hasProvenIncomeYes;
-            if (!hasProvenIncomeYes) {
-                faixaSalarialField.value = '';
-            }
+            faixaSalarialField.disabled = false;
         }
+
+        toggleSalaryOther();
     }
 
-    if (rendaRadios.length > 0) {
-        rendaRadios.forEach(r => {
-            r.addEventListener('change', toggleIncomeFields);
-        });
-        toggleIncomeFields(); // Estado inicial
+    rendaRadios.forEach(radio => {
+        radio.addEventListener('change', toggleIncomeFields);
+    });
+
+    if (faixaSalarialField) {
+        faixaSalarialField.addEventListener(
+            'change',
+            toggleSalaryOther
+        );
     }
 
-}); // FIM DOMContentLoaded
+    toggleIncomeFields(); 
+    // FIM DOMContentLoaded
 </script>
 
 <script>
@@ -507,20 +586,70 @@ $(document).ready(function(){
 });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const statusField = document.getElementById('id_status');
     const motivoGroup = document.getElementById('motivo-desligamento-group');
+    const obsGroup = document.getElementById('observacao-inativacao-group');
 
     function toggleMotivo() {
-        if (statusField.value === 'desligado') {
-            motivoGroup.style.display = 'block';
-        } else {
-            motivoGroup.style.display = 'none';
-        }
+        const mostrar = statusField && statusField.value === 'inativo';
+        if (motivoGroup) motivoGroup.style.display = mostrar ? '' : 'none';
+        if (obsGroup) obsGroup.style.display = mostrar ? '' : 'none';
     }
 
-    statusField.addEventListener('change', toggleMotivo);
-    toggleMotivo();  // aplica ao carregar para edição
+    if (statusField) {
+        statusField.addEventListener('change', toggleMotivo);
+        toggleMotivo();
+    }
 });
+</script>
+<script>
+(function () {
+    function iniciarControleOutroValor() {
+        const faixa = document.querySelector(
+            'select[name="salary_range"]'
+        );
+
+        const grupo = document.getElementById(
+            'salary-other-group'
+        );
+
+        const valor = document.querySelector(
+            'input[name="salary_other_value"]'
+        );
+
+        if (!faixa || !grupo || !valor) {
+            console.warn(
+                'Controle da renda: campo ou grupo não encontrado.',
+                { faixa, grupo, valor }
+            );
+            return;
+        }
+
+        function atualizarExibicao() {
+            const mostrar = faixa.value === 'outro';
+
+            grupo.hidden = !mostrar;
+            grupo.style.display = mostrar ? '' : 'none';
+
+            valor.disabled = !mostrar;
+            valor.required = mostrar;
+        }
+
+        faixa.addEventListener('change', atualizarExibicao);
+
+        // Aplica também ao abrir um cadastro existente.
+        atualizarExibicao();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            iniciarControleOutroValor
+        );
+    } else {
+        iniciarControleOutroValor();
+    }
+})();
 </script>
 {% endblock %}

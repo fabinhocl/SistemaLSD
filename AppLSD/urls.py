@@ -174,6 +174,7 @@ urlpatterns = [
     path("relatorios/desligados/", views_templates.relatorio_desligados_html, name="relatorio_desligados_html"),
     path('relatorios/alunos-sem-atividades/excel/', views_templates.exportar_alunos_sem_atividades_excel, name='exportar_alunos_sem_atividades_excel'), 
     path('relatorios/alunos-sem-atividades/html/', views_templates.relatorio_alunos_sem_atividades_html, name='relatorio_alunos_sem_atividades_html'),
+    path("relatorios/presenca-diaria-grupos/", views_templates.relatorio_presenca_diaria_grupos, name="relatorio_presenca_diaria_grupos"),
     #select2 no formulário de Atividade para selecionar os facilitador de forma mais amigável
     #path("select2/", include("django_select2.urls")),
     

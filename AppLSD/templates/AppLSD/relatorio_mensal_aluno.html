@@ -249,13 +249,32 @@
       </div>
 
       <div class="cabecalho-info">
-        {% if aluno_sem_turma %}
-          <div><strong>Turma:</strong> Não vinculada</div>
-        {% else %}
-          <div><strong>Educadora:</strong> {{ turma_relatorio.educadora.first_name }}</div>
-          <div><strong>Grupo:</strong> {{ turma_relatorio.grupo }}</div>
-          <div><strong>Turno:</strong> {{ turma_relatorio.turno }}</div>
-        {% endif %}
+        {% for turma in turmas_relatorio %}
+            <div>
+                <strong>Grupo no período:</strong>
+                {{ turma.grupo }}
+            </div>
+
+            <div>
+                <strong>Educadora:</strong>
+                {% if turma.educadora %}
+                    {{ turma.educadora.get_full_name|default:turma.educadora.username }}
+                {% else %}
+                    Não informada
+                {% endif %}
+            </div>
+
+            <div>
+                <strong>Turno:</strong>
+                {{ turma.turno|default:"Não informado" }}
+            </div>
+        {% empty %}
+            <div>
+                <strong>Turma no período:</strong>
+                Não identificada nas chamadas consultadas
+            </div>
+        {% endfor %}
+          
         <div><strong>Mês:</strong> {{ mes }}</div>
         <div><strong>Aluno:</strong> {{ aluno.name|upper }}</div>
         {% if aluno.family %}
@@ -265,7 +284,9 @@
 
       {% if aluno_sem_turma %}
         <div class="alerta-relatorio">
-          Este aluno está sem turma vinculada. O relatório foi gerado considerando todos os dias úteis do mês.
+          Não foi identificada uma turma nas chamadas deste assistido
+        no mês consultado. A ausência dessa informação não significa
+        que o assistido não possuía vínculo no período.
         </div>
       {% endif %}
     </div>
@@ -362,7 +383,7 @@
         <table class="table-relatorio">
           <tbody>
             <tr>
-              <td class="texto-centro">Nenhuma atividade vinculada neste mês.</td>
+              <td class="texto-centro">Nenhum registro de frequência em atividades neste mês.</td>
             </tr>
           </tbody>
         </table>

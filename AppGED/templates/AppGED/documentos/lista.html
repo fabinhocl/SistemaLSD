@@ -1,0 +1,145 @@
+{% extends 'AppLSD/base.html' %}
+{% load static %}
+
+{% block title %}GED - Documentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">Documentos</h1>
+            <a href="{% url 'ged:criar_documento' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Novo Documento
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Setor</label>
+                    {{ form.setor }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Categoria</label>
+                    {{ form.categoria }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Sigilo</label>
+                    {{ form.nivel_sigilo }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Busca</label>
+                    {{ form.search }}
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <a href="{% url 'ged:lista_documentos' %}" class="btn btn-secondary">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de documentos -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Título</th>
+                            <th>Setor</th>
+                            <th>Categoria</th>
+                            <th>Status</th>
+                            <th>Sigilo</th>
+                            <th>Criado Por</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in page_obj %}
+                        <tr>
+                            <td>{{ doc.codigo_registro|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'ged:detalhe_documento' doc.pk %}">
+                                    {{ doc.titulo|truncatechars:50 }}
+                                </a>
+                            </td>
+                            <td>{{ doc.setor.nome }}</td>
+                            <td>{{ doc.categoria.nome }}</td>
+                            <td>
+                                <span class="badge bg-{{ doc.status|default:'secondary' }}">
+                                    {{ doc.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ doc.nivel_sigilo|default:'secondary' }}">
+                                    {{ doc.get_nivel_sigilo_display }}
+                                </span>
+                            </td>
+                            <td>{{ doc.criado_por.username }}</td>
+                            <td>{{ doc.criado_em|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'ged:detalhe_documento' doc.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'ged:editar_documento' doc.pk %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                Nenhum documento encontrado
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">Primeira</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Pgina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Prxima</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">ltima</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
