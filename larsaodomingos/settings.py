@@ -17,6 +17,11 @@ from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(
+    dotenv_path=BASE_DIR / '.env',
+    override=False,
+)
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
@@ -24,10 +29,16 @@ MEDIA_URL = '/media/'
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ga8l7icyc38^#&-x(l+4^az8$x_an-dirs08^5$lr_kq_4&ze*'
+SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+#SECRET_KEY = 'django-insecure-ga8l7icyc38^#&-x(l+4^az8$x_an-dirs08^5$lr_kq_4&ze*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').strip().lower() in (
+    '1',
+    'true',
+    'yes',
+    'on',
+)
 
 ALLOWED_HOSTS = ['164.152.36.146', '45.177.189.69', 'integralar.larsaodomingos.com.br', 'localhost', '127.0.0.1', '172.18.18.6', '192.168.0.4']
 
@@ -225,8 +236,8 @@ X_FRAME_OPTIONS = 'ALLOWALL'
 # Carrega variáveis do arquivo .env
 #load_dotenv(BASE_DIR / '.env')
 
-dotenv_path = BASE_DIR / '.env'
-load_dotenv(dotenv_path=dotenv_path, override=True)
+#dotenv_path = BASE_DIR / '.env'
+#load_dotenv(dotenv_path=dotenv_path, override=True)
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.titan.email')
