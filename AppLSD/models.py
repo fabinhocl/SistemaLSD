@@ -776,21 +776,11 @@ class Aluno(AuditModel):
 
     def clean(self):
         super().clean()
+        # O assistido pode ficar como Frequentando sem turma.
+        # O vínculo é realizado posteriormente nos detalhes da turma.
+        # A inclusão na turma deve exigir status Frequentando.
 
-        # Mantém a regra existente:
-        # assistido já cadastrado e frequentando precisa de turma.
-        if (
-            self.pk
-            and self.status_lsd == 'Frequentando'
-            and self.turma_id is None
-        ):
-            raise ValidationError(
-                'Aluno com status Frequentando deve estar '
-                'vinculado a uma turma.'
-            )
-
-        # Nova regra:
-        # família inativa não pode ter assistido frequentando.
+        # Família inativa não pode ter assistido frequentando.
         if (
             self.status_lsd == 'Frequentando'
             and self.family_id
@@ -827,17 +817,24 @@ class Aluno(AuditModel):
 
         if self.possui_sisc == 'nao':
             if not self.justificativa_sisc:
-                raise ValidationError(
-                    {'justificativa_sisc': 'Selecione a justificativa.'}
-                )
-            if self.justificativa_sisc == 'outros' and not (self.justificativa_sisc_outros or '').strip():
-                raise ValidationError(
-                    {'justificativa_sisc_outros': 'Detalhe a justificativa quando selecionar "Outros".'}
-                )
+                raise ValidationError({
+                    'justificativa_sisc': 'Selecione a justificativa.'
+                })
+
+            if (
+                self.justificativa_sisc == 'outros'
+                and not (self.justificativa_sisc_outros or '').strip()
+            ):
+                raise ValidationError({
+                    'justificativa_sisc_outros': (
+                        'Detalhe a justificativa quando selecionar "Outros".'
+                    ),
+                })
         else:
             self.justificativa_sisc = ''
-            self.justificativa_sisc_outros = ''
+            self.justificativa_sisc_outros = ''                    
 
+                        
 
 class HistoricoDesligamento(AuditModel):
     class TipoEvento(models.TextChoices):

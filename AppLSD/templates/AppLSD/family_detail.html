@@ -288,7 +288,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="3" class="text-center">Nenhum aluno vinculado a esta família.</td></tr>
+                <tr><td colspan="6" class="text-center">Nenhum assistido vinculado a esta família.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -299,7 +299,7 @@
     </a>
     <div class="row mb-3"></div>
     <table class="table table-bordered">
-        <thead><tr class="text-center"><th>CPF</th><th>Nome do Adulto</th><th>Nome Social<th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
+        <thead><tr class="text-center"><th>CPF</th><th>Nome do Adulto</th><th>Nome Social</th><th>Parentesco</th><th>Idade</th><th>Telefone</th><th>Ações</th></tr></thead>
         <tbody>
             {% for adulto in family.adults.all %}
                 <tr class="text-center">
@@ -313,10 +313,10 @@
                         <a href="{% url 'adult_edit' pk=adulto.pk %}" class="btn btn-primary btn-sm">Editar</a>
                         <a href="{% url 'adult_detail' pk=adulto.pk %}" class="btn btn-danger btn-sm">Visualizar</a>
                         <a href="{% url 'adult_delete_confirm' pk=adulto.pk %}" class="btn btn-danger btn-sm">Excluir</a>
-                    
+                    </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="3" class="text-center">Nenhum adulto vinculado a esta família.</td></tr>
+                <tr><td colspan="7" class="text-center">Nenhum adulto vinculado a esta família.</td></tr>
             {% endfor %}
         </tbody>
     </table>

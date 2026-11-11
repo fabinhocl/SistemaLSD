@@ -1658,14 +1658,9 @@ def aluno_edit(request, pk):
                 })
 
             with transaction.atomic():
-                if novo_status == 'Frequentando' and not turma_original:
-                    form.add_error(
-                        'status_lsd',
-                        'Aluno com status Frequentando deve estar vinculado a uma turma.'
-                    )
-                    return render(request, 'AppLSD/aluno_form.html', contexto)
-
                 # A edição comum preserva a turma já existente.
+                # Assistidos reativados podem ficar sem turma até a inclusão
+                # pela tela de detalhes da turma.
                 aluno_editado.turma = turma_original
                 aluno_editado.editado_por = request.user
                 aluno_editado.save()

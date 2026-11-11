@@ -564,16 +564,8 @@ class AlunoForm(forms.ModelForm):
         if frequencia_tipo == 'especificos' and not dias_semana:
             self.add_error('dias_semana', 'Selecione pelo menos um dia da semana.')
 
-        status_lsd = cleaned_data.get('status_lsd')
-
-        if self.instance and self.instance.pk:
-            turma_atual = getattr(self.instance, 'turma', None)
-
-            if status_lsd == 'frequentando' and not turma_atual:
-                raise forms.ValidationError(
-                    'Aluno com status Frequentando deve estar vinculado a uma turma.'
-                )
-
+        # A turma é vinculada posteriormente, na tela de detalhes da turma.
+        # A reativação do assistido deve permitir status frequentando sem turma.
         return cleaned_data
 
     def clean_cpf(self):
