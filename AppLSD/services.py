@@ -49,7 +49,8 @@ def _validar_operador_desligamento(user):
     if not pode_desligar_assistido(user):
         raise PermissionDenied(
             'O desligamento individual de assistidos é permitido '
-            'somente à Coordenação.'
+            'somente ao Serviço Social, à Coordenação '
+            'e ao superusuário ativo.'
         )
 
 

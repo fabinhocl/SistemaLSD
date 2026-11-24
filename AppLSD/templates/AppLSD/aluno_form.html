@@ -13,7 +13,27 @@
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Criança / Adolescente</h1>
             <form method="post" class="mb-4" id="alunoEditForm">
                 {% csrf_token %}
+                {% if aluno_person_integrado and aluno %}
+                    <input type="hidden" name="token_aluno_person" value="{{ token_aluno_person }}">
+                {% endif %}
                 
+                {% if aluno_person_integrado %}
+                    <p class="small text-muted">
+                        Nome, nascimento e sexo sao integrados a Person. CPF pode ficar vazio.
+                        Troca de CPF, familia ou identidade exige fluxo proprio.
+                        {% if aluno %}
+                            Se houver aviso de formulario antigo ou expirado,
+                            <a href="{{ request.path }}">reabra a edicao</a>.
+                        {% endif %}
+                    </p>
+                    {% if identificacao_pendente %}
+                        <div class="alert alert-warning">
+                            Assistido sem Person: a edicao integrada nao regulariza este legado.
+                            Nenhuma identidade sera criada automaticamente ao salvar.
+                        </div>
+                    {% endif %}
+                {% endif %}
+
                 {% if form.non_field_errors %}
                     <div class="alert alert-danger">
                         <strong>Não foi possível salvar:</strong>
@@ -67,32 +87,13 @@
                     <div class="col-md-3">{{ form.turno|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="health_problem">Tem Problema de Saúde?</label>
-                        <select id="health_problem" name="health_problem" class="form-select">
-                        <option value="não">Não</option>
-                        <option value="sim">Sim</option>
-                        </select>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="special_need">Qual problema de saúde?</label>
-                        <input type="text" id="special_need" name="special_need" class="form-control" disabled>
-                    </div>
+                    <div class="col-md-4">{{ form.health_problem|as_crispy_field }}</div>
+                    <div class="col-md-8">{{ form.special_need|as_crispy_field }}</div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="uso_medicacao">Faz uso de medicação?</label>
-                        <select id="uso_medicacao" name="uso_medicacao" class="form-select">
-                        <option value="não">Não</option>
-                        <option value="sim">Sim</option>
-                        </select>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="qual_medicacao">Qual medicação?</label>
-                        <input type="text" id="qual_medicacao" name="qual_medicacao" class="form-control" disabled>
-                    </div>
+                    <div class="col-md-4">{{ form.uso_medicacao|as_crispy_field }}</div>
+                    <div class="col-md-8">{{ form.qual_medicacao|as_crispy_field }}</div>
                 </div>
-                
 
                 <div class="form-row d-flex align-items-start">
                     <div class="form-group col-md-4">
@@ -137,6 +138,8 @@
     </div>
 </div>
 
+{% if aluno and pode_desligar_aluno_person %}
+<p class="small text-muted">O desligamento usa a rotina especifica e nao salva alteracoes cadastrais pendentes. Salve o cadastro antes, quando necessario.</p>
 <div class="modal fade"
      id="modalConfirmarDesligamentoEdicao"
      tabindex="-1"
@@ -151,6 +154,9 @@
                   action="">
 
                 {% csrf_token %}
+                {% if aluno_person_integrado and aluno %}
+                    <input type="hidden" name="token_aluno_person" value="{{ token_aluno_person }}">
+                {% endif %}
 
                 <input type="hidden" name="acao" value="confirmar_desligamento">
 
@@ -210,6 +216,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 <script>
 
 function buscarFamilia() {
@@ -279,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!ensinoEl || !serieEl) return;
 
   // PEGUE O VALOR DIRETO DO DJANGO TEMPLATE
-  const serieSalva = '{{ aluno.serie|default:"" }}';
+  const serieSalva = '{{ form.serie.value|default_if_none:""|escapejs }}';
   
   console.log('Série salva:', serieSalva); // Deve mostrar "3"
 
@@ -348,42 +355,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var probSaude = document.getElementById('health_problem');
-  var qualProblema = document.getElementById('special_need');
-  probSaude.addEventListener('change', function () {
-    if (this.value === 'sim') {
-      qualProblema.disabled = false;
-      qualProblema.classList.remove('bg-light');
-    } else {
-      qualProblema.value = '';
-      qualProblema.disabled = true;
-      qualProblema.classList.add('bg-light');
-    }
-  });
-  probSaude.dispatchEvent(new Event('change'));
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var usoMedicacao = document.getElementById('uso_medicacao');
-  var qualMedicacao = document.getElementById('qual_medicacao');
-  usoMedicacao.addEventListener('change', function () {
-    if (this.value === 'sim') {
-      qualMedicacao.disabled = false;
-      qualMedicacao.classList.remove('bg-light');
-    } else {
-      qualMedicacao.value = '';
-      qualMedicacao.disabled = true;
-      qualMedicacao.classList.add('bg-light');
-    }
-  });
-  usoMedicacao.dispatchEvent(new Event('change'));
-});
 
 
-</script>
 
 
 
@@ -407,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             diasWrapper.style.display = 'none';
             // desmarca todos quando volta para "Diariamente"
-            diasWrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            // Preserva os valores carregados; nao apaga dias ao abrir a pagina.
         }
     }
 
@@ -471,4 +444,14 @@ document.addEventListener('DOMContentLoaded', function () {
     aplicar();
 });
 </script>
+{% if abrir_modal_desligamento %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const elemento = document.getElementById('modalConfirmarDesligamentoEdicao');
+    if (elemento && typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(elemento).show();
+    }
+});
+</script>
+{% endif %}
 {% endblock %}

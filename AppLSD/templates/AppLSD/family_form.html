@@ -18,14 +18,12 @@
                 
 
                {# ESSENCIAL: management_form do formset (pode ficar escondido) #}
-                {{ formset.management_form }}
-
-                {# campos dos alunos (ajuste o layout como já faz hoje) #}
-                {% for f in formset %}
-                    {{ f.errors }}
-                    {{ f|crispy }}
-                {% endfor %}
-
+                {% if not form.instance.pk %}
+                    <div class="alert alert-info" role="note">
+                        Salve a família primeiro. Depois, na tela de detalhes,
+                        use “Cadastrar Assistido” para incluir crianças e adolescentes.
+                    </div>
+                {% endif %}
                 
 
                 {# Renderize os demais campos individualmente usando o as_crispy_field #}
@@ -54,11 +52,11 @@
             <div class="row mb-3">
                 <div class="col-md-3">
                     <label for="id_cep">CEP</label>
-                    <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" value="{{ form.initial.cep }}" />
+                    <input type="text" id="id_cep" name="cep" maxlength="9" class="form-control" value="{{ form.cep.value|default_if_none:'' }}" />
                 </div>
                 <div class="col-md-6">
                     <label for="id_address">Endereço</label>
-                    <input type="text" id="id_address" name="address" class="form-control" value="{{ form.initial.address }}" />
+                    <input type="text" id="id_address" name="address" class="form-control" value="{{ form.address.value|default_if_none:'' }}" />
                 </div>
                 <div class="col-md-3">{{ form.number|as_crispy_field }}</div>
             </div>
@@ -68,7 +66,7 @@
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label for="id_neighborhood">Bairro</label>
-                    <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" value="{{ form.initial.neighborhood }}" />
+                    <input type="text" id="id_neighborhood" name="neighborhood" class="form-control" value="{{ form.neighborhood.value|default_if_none:'' }}" />
                 </div>
                 <div class="col-md-6">{{ form.reference_point|as_crispy_field }}</div>
             </div>

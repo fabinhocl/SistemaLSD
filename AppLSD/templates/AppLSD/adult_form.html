@@ -12,6 +12,40 @@
             <h1>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Adulto</h1>
             <form method="post" class="mb-4">
                 {% csrf_token %}
+
+                {% if edicao_person_integrada %}
+                    <input type="hidden" name="token_identificacao" value="{{ token_identificacao }}">
+                    {% if identificacao_pendente %}
+                        <div class="alert alert-warning" role="alert">
+                            Este cadastro ainda nao possui Person. A regularizacao deve ser
+                            tratada separadamente; salvar nao cria uma identidade automaticamente.
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if criacao_person_integrada %}
+                    <div class="alert alert-info" role="alert">
+                        Adult e Person serao criados juntos. CPF e nascimento podem ficar
+                        em branco; nome e sexo sao necessarios para a identificacao.
+                        Possiveis identidades existentes exigem revisao e nao serao
+                        reutilizadas automaticamente. Incluir ou corrigir CPF depois
+                        exige fluxo proprio.
+                    </div>
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+                {% if edicao_person_integrada %}
+                    <p class="small text-muted">
+                        Nome, nascimento e sexo serao sincronizados com a identificacao da pessoa.
+                        Troca de CPF, familia ou identidade exige fluxo proprio.
+                        Se o cadastro foi alterado em outra janela ou o formulario expirou,
+                        <a href="{{ request.path }}">reabra a edicao</a> antes de tentar novamente.
+                    </p>
+                {% endif %}
                 
                 {% if family %}
                 <div class="row mb-3">

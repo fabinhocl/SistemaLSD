@@ -35,10 +35,15 @@
         <tr><th>Matrícula:</th><td>{{ adult.family.registration_number }}</td></tr>
         <tr><th>Nome:</th><td>{{ adult.name }}</td></tr>
         <tr><th>Nome Social:</th><td>{{ adult.social_name }}</td></tr>
+        <tr><th>CPF:</th><td>{{ adult.cpf }}</td></tr>
         <tr><th>Responsável:</th><td>{{ adult.family.responsible_name }}</td></tr>
         <tr><th>Telefone:</th><td>{{ adult.family.telephone }}</td></tr>
         <tr><th>Data de Nascimento:</th><td>{{ adult.birth_date|date:"d/m/Y" }}</td></tr>
         <tr><th>Idade:</th><td>{{ adult.idade }}</td></tr>
+        <tr><th>Escolaridade:</th><td>{{ adult.get_education_display }}</td></tr>
+        <tr><th>Ocupação:</th><td>{{ adult.ocupacao }}</td></tr>
+        <tr><th>Renda:</th><td>{{ adult.renda }}</td></tr>
+        <tr><th>Situação:</th><td>{{ adult.status }}</td></tr>
       </table>
 
       <div class="container mt-4">
@@ -51,10 +56,10 @@
               <div class="card-body">
                 <p>
                   <strong>Criado por:</strong>
-                  {{ adulto.criado_por.username|default:"Sistema" }}
-                  em {{ adulto.criado_em|date:"d/m/Y H:i" }}
+                  {{ adult.criado_por.username|default:"Sistema" }}
+                  em {{ adult.criado_em|date:"d/m/Y H:i" }}
                 </p>
-                {% if adulto.editado_por %}
+                {% if adult.editado_por %}
                 <p>
                   <strong>Última edição:</strong>
                   {{ adult.editado_por.username }}

@@ -91,7 +91,7 @@ class Person(models.Model):
         null=True, blank=True, related_name='members'
     )
     full_name = models.CharField(max_length=255)
-    birth_date = models.DateField()
+    birth_date = models.DateField(blank=True, null=True, verbose_name="Data de Nascimento")
     GENDER_CHOICES = (
         ('F', 'Feminino'),
         ('M', 'Masculino'),
@@ -118,21 +118,36 @@ class Person(models.Model):
     @property
     def age(self):
         from datetime import date
+
+        if self.birth_date is None:
+            return None
+
         today = date.today()
+
         return (
             today.year
             - self.birth_date.year
-            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+            - (
+                (today.month, today.day)
+                < (self.birth_date.month, self.birth_date.day)
+            )
         )
+
 
     @property
     def age_group(self):
-        if self.age < 12:
+        age = self.age
+
+        if age is None:
+            return None
+
+        if age < 12:
             return 'Crianca'
-        elif self.age < 19:
+        if age < 19:
             return 'Adolescente'
-        elif self.age < 60:
+        if age < 60:
             return 'Adulto'
+
         return 'Idoso'
 
 class MotivoDesligamento(models.TextChoices):
@@ -209,6 +224,8 @@ class MotivoDesligamentoChoices(models.TextChoices):
         'descumprimento_regras',
         'Descumprimento das regras do LSD.',
     )
+    HORARIO_INTEGRAL = "horario_integral", "Horário Integral"
+    MAIORES_17_ANOS = "maiores_17_anos", "Maiores de 17 anos"
     
       
     

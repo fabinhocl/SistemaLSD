@@ -108,7 +108,7 @@
             <div class="col-md-6"><strong>Qual Problema de Saúde:</strong> <div>{{ aluno.special_need }}</div></div>
           </div>
           <div class="row mb-3">
-            <div class="col-md-6"><strong>Faz uso de Medicamento:</strong> <div>{{ aluno.uso_medicacao }}</div></div>
+            <div class="col-md-6"><strong>Faz uso de Medicamento:</strong> <div>{{ aluno.get_uso_medicacao_display }}</div></div>
             <div class="col-md-6"><strong>Medicamento:</strong> <div>{{ aluno.qual_medicacao }}</div></div>
           </div>
           <div class="row mb-3">
@@ -116,7 +116,7 @@
             <div class="col-md-6"><strong>Dias da semana:</strong> <div>{{ aluno.dias_semana }}</div></div>
           </div>
           <div class="row mb-3">
-            <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.status_lsd }}</div></div>
+            <div class="col-md-6"><strong>Situação Atual no Lar:</strong> <div>{{ aluno.get_status_lsd_display }}</div></div>
           </div>
         </div>
       </div>

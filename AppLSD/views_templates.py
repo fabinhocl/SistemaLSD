@@ -36,6 +36,11 @@ from django.views.generic import ListView
 from django_xhtml2pdf.utils import generate_pdf
 from datetime import date, timedelta, datetime, time
 from .permissoes import require_perfil
+from .familia_person_services import (
+    criar_familia_com_responsavel,
+    exigir_permissao_cadastral_familia,
+    proteger_identificacao_responsavel,
+)
 # Concatena e ordena por data
 from itertools import chain
 from io import BytesIO
@@ -913,6 +918,7 @@ def family_list(request):
 
 @login_required
 def family_edit(request, pk):
+    exigir_permissao_cadastral_familia(request.user)
     family = get_object_or_404(Family, pk=pk)
     status_anterior = family.status
 
@@ -969,6 +975,8 @@ def family_edit(request, pk):
                             'por outra operação. Atualize a página '
                             'antes de tentar novamente.'
                         )
+
+                    proteger_identificacao_responsavel(familia_banco, familia_editada)
 
                     familia_editada.editado_por = request.user
 
@@ -1105,56 +1113,42 @@ def family_edit(request, pk):
 
 @login_required
 def family_create(request):
-    if request.method == 'POST':
-        form = FamilyForm(request.POST, request.FILES or None)
-        formset = AlunoInlineFormSet(request.POST, request.FILES or None)
+    exigir_permissao_cadastral_familia(request.user)
+    template = "AppLSD/family_form.html"
 
-        try:
-            form_ok = form.is_valid()
-            formset_ok = formset.is_valid()
+    if request.method != "POST":
+        return render(request, template, {"form": FamilyForm()})
 
-            logger.warning("family_create start | user=%s | form_ok=%s | formset_ok=%s",
-                           request.user, form_ok, formset_ok)
+    form = FamilyForm(request.POST, request.FILES)
+    prefixo = f"{AlunoInlineFormSet.get_default_prefix()}-"
 
-            if form_ok and formset_ok:
-                with transaction.atomic():
-                    logger.warning("step 1: form.save(commit=False)")
-                    family = form.save(commit=False)
+    recebeu_formset = any(
+        chave.startswith(prefixo)
+        for origem in (request.POST, request.FILES)
+        for chave in origem
+    )
+    if recebeu_formset:
+        form.is_valid()
+        form.add_error(
+            None,
+            "Este envio veio do formulário antigo. Nenhum cadastro foi salvo. "
+            "Revise os dados da família e selecione Salvar novamente. "
+            "Depois, use Cadastrar Assistido na tela de detalhes da família.",
+        )
+        return render(request, template, {"form": form}, status=400)
 
-                    logger.warning("step 2: set criado_por")
-                    family.criado_por = request.user
+    if not form.is_valid():
+        return render(request, template, {"form": form})
 
-                    logger.warning("step 3: family.save()")
-                    family.save()
+    try:
+        family = criar_familia_com_responsavel(form, request.user)
+    except ValidationError as exc:
+        for mensagem in exc.messages:
+            form.add_error(None, mensagem)
+        return render(request, template, {"form": form}, status=400)
 
-                    logger.warning("step 4: set formset.instance")
-                    formset.instance = family
-
-                    logger.warning("step 5: formset.save()")
-                    formset.save()
-
-                    logger.warning("step 6: registrar_log()")
-                    registrar_log(
-                        request.user,
-                        family,
-                        'familia_criada',
-                        f'Família {family.responsible_name} cadastrada.'
-                    )
-
-                messages.success(request, 'Família cadastrada com sucesso.')
-                return redirect('family_detail', pk=family.pk)
-
-            messages.error(request, 'Não foi possível salvar. Verifique os campos.')
-
-        except Exception:
-            logger.exception("Erro inesperado em family_create | user=%s", request.user)
-            messages.error(request, 'Erro interno ao salvar a família.')
-
-    else:
-        form = FamilyForm()
-        formset = AlunoInlineFormSet()
-
-    return render(request, 'AppLSD/family_form.html', {'form': form, 'formset': formset})
+    messages.success(request, "Família cadastrada com responsável vinculado.")
+    return redirect("family_detail", pk=family.pk)
 
 @login_required
 def family_update(request, pk):
@@ -1268,32 +1262,9 @@ def adult_list(request):
 
 @login_required
 def adult_create(request):
-    family_id = request.GET.get('family_id')
-    if not family_id:
-        # Redirecione para a lista de famílias ou exiba uma mensagem de erro amigável
-        return redirect('family_list')
-
-    family = Family.objects.get(pk=family_id)
-    
-    if request.method == 'POST':
-        form = AdultForm(request.POST)
-        if form.is_valid():
-            adult = form.save(commit=False)
-            adult.family = family
-            adult.criado_por = request.user             # auditoria
-            adult.save()
-            registrar_log(
-                request.user,
-                adult,
-                'adulto_criado',
-                f'Adulto {adult.name} incluído na família {adult.family.responsible_name}.'
-            )
-            return redirect('family_detail', pk=family.pk)
-    else:
-        form = AdultForm()
-        form.fields['family'].initial = family.pk  # mantém selecionado
-        form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
-    return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': family})
+    # ADULTO_PERSON_CRIACAO_V1: mantem URL e encaminha ao servico transacional.
+    from .adulto_person_criacao_views import adult_create as criar_com_person
+    return criar_com_person(request)
 
 @login_required
 def adult_detail(request, pk):
@@ -1311,23 +1282,8 @@ def adult_detail(request, pk):
 
 @login_required
 def adult_edit(request, pk):
-    adult = get_object_or_404(Adult, pk=pk)
-    if request.method == 'POST':
-        form = AdultForm(request.POST, instance=adult)
-        if form.is_valid():
-            adult = form.save(commit=False)
-            adult.editado_por = request.user            # auditoria
-            adult.save()
-            registrar_log(
-                request.user,
-                adult,
-                'adulto_editado',
-                f'Dados do adulto {adult.name} atualizados.'
-            )
-            return redirect('family_detail', pk=adult.family.pk)
-    else:
-        form = AdultForm(instance=adult)
-    return render(request, 'AppLSD/adult_form.html', {'form': form, 'family': adult.family, 'adult': adult})
+    from .adulto_person_views import adult_edit as editar_com_person
+    return editar_com_person(request, pk)
 
 @login_required
 def adult_delete_confirm(request, pk):
@@ -1406,58 +1362,9 @@ def aluno_list(request):
 
 @login_required
 def aluno_create(request):
-    family_id = request.GET.get('family_id')
-    family = get_object_or_404(Family, pk=family_id) if family_id else None
-    #if not family_id:
-        # Redirecione para a lista de famílias ou exiba uma mensagem de erro amigável
-     #   return redirect('family_list')
-
-    #family = Family.objects.get(pk=family_id)
-    if request.method == 'POST':
-        form = AlunoForm(request.POST)
-        if form.is_valid():
-            try:
-                aluno = form.save(commit=False)
-                aluno.criado_por = request.user # registra quem criou
-                # Associa família caso venha selecionada/fixa
-                if family:
-                    aluno.family = family
-                aluno.save()
-                if aluno.family:
-                    family_name = aluno.family.responsible_name
-                    registrar_log(
-                        request.user,
-                        aluno,
-                        'aluno_criado',
-                        f'Aluno {aluno.name} criado e vinculado à família {aluno.family.responsible_name}.'
-                    )
-                    logger.info(f"Aluno {aluno.name} (ID: {aluno.pk}) criado e vinculado à família {family_name}")
-                    messages.success(request, f'Aluno {aluno.name} cadastrado com sucesso!')
-            #return redirect('family_detail')  # Ou outro local desejado
-                    return redirect('family_detail', pk=aluno.family.pk)
-                else:
-                    logger.info(f"Aluno {aluno.name} (ID: {aluno.pk}) criado sem família")
-                    messages.success(request, f'Aluno {aluno.name} cadastrado com sucesso!')
-
-                    return redirect('aluno_list')  # ajuste para sua view de lista de alunos
-                    
-            except Exception as e:
-                logger.error(f"Erro ao criar aluno: {str(e)}")
-                messages.error(request, f'Erro ao cadastrar aluno: {str(e)}')
-        else:
-            # Exibe erros do formulário
-            logger.warning(f"Formulário inválido ao criar aluno: {form.errors}")
-            messages.error(request, 'Por favor, corrija os erros no formulário.')
-    else:
-        
-        # Se veio a família, preenche campo oculto. Senão, deixa campo visível
-        initial_data = {'family': family} if family else {}
-        form = AlunoForm(initial=initial_data)
-        #form = AlunoForm()
-        if family:
-            #form.fields['family'].initial = family.pk  # mantém selecionado
-            form.fields['family'].widget = forms.HiddenInput()   # campo bloqueado
-    return render(request, 'AppLSD/aluno_form.html', {'form': form, 'family': family})
+    # ALUNO_PERSON_TELAS_V1
+    from .aluno_person_views import aluno_create as integrado
+    return integrado(request)
 
 @login_required
 def aluno_detail(request, pk):
@@ -1577,119 +1484,9 @@ def aluno_detail(request, pk):
 
 @login_required
 def aluno_edit(request, pk):
-    if usuario_tem_perfil(request.user, "colaborador"):
-        raise PermissionDenied("Colaborador não pode editar aluno.")
-
-    aluno = get_object_or_404(Aluno, pk=pk)
-    turma_original = aluno.turma
-    status_anterior = aluno.status_lsd
-
-    contexto_base = {
-        'form': None,
-        'aluno': aluno,
-        'motivos_desligamento': MotivoDesligamento.choices,
-    }
-
-    if request.method == 'POST':
-        acao = request.POST.get('acao')
-
-        logger.debug(
-            "POST aluno_edit: pk=%s, acao=%s, status_lsd=%s",
-            pk, acao, request.POST.get('status_lsd'),
-        )
-
-        # Confirmação do desligamento pelo modal
-        if acao == 'confirmar_desligamento':
-            senha = request.POST.get('senha', '')
-            codigo = request.POST.get('motivo', '').strip()
-            observacao = request.POST.get('observacao', '').strip()
-
-            form = AlunoForm(request.POST, instance=aluno)
-            contexto = {**contexto_base, 'form': form, 'abrir_modal_desligamento': True}
-
-            if not senha:
-                messages.error(request, 'Senha obrigatória!')
-                return render(request, 'AppLSD/aluno_form.html', contexto)
-
-            if not check_password(senha, request.user.password):
-                messages.error(request, 'Senha incorreta!')
-                return render(request, 'AppLSD/aluno_form.html', contexto)
-
-            if codigo not in MotivoDesligamento.values:
-                messages.error(
-                    request,
-                    'Selecione o motivo do desligamento.'
-                )
-                return render(request, 'AppLSD/aluno_form.html', contexto)
-
-            with transaction.atomic():
-                desligar_aluno_logic(
-                    request_user=request.user,
-                    aluno=aluno,
-                    motivo=observacao or dict(MotivoDesligamento.choices)[codigo],
-                    codigo_motivo=codigo,
-                    origem='edicao',
-                )
-
-            messages.success(
-                request,
-                f'Aluno {aluno.name} desligado com sucesso.'
-            )
-            return redirect('aluno_detail', pk=aluno.pk)
-
-        # Edição normal do aluno
-        form = AlunoForm(request.POST, instance=aluno)
-        contexto = {**contexto_base, 'form': form}
-
-        if form.is_valid():
-            aluno_editado = form.save(commit=False)
-            novo_status = aluno_editado.status_lsd
-
-            logger.debug(
-                "Formulário válido ao editar aluno %s: status_anterior=%s, "
-                "novo_status=%s",
-                aluno.pk, status_anterior, novo_status,
-            )
-
-            # Mudou de ativo para desligado: interrompe e abre o modal
-            if status_anterior != 'desligado' and novo_status == 'desligado':
-                return render(request, 'AppLSD/aluno_form.html', {
-                    **contexto, 'abrir_modal_desligamento': True,
-                })
-
-            with transaction.atomic():
-                # A edição comum preserva a turma já existente.
-                # Assistidos reativados podem ficar sem turma até a inclusão
-                # pela tela de detalhes da turma.
-                aluno_editado.turma = turma_original
-                aluno_editado.editado_por = request.user
-                aluno_editado.save()
-                form.save_m2m()
-
-                registrar_log(
-                    request.user,
-                    aluno_editado,
-                    'aluno_editado',
-                    f'Aluno {aluno_editado.name} editado com sucesso.'
-                )
-
-            messages.success(request, 'Aluno atualizado com sucesso.')
-            return redirect('aluno_detail', pk=aluno.pk)
-
-        else:
-            logger.warning(
-                "Formulário inválido ao editar aluno %s: %s",
-                aluno.pk, form.errors.as_json(),
-            )
-            return render(request, 'AppLSD/aluno_form.html', contexto)
-
-    else:
-        form = AlunoForm(instance=aluno)
-        contexto = {**contexto_base, 'form': form}
-
-    logger.debug("Ensino: %s, Série: %s", aluno.ensino, aluno.serie)
-
-    return render(request, 'AppLSD/aluno_form.html', contexto)
+    # ALUNO_PERSON_TELAS_V1
+    from .aluno_person_views import aluno_edit as integrado
+    return integrado(request, pk)
 
 @login_required
 def aluno_delete_confirm(request, pk):
@@ -1793,7 +1590,8 @@ def desativar_aluno(request, aluno_id):
         messages.error(
             request,
             'O desligamento individual de assistidos é permitido '
-            'somente à Coordenação.',
+            'somente ao Serviço Social, à Coordenação '
+            'e ao superusuário ativo.',
         )
 
         return redirect(

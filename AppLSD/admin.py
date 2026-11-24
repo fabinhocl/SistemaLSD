@@ -20,6 +20,14 @@ class FamilyAdmin(admin.ModelAdmin):
     list_display = ['responsible_name', 'registration_number', 'status']
     search_fields = ['responsible_name', 'social_name']
 
+    def has_add_permission(self, request):
+        # O cadastro é feito na tela integrada, inclusive por superusuários.
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # A consulta e as regras de exclusão existentes não são alteradas.
+        return False
+
 
 @admin.register(Aluno)
 class AlunoAdmin(admin.ModelAdmin):
@@ -27,6 +35,18 @@ class AlunoAdmin(admin.ModelAdmin):
     search_fields = ['name', 'family__responsible_name']
     list_display = ['name', 'get_frequencia_display', 'birth_date']
     list_filter = ['frequencia_tipo', 'status_lsd']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_actions(self, request):
+        return {}
 
     def get_frequencia_display(self, obj):
         if obj.frequencia_tipo == 'diaria':
@@ -40,7 +60,7 @@ class AlunoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Dados básicos', {
-            'fields': ('nome', 'data_nascimento', 'frequencia_tipo')
+            'fields': ('name', 'birth_date', 'frequencia_tipo')
         }),
         ('Frequência', {
             'fields': ('dias_semana',),

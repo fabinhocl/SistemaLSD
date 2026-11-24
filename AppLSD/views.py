@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 from dal import autocomplete
 from .models import Family, Aluno, Turma, Activity
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -8,13 +8,18 @@ from .serializers import FamilySerializer, AlunoSerializer, TurmaSerializer, Act
 
 
 
-class FamilyViewSet(viewsets.ModelViewSet):
+class FamilyViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = Family.objects.all()
     serializer_class = FamilySerializer
 
-class AlunoViewSet(viewsets.ModelViewSet):
-    queryset = Aluno.objects.all()
-    serializer_class = AlunoSerializer
+class AlunoViewSet(viewsets.ReadOnlyModelViewSet):
+     queryset = Aluno.objects.all()
+     serializer_class = AlunoSerializer
 
 class TurmaViewSet(viewsets.ModelViewSet):
     queryset = Turma.objects.all()

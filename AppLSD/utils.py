@@ -165,13 +165,18 @@ def pode_inativar_familia(user):
 
 def pode_desligar_assistido(user):
     """
-    Permite desligamento individual à Coordenação
-    e ao superusuário.
+    Permite desligamento individual ao Serviço Social,
+    à Coordenação e ao superusuário ativo.
     """
-    if not user or not user.is_authenticated:
+    if (
+        not user
+        or not user.is_authenticated
+        or not getattr(user, "is_active", False)
+    ):
         return False
 
     return (
         user.is_superuser
-        or usuario_tem_perfil(user, 'coordenacao')
+        or usuario_tem_perfil(user, "servicosocial")
+        or usuario_tem_perfil(user, "coordenacao")
     )
