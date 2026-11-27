@@ -288,12 +288,41 @@ class AlunoPersonIntegracaoTests(TestCase):
         Person.objects.filter(pk=a.person_id).update(phone="Mudanca concorrente")
         with self.assertRaises(ValidationError):self.editar(a,{"name":"Nao salvar"},token=token)
 
-    def test_legado_sem_person_nao_e_regularizado(self):
-        a=Aluno(family=self.familia,**self.dados())
+    def test_legado_sem_person_edita_sem_criar_identidade(self):
+        a = Aluno(family=self.familia, **self.dados())
         a.save()
-        antes=lote.snapshot()
-        with self.assertRaises(ValidationError):self.editar(a,{"name":"Nao salvar"})
-        self.assertEqual(lote.snapshot(),antes)
+        pessoas = Person.objects.count()
+        resultado = self.editar(a, {"name": "Nome legado corrigido", "school": "Escola sintetica"})
+        a.refresh_from_db()
+        self.assertEqual(a.name, "Nome legado corrigido")
+        self.assertIsNone(a.person_id)
+        self.assertEqual(Person.objects.count(), pessoas)
+        self.assertIsNone(resultado["person_id"])
+        self.assertTrue(resultado["alterado"])
+
+    def test_legado_sem_person_cpf_de_outro_cadastro_bloqueia(self):
+        a = Aluno(family=self.familia, **self.dados(cpf=None))
+        a.save()
+        antes = lote.snapshot()
+        with self.assertRaises(ValidationError):
+            self.editar(a, {"cpf": self.familia.cpf})
+        self.assertEqual(lote.snapshot(), antes)
+
+    def test_post_edicao_legado_pelo_wrapper(self):
+        a = Aluno(family=self.familia, **self.dados())
+        a.save()
+        self.client.force_login(self.usuario)
+        r = self.client.post(self.url(a), self.post(a, name="Nome legado navegador"))
+        self.assertEqual(r.status_code, 302)
+        a.refresh_from_db()
+        self.assertEqual(a.name, "Nome legado navegador")
+        self.assertIsNone(a.person_id)
+
+    def test_frequentando_para_nao_frequenta_permitido(self):
+        a = self.criar()
+        self.editar(a, {"status_lsd": "nao_frequenta"})
+        a.refresh_from_db()
+        self.assertEqual(a.status_lsd, "nao_frequenta")
 
     def test_legado_desligado_sem_codigo_permanece_intocado(self):
         a=self.criar()

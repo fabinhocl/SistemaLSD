@@ -136,16 +136,16 @@ class EdicaoAdultoPersonTests(TestCase):
                 self.salvar({'name': 'Nao persistir'}, usuario=usuario)
         self.assertEqual(lote.snapshot(), antes)
 
-    def test_campos_protegidos_e_cadastro_sem_person_nao_sao_aproveitados(self):
-        antes = lote.snapshot()
-        for alteracoes in ({'family_id': self.familia.pk}, {'person_id': self.adulto.person_id}):
-            with self.assertRaises(ValidationError):
-                self.salvar(alteracoes)
-        self.assertEqual(lote.snapshot(), antes)
+    def test_cadastro_sem_person_edita_sem_criar_identidade(self):
         self.adulto.person = None
         self.adulto.save(update_fields=['person'])
-        _, token = servico.criar_token_edicao_adulto(usuario=self.usuario, adulto_id=self.adulto.pk)
-        antes = lote.snapshot()
-        with self.assertRaises(ValidationError):
-            self.salvar({'name': 'Nao persistir'}, token=token)
-        self.assertEqual(lote.snapshot(), antes)
+        pessoas = Person.objects.count()
+        token = servico.criar_token_edicao_adulto(
+            usuario=self.usuario, adulto_id=self.adulto.pk)[1]
+        resultado = self.salvar({'name': 'Nome legado corrigido'}, token=token)
+        self.adulto.refresh_from_db()
+        self.assertEqual(self.adulto.name, 'Nome legado corrigido')
+        self.assertIsNone(self.adulto.person_id)
+        self.assertEqual(Person.objects.count(), pessoas)
+        self.assertIsNone(resultado['person_id'])
+        self.assertTrue(resultado['alterado'])

@@ -5,6 +5,7 @@ Nao cria identidades nem troca CPF, familia ou Person.
 """
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 
 from django.contrib.auth import get_user_model
@@ -13,7 +14,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection, transaction
 
-from AppLSD.models import Adult, Family, Person
+from AppLSD.models import Adult, Aluno, Family, Person
 from AppLSD.person_identificacao import preparar_identificacao_person
 from AppLSD.utils import registrar_log
 
@@ -70,6 +71,43 @@ def criar_token_edicao_adulto(*, usuario, adulto_id):
     return adulto, token
 
 
+def _digitos(valor):
+    return re.sub(r'[^0-9]', '', str(valor or ''))
+
+
+def _exigir_cpf_livre_adulto(adulto):
+    documento = _digitos(adulto.cpf)
+    if not documento:
+        return
+    for modelo in (Family, Adult, Aluno, Person):
+        for pk, cpf in modelo._base_manager.values_list('pk', 'cpf').iterator():
+            if modelo is Adult and pk == adulto.pk:
+                continue
+            if _digitos(cpf) == documento:
+                raise ValidationError({'cpf': 'CPF presente em outro cadastro; revisar identidade.'})
+
+
+def _salvar_edicao_adulto_legado(operador, adulto, alteracoes):
+    """Adulto sem Person: salva so o cadastro; nao cria nem altera identidade."""
+    antes = _estado(adulto)
+    cpf_antes = _digitos(adulto.cpf)
+    for campo, valor in alteracoes.items():
+        setattr(adulto, campo, valor)
+    adulto.full_clean()
+    depois = _estado(adulto)
+    campos_adulto = sorted(k for k in antes if antes[k] != depois[k])
+    if set(campos_adulto) - set(alteracoes):
+        raise ValidationError('Validacao alterou campo nao solicitado; revisar cadastro.')
+    if _digitos(adulto.cpf) != cpf_antes:
+        _exigir_cpf_livre_adulto(adulto)
+    if campos_adulto:
+        adulto.editado_por = operador
+        adulto.save(update_fields=campos_adulto + ['editado_por', 'editado_em'])
+        registrar_log(operador, adulto, 'adulto_editado',
+                      f'Cadastro sem Person atualizado. Campos: {", ".join(campos_adulto)}.')
+    return {'adulto': adulto, 'person_id': None, 'campos_adulto': campos_adulto,
+            'campos_person': [], 'alterado': bool(campos_adulto)}
+
 def salvar_edicao_adulto(*, usuario, adulto_id, alteracoes, token):
     """Salva as duas pontas e logs numa transacao, ou nao salva nenhuma.
 
@@ -107,6 +145,8 @@ def salvar_edicao_adulto(*, usuario, adulto_id, alteracoes, token):
                            if adulto.person_id is not None else None)
         if dados_token.get('estado') != _assinatura(adulto, pessoa_anterior):
             raise ValidationError('Cadastro alterado desde a abertura. Reabra antes de salvar.')
+        if pessoa_anterior is None:
+            return _salvar_edicao_adulto_legado(operador, adulto, alteracoes)
 
         antes = _estado(adulto)
         for campo, valor in alteracoes.items():

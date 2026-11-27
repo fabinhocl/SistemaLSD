@@ -170,7 +170,7 @@ def aluno_edit(request, pk):
             form.add_error(None, "Troca de familia exige fluxo proprio.")
         else:
             try:
-                salvar_edicao_aluno(usuario=operador, aluno_id=pk, token=token,
+                resultado = salvar_edicao_aluno(usuario=operador, aluno_id=pk, token=token,
                     alteracoes={c: form.cleaned_data[c] for c in CAMPOS_ALUNO if c in form.cleaned_data})
             except ValidationError as exc:
                 _erros(form, exc)
@@ -179,6 +179,9 @@ def aluno_edit(request, pk):
             except (IntegrityError, OperationalError):
                 form.add_error(None, "Banco ocupado, indisponivel ou cadastro em conflito. Reabra e confira antes de tentar novamente.")
             else:
-                messages.success(request, "Assistido atualizado com identificacao sincronizada.")
+                if resultado["person_id"] is None:
+                    messages.success(request, "Assistido atualizado. Cadastro ainda sem Person: identidade nao alterada.")
+                else:
+                    messages.success(request, "Assistido atualizado com identificacao sincronizada.")
                 return redirect("aluno_detail", pk=pk)
     return _render(request, form, familia, operador, aluno=aluno, token=token, status=400)

@@ -16,6 +16,7 @@ CAMPOS_ALUNO = frozenset({
     "qual_medicacao", "frequencia_tipo", "dias_semana", "possui_sisc",
     "justificativa_sisc", "justificativa_sisc_outros", "status_lsd",
 })
+STATUS_DEFINIDOS = frozenset({"Frequentando", "desligado", "nao_frequenta"})
 SALT = "AppLSD.aluno_person.edicao.v1"
 TOKEN_MAX_AGE = 3600
 
@@ -186,6 +187,55 @@ def criar_aluno_com_person(*, usuario, familia_id, dados):
             raise ValidationError("Alteracao inesperada na criacao. Operacao cancelada.")
         return {"aluno": aluno, "person_id": pessoa.pk}
 
+def _exigir_cpf_livre(aluno):
+    documento = _cpf(aluno.cpf)
+    if not documento:
+        return
+    for modelo in (Family, Adult, Aluno, Person):
+        for pk, cpf in modelo._base_manager.values_list("pk", "cpf").iterator():
+            if modelo is Aluno and pk == aluno.pk:
+                continue
+            if documento == _cpf(cpf):
+                raise ValidationError({"cpf": "CPF presente em outro cadastro. Revisar identidade; nenhuma associacao automatica sera feita."})
+
+
+def _salvar_edicao_legado(operador, aluno, familia, alteracoes):
+    """Assistido sem Person: salva so o cadastro; nao cria nem altera identidade."""
+    antes_a = _estado(aluno)
+    antes_f, relacionados = _hash(_estado(familia)), _relacionados(aluno)
+    cpf_original = _cpf(aluno.cpf)
+    for campo, valor in alteracoes.items():
+        setattr(aluno, campo, valor)
+    if not cpf_original and not str(aluno.cpf or "").strip():
+        aluno.cpf = antes_a["cpf"]
+    if aluno.status_lsd == "desligado" and antes_a["status_lsd"] != "desligado":
+        raise ValidationError({"status_lsd": "Use a confirmacao especifica de desligamento. A edicao cadastral nao desliga assistidos."})
+    if antes_a["status_lsd"] in STATUS_DEFINIDOS and aluno.status_lsd not in STATUS_DEFINIDOS:
+        raise ValidationError({"status_lsd": "Nao e permitido apagar a situacao atual."})
+    _validar_cadastro(aluno)
+    if _cpf(aluno.cpf) != cpf_original:
+        _exigir_cpf_livre(aluno)
+    permitidos = set(alteracoes)
+    if "possui_sisc" in permitidos:
+        permitidos.update({"justificativa_sisc", "justificativa_sisc_outros"})
+    depois_a = _estado(aluno)
+    campos_a = sorted(k for k in antes_a if antes_a[k] != depois_a[k])
+    if set(campos_a) - permitidos:
+        raise ValidationError("Validacao alterou campo nao solicitado. Revisar cadastro.")
+    if campos_a:
+        aluno.editado_por = operador
+        aluno.save(update_fields=campos_a + ["editado_por", "editado_em"])
+        registrar_log(operador, aluno, "aluno_editado",
+                      f"Cadastro sem Person atualizado. Campos: {', '.join(campos_a)}.")
+    esperado_a = dict(depois_a)
+    if campos_a:
+        esperado_a.update(editado_por_id=operador.pk, editado_em=aluno.editado_em)
+    if (_hash(_estado(Aluno.objects.get(pk=aluno.pk))) != _hash(esperado_a)
+            or _hash(_estado(Family.objects.get(pk=familia.pk))) != antes_f
+            or _relacionados(aluno) != relacionados):
+        raise ValidationError("Alteracao fora do escopo cadastral. Edicao cancelada.")
+    return {"aluno": aluno, "person_id": None, "alterado": bool(campos_a)}
+
 
 def salvar_edicao_aluno(*, usuario, aluno_id, alteracoes, token):
     operador = validar_operador_aluno(usuario)
@@ -196,7 +246,7 @@ def salvar_edicao_aluno(*, usuario, aluno_id, alteracoes, token):
         aluno, pessoa, familia = _ler(aluno_id, bloquear=True)
         validar_token_aluno(usuario=operador, aluno=aluno, pessoa=pessoa, familia=familia, token=token)
         if pessoa is None:
-            raise ValidationError("Assistido sem Person: regularizacao especifica. Nenhuma identidade sera criada ao editar.")
+            return _salvar_edicao_legado(operador, aluno, familia, alteracoes)
         if pessoa.family_id != aluno.family_id:
             raise ValidationError("Person e assistido possuem familias divergentes.")
         referencias = (Family._base_manager.filter(responsible_id=pessoa.pk).count()
@@ -217,7 +267,7 @@ def salvar_edicao_aluno(*, usuario, aluno_id, alteracoes, token):
             aluno.cpf = antes_a["cpf"]
         if aluno.status_lsd == "desligado" and antes_a["status_lsd"] != "desligado":
             raise ValidationError({"status_lsd": "Use a confirmacao especifica de desligamento. A edicao cadastral nao desliga assistidos."})
-        if antes_a["status_lsd"] in {"Frequentando", "desligado"} and aluno.status_lsd not in {"Frequentando", "desligado"}:
+        if antes_a["status_lsd"] in STATUS_DEFINIDOS and aluno.status_lsd not in STATUS_DEFINIDOS:
             raise ValidationError({"status_lsd": "Nao e permitido apagar a situacao atual."})
         _validar_cadastro(aluno)
         permitidos = set(alteracoes)

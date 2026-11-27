@@ -65,9 +65,8 @@ def adult_edit(request, pk):
                     status = 400
                 else:
                     if resultado['alterado']:
-                        messages.success(request, 'Adulto atualizado com identificacao sincronizada.')
-                    else:
-                        messages.info(request, 'Nenhuma alteracao identificada.')
+                        messages.success(request, 'Adulto atualizado.' if resultado['person_id'] is None
+                            else 'Adulto atualizado com identificacao sincronizada.')
                     return redirect('family_detail', pk=resultado['adulto'].family_id)
         else:
             status = 400
