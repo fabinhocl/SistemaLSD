@@ -267,15 +267,20 @@
 
 
     <h2 class="row justify-content-center"> Composição Familiar</h2>
-    <h3 class="row justify-content-center mt-4">Crianças / Adolescente</h3>
     <a href="{% url 'aluno_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
         Cadastrar Assistido
     </a>
     <div class="row mb-3"></div>
+    <h3 class="row justify-content-center mt-4">Assistidos frequentando"</h3>
+    {% if assistidos_a_classificar %}
+        <div class="alert alert-warning">
+            {{ assistidos_a_classificar|length }} assistido(s) sem situação definida. Atualize o cadastro.
+        </div>
+    {% endif %}
     <table class="table table-bordered">
         <thead><tr class="text-center"><th>CPF</th><th>Nome do Assistido</th><th>Status</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
         <tbody>
-            {% for aluno in family.alunos.all %}
+            {% for aluno in assistidos_frequentando %}
                 <tr class="text-center">
                     <td>{{ aluno.cpf }}</td>
                     <td>{{ aluno.name }}</td>
@@ -292,7 +297,28 @@
             {% endfor %}
         </tbody>
     </table>
-
+    <h3 class="row justify-content-center mt-4">Crianças / Adolescente</h3>
+    <table class="table table-bordered">
+        <thead><tr class="text-center"><th>CPF</th><th>Nome</th><th>Status</th><th>Idade</th><th>Turma</th><th>Ações</th></tr></thead>
+        <tbody>
+            {% for aluno in assistidos_nao_frequentam %}
+                <tr class="text-center">
+                    <td>{{ aluno.cpf }}</td>
+                    <td>{{ aluno.name }}</td>
+                    <td>{% if not aluno.status_lsd %}
+                        <span class="badge bg-warning text-dark">A classificar</span>{% else %}{{ aluno.get_status_lsd_display }}{% endif %}</td>
+                    <td>{{ aluno.idade }}</td>
+                    <td>{% if aluno.turma %}{{ aluno.turma.faixa_etaria }}{% else %}-{% endif %}</td>
+                    <td>    
+                    <a href="{% url 'aluno_edit' pk=aluno.pk %}" class="btn btn-primary btn-sm">Editar</a>
+                        <a href="{% url 'aluno_detail' pk=aluno.pk %}" class="btn btn-danger btn-sm">Visualizar</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center">Nenhum assistido vinculado a esta família.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
     <h3 class="row justify-content-center mt-4">Adultos Vinculados</h3>
     <a href="{% url 'adult_create' %}?family_id={{ family.pk }}" class="btn btn-success btn-sm">
         Cadastrar Adulto

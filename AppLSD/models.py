@@ -673,6 +673,7 @@ class Aluno(AuditModel):
     STATUS_CHOICES = [
     ('', '---------'),  # Django usa por padrão esse rótulo se vazio
     ('Frequentando', 'Frequentando'),
+    ('nao_frequenta', 'Não frequenta'),
     ('desligado', 'Desligado')
     ]
     status_lsd = models.CharField(max_length=15, choices=STATUS_CHOICES, default='', blank=True)

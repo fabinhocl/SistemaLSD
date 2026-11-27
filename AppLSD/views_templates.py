@@ -828,11 +828,28 @@ def family_detail(request, pk):
     # todos os documentos da família, mais recentes primeiro
     documentos = family.documentos.all().order_by('-criado_em')
 
+    alunos = list(family.alunos.select_related('turma').order_by('name'))
+
+    def situacao(aluno):
+        return (aluno.status_lsd or '').strip().lower()
+
+    ordem = {'': 0, 'nao_frequenta': 1, 'desligado': 2}
+    assistidos_frequentando = [a for a in alunos if situacao(a) == 'frequentando']
+    assistidos_nao_frequentam = sorted(
+        (a for a in alunos if situacao(a) != 'frequentando'),
+        key=lambda a: (ordem.get(situacao(a), 3), a.name),
+    )
+    assistidos_a_classificar = [a for a in alunos if not situacao(a)]
+
     context = {
         "family": family,
         "logs": logs,
         "doc_atual": doc_atual,
         "documentos": documentos,
+        "assistidos_frequentando": assistidos_frequentando,
+        "assistidos_nao_frequentam": assistidos_nao_frequentam,
+        "assistidos_a_classificar": assistidos_a_classificar,
+        "adultos": family.adults.all().order_by('name'),
     }
 
     return render(request, 'AppLSD/family_detail.html', context)
